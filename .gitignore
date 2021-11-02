@@ -1,0 +1,8 @@
+
+.vs/
+Build/
+Deploy/
+
+.ninja_deps
+.ninja_log
+*.ninja
