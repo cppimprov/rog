@@ -459,11 +459,9 @@ class PlatformMSVC:
 		]
 		self.write_static_lib(n, build_type, sdlmixer, '3')
 
-		# ...
-
-		rog = ProjectExe.from_name('rog', self, build_type)
-		rog.defines = sdl.defines
-		rog.inc_dirs = [
+		bump = ProjectStaticLib.from_name('bump', self, build_type)
+		bump.defines = freetype.defines + harfbuzz.defines + glew.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]
+		bump.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
 			join_dir(freetype.code_dir, 'include'),
@@ -474,6 +472,22 @@ class PlatformMSVC:
 			join_dir(sdl.code_dir, 'include'),
 			sdlmixer.code_dir,
 		]
+		self.write_static_lib(n, build_type, bump)
+
+		rog = ProjectExe.from_name('rog', self, build_type)
+		rog.defines = bump.defines
+		rog.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			join_dir(freetype.code_dir, 'include'),
+			join_dir(harfbuzz.code_dir, 'src'),
+			glew.code_dir,
+			stb.code_dir,
+			glm.code_dir,
+			join_dir(sdl.code_dir, 'include'),
+			sdlmixer.code_dir,
+			bump.code_dir,
+		]
 		rog.libs = [
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
@@ -482,6 +496,7 @@ class PlatformMSVC:
 			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
 			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
 			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
 		rog.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib' ]
 		self.write_exe(n, build_type, rog)
