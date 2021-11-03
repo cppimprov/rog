@@ -1,0 +1,53 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build (MSVC)",
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "command": "python",
+            "args": [
+                "build.py",
+                "--build_type=${input:buildType}"
+            ],
+            "problemMatcher": [
+                "$msCompile"
+            ],
+        },
+        {
+            "label": "Build (GCC)",
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "command": "python3",
+            "args": [
+                "build.py",
+                "--build_type=${input:buildType}"
+            ],
+            "options": {
+                "shell": {
+                    "executable": "c:\\windows\\sysnative\\bash.exe",
+                    "args": ["-c"]
+                }
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "buildType",
+            "description": "Build Type:",
+            "type": "pickString",
+            "options": [
+                "debug", "release", "master"
+            ]
+        },
+    ]
+}
