@@ -27,6 +27,7 @@ namespace bump
 		
 		enum class blit_mode { ADD, MAX };
 		glyph_image blit_glyphs(std::vector<glyph_image> const& glyphs, blit_mode mode);
+		glyph_image blit_glyphs_as_tiles(std::vector<glyph_image> const& glyphs, blit_mode mode, glm::i32vec2 tile_size_px, std::int32_t line_height_px);
 
 	} // font
 	

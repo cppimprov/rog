@@ -9,19 +9,27 @@
 
 #include <cstdlib>
 #include <format>
+#include <fstream>
 #include <iostream>
 
+#include <bump_gl.hpp>
 #include <bump_input.hpp>
 #include <bump_timer.hpp>
+#include <bump_range.hpp>
+#include <bump_render_text.hpp>
 
 namespace rog
 {
+
+	// ...
 
 	bump::gamestate do_start(bump::app& app)
 	{
 		using namespace bump;
 
 		log_info("start state");
+
+		auto ascii_tiles = render_ascii_tiles(app.m_ft_context, app.m_assets.m_fonts.at("tiles"), { 64, 64 });
 
 		auto paused = false;
 		auto timer = frame_timer();
@@ -72,7 +80,7 @@ int main(int , char* [])
 		{
 			// fonts
 			{
-				// { "press_start", "Bungee-Regular.ttf", 64 },
+				{ "tiles", "RobotoMono-SemiBold.ttf", 30 },
 			},
 			// sounds
 			{
@@ -105,4 +113,15 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: commit! (end of stream :( )
+// todo: 
+
+	// basic font rendering:
+
+		// screen_buffer class w/ simple grid of chars
+
+		// rendering
+			// tile_renderable class (instanced quad rendering)
+			// shader
+
+	// build script:
+		// rc stage to add icon (yellow @ sign)

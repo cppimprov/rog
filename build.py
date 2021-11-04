@@ -678,6 +678,22 @@ def main():
 
 	print('build succeeded')
 
+	if platform.name == 'msvc':
+
+		print('copying data files...')
+
+		copy_result = subprocess.call(['robocopy', 
+			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
+			'Data/rog', 
+			get_deploy_dir('rog', platform_writer.get_platform_name(), build_type) + '/data'])
+			
+		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+		if copy_result > 8:
+			print('failed to copy data files!')
+			return
+
+		print('data files copied')
+
 	print('done!')
 	
 main()

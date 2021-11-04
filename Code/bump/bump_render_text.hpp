@@ -4,6 +4,7 @@
 #include "bump_font_ft_context.hpp"
 #include "bump_gl_texture.hpp"
 
+#include <array>
 #include <map>
 #include <string>
 
@@ -35,4 +36,6 @@ namespace bump
 
 	charmap_texture render_charmap(font::ft_context const& ft_context, font::font_asset const& font, std::string const& chars);
 	
+	gl::texture_2d_array render_ascii_tiles(font::ft_context const& ft_context, font::font_asset const& font, glm::i32vec2 tile_size);
+
 } // bump
