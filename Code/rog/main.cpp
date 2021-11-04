@@ -13,15 +13,20 @@
 #include <iostream>
 
 #include <bump_gl.hpp>
+#include <bump_grid.hpp>
 #include <bump_input.hpp>
 #include <bump_timer.hpp>
 #include <bump_range.hpp>
 #include <bump_render_text.hpp>
 
+#include "rog_screen_buffer.hpp"
+
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <glm/gtx/std_based_type.hpp>
+
 namespace rog
 {
-
-	// ...
 
 	bump::gamestate do_start(bump::app& app)
 	{
@@ -29,7 +34,10 @@ namespace rog
 
 		log_info("start state");
 
-		auto ascii_tiles = render_ascii_tiles(app.m_ft_context, app.m_assets.m_fonts.at("tiles"), { 64, 64 });
+		auto screen = screen_buffer({ 80, 24 }, '#');
+		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), '.');
+
+		auto const ascii_tiles = render_ascii_tiles(app.m_ft_context, app.m_assets.m_fonts.at("tiles"), { 64, 64 });
 
 		auto paused = false;
 		auto timer = frame_timer();
@@ -116,8 +124,6 @@ int main(int , char* [])
 // todo: 
 
 	// basic font rendering:
-
-		// screen_buffer class w/ simple grid of chars
 
 		// rendering
 			// tile_renderable class (instanced quad rendering)
