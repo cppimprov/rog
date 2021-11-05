@@ -49,6 +49,7 @@
             "type": "pickString",
             "options": [
                 "rog",
+                "rog_ascii_gen",
             ]
         },
         {

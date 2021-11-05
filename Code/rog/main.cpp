@@ -37,7 +37,7 @@ namespace rog
 
 		log_info("start state");
 
-		auto tile_renderer = rog::tile_renderer(app, { 64, 64 });
+		auto tile_renderer = rog::tile_renderer(app, { 24, 36 });
 
 		auto screen = screen_buffer({ 80, 24 }, '#');
 		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), '.');
@@ -139,8 +139,6 @@ int main(int , char* [])
 }
 
 // todo: 
-
-	// load font array texture from disk
 
 	// find nice tile size
 
