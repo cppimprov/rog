@@ -101,13 +101,6 @@ namespace bump
 
 		glyph_image blit_glyphs_as_tiles(std::vector<glyph_image> const& glyphs, blit_mode mode, glm::i32vec2 tile_size_px, std::int32_t line_height_px)
 		{
-			//die_if(tile_size_px.y < line_height_px);
-
-			// we don't care if tile size is < line_height
-			// what we care about is if individual glyphs are rendered outside the tile size
-			// so... our y_offset can be negative?
-			// but... pos can't be negative
-
 			if (glyphs.empty())
 				return { { 0, 0 }, image<std::uint8_t>() };
 
@@ -124,7 +117,8 @@ namespace bump
 				if (g.m_image.size() == glm::size2{ 0, 0 })
 					continue;
 
-				die_if(tile_size_sz.x < g.m_image.size().x);
+				die_if(g.m_image.size().x > tile_size_sz.x);
+				die_if(g.m_image.size().y > tile_size_sz.y);
 				die_if(g.m_pos.y < y_offset);
 
 				auto pos = glm::size2{
