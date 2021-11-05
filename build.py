@@ -501,6 +501,23 @@ class PlatformMSVC:
 		rog.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib' ]
 		self.write_exe(n, build_type, rog)
 
+		rog_ascii_gen = ProjectExe.from_name('rog_ascii_gen', self, build_type)
+		rog_ascii_gen.defines = bump.defines
+		rog_ascii_gen.inc_dirs = [
+			join_dir(freetype.code_dir, 'include'),
+			join_dir(harfbuzz.code_dir, 'src'),
+			stb.code_dir,
+			glm.code_dir,
+			bump.code_dir,
+		]
+		rog_ascii_gen.libs = [
+			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
+			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
+			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+		]
+		self.write_exe(n, build_type, rog_ascii_gen)
+
 class PlatformGCC:
 
 	def get_platform_name(self):
@@ -686,6 +703,16 @@ def main():
 			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
 			'Data/rog', 
 			get_deploy_dir('rog', platform_writer.get_platform_name(), build_type) + '/data'])
+			
+		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+		if copy_result > 8:
+			print('failed to copy data files!')
+			return
+
+		copy_result = subprocess.call(['robocopy', 
+			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
+			'Data/rog_ascii_gen', 
+			get_deploy_dir('rog_ascii_gen', platform_writer.get_platform_name(), build_type) + '/data'])
 			
 		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
 		if copy_result > 8:

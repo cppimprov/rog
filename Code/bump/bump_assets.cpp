@@ -3,7 +3,7 @@
 #include "bump_die.hpp"
 #include "bump_ends_with.hpp"
 #include "bump_app.hpp"
-#include "bump_load_gl_cubemap.hpp"
+#include "bump_load_gl_texture.hpp"
 #include "bump_log.hpp"
 
 #include <array>
@@ -155,20 +155,36 @@ namespace bump
 			}
 		}
 
-		// load cubemaps:
+		// load 2d array textures:
 		{
-			for (auto const& metadata : m.m_cubemaps)
+			for (auto const& metadata : m.m_texture_2d_arrays)
+			{
+				auto file = "data/textures/" + metadata.m_filename;
+
+				auto texture = load_gl_texture_2d_array_from_file(file, metadata.m_num_layers, metadata.m_parameters);
+
+				if (!out.m_texture_2d_arrays.insert({ metadata.m_name, std::move(texture) }).second)
+				{
+					log_error("load_assets(): duplicate texture_2d_array id: " + metadata.m_name);
+					die();
+				}
+			}
+		}
+
+		// load cubemap textures:
+		{
+			for (auto const& metadata : m.m_texture_cubemaps)
 			{
 				auto files = std::array<std::string, 6>();
 
 				for (auto i = std::size_t{ 0 }; i != files.size(); ++i)
 					files[i] = "data/textures/" + metadata.m_filenames[i];
 
-				auto cubemap = load_gl_cubemap_texture_from_files(files);
+				auto cubemap = load_gl_cubemap_texture_from_files(files, metadata.m_parameters);
 
-				if (!out.m_cubemaps.insert({ metadata.m_name, std::move(cubemap) }).second)
+				if (!out.m_texture_cubemaps.insert({ metadata.m_name, std::move(cubemap) }).second)
 				{
-					log_error("load_assets(): duplicate cubemap id: " + metadata.m_name);
+					log_error("load_assets(): duplicate texture_cubemap id: " + metadata.m_name);
 					die();
 				}
 			}

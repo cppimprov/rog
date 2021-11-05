@@ -26,6 +26,7 @@ namespace rog
 		screen_buffer& operator=(screen_buffer &&) = default;
 
 		glm::size2 get_size() const { return m_data.extents(); }
+		std::size_t get_data_size() const { return m_data.size(); }
 
 		void clear();
 		
