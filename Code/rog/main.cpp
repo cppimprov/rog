@@ -21,6 +21,7 @@
 #include <bump_range.hpp>
 #include <bump_render_text.hpp>
 
+#include "rog_colors.hpp"
 #include "rog_screen_buffer.hpp"
 #include "rog_tile_renderer.hpp"
 
@@ -37,10 +38,11 @@ namespace rog
 
 		log_info("start state");
 
-		auto tile_renderer = rog::tile_renderer(app, { 24, 36 });
+		auto const tile_size = glm::ivec2{ 24, 36 };
+		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
-		auto screen = screen_buffer({ 80, 24 }, '#');
-		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), '.');
+		auto screen = screen_buffer({ 80, 24 }, { '#', colors::light_red, colors::dark_red });
+		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), { 'y', colors::light_green, colors::black });
 
 		auto paused = false;
 		auto timer = frame_timer();
@@ -53,6 +55,11 @@ namespace rog
 				auto callbacks = input::input_callbacks();
 				callbacks.m_quit = [&] () { quit = true; };
 				callbacks.m_pause = [&] (bool pause) { paused = pause; if (!paused) timer = frame_timer(); };
+				// callbacks.m_resize = [&] (glm::ivec2 window_size)
+				// {
+				// 	auto const num_tiles = window_size + (tile_size - 1) / tile_size;
+				// 	screen.resize(glm::size2(num_tiles), { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
+				// };
 
 				app.m_input_handler.poll_input(callbacks);
 
@@ -140,9 +147,17 @@ int main(int , char* [])
 
 // todo: 
 
-	// find nice tile size
+	// fix font / tile spacing
+		// warn if line height is smaller than box size.
+		// render glyphs normally (no size checking?)
+		// check all glyphs are smaller than tile size before blitting.
+		// blit to final image (size check bounds of image, but not tiles?)
 
-	// resize screen buffer, depending on the window size
+	// resize issue:
+		// does the initial resize call change the size of the window?
+		// ignore resizes that don't change the window size.
 
-	// build script:
-		// rc stage to add icon (yellow @ sign)
+	// check frame-rate!
+
+	// world representation
+		// 

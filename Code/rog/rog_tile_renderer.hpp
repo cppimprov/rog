@@ -40,6 +40,8 @@ namespace rog
 				bump::gl::texture_2d_array const& texture, 
 				std::vector<glm::vec2> const& positions,
 				std::vector<float> const& layers,
+				std::vector<glm::vec3> const& fg_colors,
+				std::vector<glm::vec3> const& bg_colors,
 				glm::vec2 tile_size);
 
 		private:
@@ -48,6 +50,8 @@ namespace rog
 			GLint m_in_VertexPosition;
 			GLint m_in_TilePosition;
 			GLint m_in_TileLayer;
+			GLint m_in_TileFGColor;
+			GLint m_in_TileBGColor;
 			GLint m_u_TileSize;
 			GLint m_u_TileTexture;
 			GLint m_u_MVP;
@@ -55,6 +59,8 @@ namespace rog
 			bump::gl::buffer m_vertex_buffer;
 			bump::gl::buffer m_tile_positions_buffer;
 			bump::gl::buffer m_tile_layers_buffer;
+			bump::gl::buffer m_tile_fg_colors_buffer;
+			bump::gl::buffer m_tile_bg_colors_buffer;
 			bump::gl::vertex_array m_vertex_array;
 		};
 
@@ -64,6 +70,8 @@ namespace rog
 
 		std::vector<glm::vec2> m_frame_positions;
 		std::vector<float> m_frame_layers;
+		std::vector<glm::vec3> m_frame_fg_colors;
+		std::vector<glm::vec3> m_frame_bg_colors;
 	};
 
 } // rog
