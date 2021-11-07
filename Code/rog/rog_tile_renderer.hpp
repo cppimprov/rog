@@ -4,14 +4,14 @@
 #include <bump_camera.hpp>
 #include <bump_gl.hpp>
 
+#include "rog_screen.hpp"
+
 #include <glm/glm.hpp>
 
 #include <vector>
 
 namespace rog
 {
-
-	class screen_buffer;
 	
 	class tile_renderer
 	{
@@ -19,7 +19,7 @@ namespace rog
 
 		explicit tile_renderer(bump::app& app, glm::vec2 tile_size);
 	
-		void render(bump::gl::renderer& renderer, glm::vec2 window_size, screen_buffer const& screen);
+		void render(bump::gl::renderer& renderer, glm::vec2 window_size, screen::buffer const& screen);
 
 	private:
 

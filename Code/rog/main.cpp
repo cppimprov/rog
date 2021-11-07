@@ -22,7 +22,7 @@
 #include <bump_render_text.hpp>
 
 #include "rog_colors.hpp"
-#include "rog_screen_buffer.hpp"
+#include "rog_screen.hpp"
 #include "rog_tile_renderer.hpp"
 
 #include <glm/glm.hpp>
@@ -42,16 +42,9 @@ namespace rog
 		auto const tile_size = glm::ivec2{ 24, 36 };
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
-		auto screen = screen_buffer();
-
-		auto resize_screen_buffer = [&] (glm::ivec2 window_size, screen_buffer::cell const& cell)
-		{
-			auto const num_tiles = (window_size + (tile_size - 1)) / tile_size;
-			screen.resize(glm::size2(num_tiles), cell);
-		};
-
-		resize_screen_buffer(app.m_window.get_size(), { '#', colors::light_red, colors::dark_red });
-		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), { '{', colors::light_green, colors::black });
+		auto screen_buffer = screen::buffer();
+		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
+		screen::fill_rect(screen_buffer, { 1, 1 }, screen_buffer.extents() - glm::size2(2), { '{', colors::light_green, colors::black });
 
 		auto paused = false;
 		auto timer = frame_timer();
@@ -64,7 +57,7 @@ namespace rog
 				auto callbacks = input::input_callbacks();
 				callbacks.m_quit = [&] () { quit = true; };
 				callbacks.m_pause = [&] (bool pause) { paused = pause; if (!paused) timer = frame_timer(); };
-				callbacks.m_resize = [&] (glm::ivec2 window_size) { resize_screen_buffer(window_size, { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) }); };
+				callbacks.m_resize = [&] (glm::ivec2 window_size) { screen::resize(screen_buffer, window_size, tile_size, { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) }); };
 
 				app.m_input_handler.poll_input(callbacks);
 
@@ -91,7 +84,7 @@ namespace rog
 				renderer.clear_depth_buffers();
 				renderer.set_viewport({ 0, 0 }, window_size_u);
 
-				tile_renderer.render(renderer, window_size_f, screen);
+				tile_renderer.render(renderer, window_size_f, screen_buffer);
 
 				app.m_window.swap_buffers();
 			}
@@ -152,17 +145,5 @@ int main(int , char* [])
 
 // todo: 
 
-	// fix font / tile spacing
-		// warn if line height is smaller than box size.
-		// render glyphs normally (no size checking?)
-		// check all glyphs are smaller than tile size before blitting.
-		// blit to final image (size check bounds of image, but not tiles?)
-
-	// resize issue:
-		// does the initial resize call change the size of the window?
-		// ignore resizes that don't change the window size.
-
-	// check frame-rate!
-
 	// world representation
-		// 
+		// ...

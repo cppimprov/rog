@@ -1,7 +1,5 @@
 #include "rog_tile_renderer.hpp"
 
-#include "rog_screen_buffer.hpp"
-
 #include <bump_render_text.hpp>
 #include <bump_transform.hpp>
 
@@ -80,7 +78,7 @@ namespace rog
 
 	}
 
-	void tile_renderer::render(bump::gl::renderer& renderer, glm::vec2 window_size, screen_buffer const& screen)
+	void tile_renderer::render(bump::gl::renderer& renderer, glm::vec2 window_size, screen::buffer const& screen)
 	{
 		auto camera = bump::orthographic_camera();
 		camera.m_projection.m_size = window_size;
@@ -90,20 +88,20 @@ namespace rog
 		auto const matrices = bump::camera_matrices(camera);
 
 		m_frame_positions.clear();
-		m_frame_positions.reserve(screen.get_data_size());
+		m_frame_positions.reserve(screen.size());
 
 		m_frame_layers.clear();
-		m_frame_layers.reserve(screen.get_data_size());
+		m_frame_layers.reserve(screen.size());
 
 		m_frame_fg_colors.clear();
-		m_frame_fg_colors.reserve(screen.get_data_size());
+		m_frame_fg_colors.reserve(screen.size());
 		
 		m_frame_bg_colors.clear();
-		m_frame_bg_colors.reserve(screen.get_data_size());
+		m_frame_bg_colors.reserve(screen.size());
 
-		for (auto y : bump::range(0, screen.get_size().y))
+		for (auto y : bump::range(0, screen.extents().y))
 		{
-			for (auto x : bump::range(0, screen.get_size().x))
+			for (auto x : bump::range(0, screen.extents().x))
 			{
 				auto const& cell = screen.at({ x, y });
 
