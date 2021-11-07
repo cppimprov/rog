@@ -26,8 +26,8 @@ namespace bump
 		std::vector<glyph_image> render_glyphs(ft_context const& ft_context, ft_font const& ft_font, hb_font const& hb_font, hb_shaper const& hb_shaper, std::optional<double> stroke_width = { });
 		
 		enum class blit_mode { ADD, MAX };
+		void blit_image(image<std::uint8_t>& dst, glm::size2 dst_pos, image<std::uint8_t> const& src, blit_mode mode);
 		glyph_image blit_glyphs(std::vector<glyph_image> const& glyphs, blit_mode mode);
-		glyph_image blit_glyphs_as_tiles(std::vector<glyph_image> const& glyphs, blit_mode mode, glm::i32vec2 tile_size_px, std::int32_t line_height_px);
 
 	} // font
 	

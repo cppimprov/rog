@@ -28,6 +28,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtx/std_based_type.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 namespace rog
 {
@@ -41,8 +42,16 @@ namespace rog
 		auto const tile_size = glm::ivec2{ 24, 36 };
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
-		auto screen = screen_buffer({ 80, 24 }, { '#', colors::light_red, colors::dark_red });
-		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), { 'y', colors::light_green, colors::black });
+		auto screen = screen_buffer();
+
+		auto resize_screen_buffer = [&] (glm::ivec2 window_size, screen_buffer::cell const& cell)
+		{
+			auto const num_tiles = (window_size + (tile_size - 1)) / tile_size;
+			screen.resize(glm::size2(num_tiles), cell);
+		};
+
+		resize_screen_buffer(app.m_window.get_size(), { '#', colors::light_red, colors::dark_red });
+		screen.fill_rect({ 1, 1 }, screen.get_size() - glm::size2(2), { '{', colors::light_green, colors::black });
 
 		auto paused = false;
 		auto timer = frame_timer();
@@ -55,11 +64,7 @@ namespace rog
 				auto callbacks = input::input_callbacks();
 				callbacks.m_quit = [&] () { quit = true; };
 				callbacks.m_pause = [&] (bool pause) { paused = pause; if (!paused) timer = frame_timer(); };
-				// callbacks.m_resize = [&] (glm::ivec2 window_size)
-				// {
-				// 	auto const num_tiles = window_size + (tile_size - 1) / tile_size;
-				// 	screen.resize(glm::size2(num_tiles), { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
-				// };
+				callbacks.m_resize = [&] (glm::ivec2 window_size) { resize_screen_buffer(window_size, { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) }); };
 
 				app.m_input_handler.poll_input(callbacks);
 

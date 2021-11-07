@@ -44,7 +44,7 @@ namespace rog
 		auto length = std::min(s.size(), get_size().x - origin.x);
 
 		for (auto i = std::size_t{ 0 }; i != length; ++i)
-			m_data.at({ origin.x + i, origin.y }) = { s[i], fg, bg };
+			m_data.at({ origin.x + i, origin.y }) = { static_cast<std::uint8_t>(s[i]), fg, bg };
 	}
 	
 } // rog

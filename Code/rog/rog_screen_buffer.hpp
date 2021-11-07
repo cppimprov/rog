@@ -16,7 +16,7 @@ namespace rog
 
 		struct cell
 		{
-			char m_value;
+			std::uint8_t m_value;
 			glm::vec3 m_fg;
 			glm::vec3 m_bg;
 		};

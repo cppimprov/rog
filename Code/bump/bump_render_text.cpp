@@ -88,25 +88,4 @@ namespace bump
 		return { image.m_pos, std::move(map), std::move(texture) };
 	}
 
-	gl::texture_2d_array render_ascii_tiles(font::ft_context const& ft_context, font::font_asset const& font, glm::i32vec2 tile_size)
-	{
-		using namespace std::string_literals;
-
-		// 256 characters encoded as utf-8.
-		// control characters (0 to 31 and some chars >127) are encoded as nulls.
-		// characters from 128 to 255 are extended ascii (CP 1251) converted to utf-8.
-		auto const chars_utf8 = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\0€\0‚ƒ„…†‡ˆ‰Š‹Œ\0Ž\0\0‘’“”•–—˜™š›œ\0žŸ ¡¢£¤¥¦§¨©ª«¬\0®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"s;
-
-		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
-		hb_shaper.shape(font.m_hb_font.get_handle(), chars_utf8);
-
-		auto glyphs = render_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
-		die_if(glyphs.size() != 256);
-
-		auto image = blit_glyphs_as_tiles(glyphs, font::blit_mode::MAX, tile_size, font.m_ft_font.get_line_height());
-		auto texture = text_image_to_gl_texture_array(image.m_image, glyphs.size());
-
-		return texture;
-	}
-	
 } // bump

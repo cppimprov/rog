@@ -99,38 +99,6 @@ namespace bump
 			return out;
 		}
 
-		glyph_image blit_glyphs_as_tiles(std::vector<glyph_image> const& glyphs, blit_mode mode, glm::i32vec2 tile_size_px, std::int32_t line_height_px)
-		{
-			if (glyphs.empty())
-				return { { 0, 0 }, image<std::uint8_t>() };
-
-			auto const tile_size_sz = narrow_cast<glm::size2>(tile_size_px);
-			auto const image_size = tile_size_sz * glm::size2{ 1, glyphs.size() };
-			auto out = glyph_image{ { 0, 0 }, image<std::uint8_t>(1, image_size) };
-
-			auto const y_offset = (tile_size_px.y - line_height_px) / 2;
-
-			for (auto i = std::size_t{ 0 }; i != glyphs.size(); ++i)
-			{
-				auto const& g = glyphs[i];
-
-				if (g.m_image.size() == glm::size2{ 0, 0 })
-					continue;
-
-				die_if(g.m_image.size().x > tile_size_sz.x);
-				die_if(g.m_image.size().y > tile_size_sz.y);
-				die_if(g.m_pos.y < y_offset);
-
-				auto pos = glm::size2{
-					(tile_size_sz.x - g.m_image.size().x) / std::size_t{ 2 }, 
-					y_offset + g.m_pos.y + tile_size_sz.y * i
-				};
-				blit_image(out.m_image, pos, g.m_image, mode);
-			}
-			
-			return out;
-		}
-
 		std::vector<glyph_image> render_glyphs(ft_context const& ft_context, ft_font const& ft_font, hb_font const& , hb_shaper const& hb_shaper, std::optional<double> stroke_width)
 		{
 			auto const glyph_info = hb_shaper.get_glyph_info();
