@@ -47,7 +47,7 @@ namespace rog
 
 		void resize(buffer& screen, glm::ivec2 window_size, glm::ivec2 tile_size, cell const& cell)
 		{
-			auto const num_tiles = (window_size + (tile_size - 1)) / tile_size;
+			auto const num_tiles = window_size / tile_size;
 			screen.resize(glm::size2(num_tiles), cell);
 		}
 		

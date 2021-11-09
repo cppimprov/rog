@@ -143,7 +143,34 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: 
+// todo:
+
+	// level:
+		// 2d grid of features (256x256?)
+		// rendering:
+			// get "panel" size (size of level we can see on screen)
+			// do modular arithmetic to get coords of panel with the focus (player) position
+			// if within a few tiles of the edge (e.g. 2 vert, 4 hoz), scroll by 1/2 panel size
+			// clamp panel coords to between {0,0} and level_size-panel_size
+		// generation! (todo)
 
 	// world representation
-		// ...
+		// level - grid of features with char, fg, bg and other attributes
+
+		// how to structure the world?
+			// border (not passable), makes edges of the map look better...
+			// prompt to leave area when player moves off edge of level
+	
+
+
+// Notes:
+
+	// For a terminal-style roguelike, we can't "center" a tile exactly in the middle of the 
+	// screen, because we use the same grid for the ui (and we need the ui to have a consistent position, and use whole tiles)
+	// if we separate the world / ui, then we don't have to do that.
+
+	// Centering the player would be much better for mouse input (because we don't
+	// have to move the mouse as much to "undo" the move we just made). Though perhaps
+	// this would matter less in a "busy" environment.
+
+	// ...

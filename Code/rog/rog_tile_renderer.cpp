@@ -104,8 +104,12 @@ namespace rog
 			for (auto x : bump::range(0, screen.extents().x))
 			{
 				auto const& cell = screen.at({ x, y });
+				
+				// convert coord origin to top-left
+				auto const pos = glm::vec2(x, y) * m_tile_size;
+				auto const window_pos = glm::vec2(pos.x, (window_size.y - m_tile_size.y) - pos.y);
 
-				m_frame_positions.push_back(glm::vec2(x, y) * m_tile_size);
+				m_frame_positions.push_back(window_pos);
 				m_frame_layers.push_back(static_cast<float>(cell.m_value));
 				m_frame_fg_colors.push_back(cell.m_fg);
 				m_frame_bg_colors.push_back(cell.m_bg);
