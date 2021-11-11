@@ -94,18 +94,12 @@ namespace bump
 		constexpr grid():
 			m_extents(0), m_data() { }
 
-		constexpr grid(extents_type extents):
+		explicit constexpr grid(extents_type extents):
 			grid(extents, value_type()) { }
 
-		constexpr grid(extents_type extents, value_type const& value):
+		explicit constexpr grid(extents_type extents, value_type const& value):
 			m_extents(extents), m_data(size(), value) { }
 
-		constexpr grid(extents_type extents, std::initializer_list<value_type> values):
-			m_extents(extents), m_data(values)
-		{
-			die_if(size() != m_data.size());
-		}
-		
 		constexpr grid(grid const&) = default;
 		constexpr grid& operator=(grid const&) = default;
 		constexpr grid(grid&&) = default;
@@ -162,5 +156,5 @@ namespace bump
 
 	template<class T> using grid2 = grid<T, 2>;
 	template<class T> using grid3 = grid<T, 3>;
-	
+
 } // bump

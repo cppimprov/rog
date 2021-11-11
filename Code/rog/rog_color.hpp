@@ -5,7 +5,7 @@
 namespace rog
 {
 	
-	namespace colors
+	namespace color
 	{
 		
 		const auto black = glm::vec3(0);

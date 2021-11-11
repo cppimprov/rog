@@ -1,5 +1,7 @@
 #include "rog_tile_renderer.hpp"
 
+#include "rog_screen_cell.hpp"
+
 #include <bump_render_text.hpp>
 #include <bump_transform.hpp>
 
@@ -78,7 +80,7 @@ namespace rog
 
 	}
 
-	void tile_renderer::render(bump::gl::renderer& renderer, glm::vec2 window_size, screen::buffer const& screen)
+	void tile_renderer::render(bump::gl::renderer& renderer, glm::vec2 window_size, bump::grid2<screen::cell> const& screen)
 	{
 		auto camera = bump::orthographic_camera();
 		camera.m_projection.m_size = window_size;
