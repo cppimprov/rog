@@ -1,5 +1,6 @@
 
 #include "rog_color.hpp"
+#include "rog_direction.hpp"
 #include "rog_feature.hpp"
 #include "rog_player.hpp"
 #include "rog_screen_drawing.hpp"
@@ -33,37 +34,6 @@
 
 namespace rog
 {
-
-	enum class direction
-	{
-		LEFT_UP,
-		UP,
-		RIGHT_UP,
-		LEFT,
-		NONE,
-		RIGHT,
-		LEFT_DOWN,
-		DOWN,
-		RIGHT_DOWN,
-	};
-
-	glm::ivec2 get_direction_vector(direction dir)
-	{
-		switch (dir)
-		{
-		case direction::LEFT_UP:    return { -1, -1 };
-		case direction::UP:         return {  0, -1 };
-		case direction::RIGHT_UP:   return {  1, -1 };
-		case direction::LEFT:       return { -1,  0 };
-		case direction::NONE:       return {  0,  0 };
-		case direction::RIGHT:      return {  1,  0 };
-		case direction::LEFT_DOWN:  return { -1,  1 };
-		case direction::DOWN:       return {  0,  1 };
-		case direction::RIGHT_DOWN: return {  1,  1 };
-		}
-
-		bump::die();
-	}
 
 	void move_player(player& player, bump::grid2<feature> const& level, direction dir)
 	{
