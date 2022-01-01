@@ -8,10 +8,14 @@ namespace rog
 	namespace level_gen
 	{
 		
-		void generate_level(bump::grid2<feature>& level, glm::size2 size)
+		level generate_level(std::int32_t depth)
 		{
-			level.clear();
-			level.resize(size, features::grass);
+			auto size = glm::size2(128);
+
+			auto out = level();
+			out.m_depth = depth;
+
+			out.m_grid.resize(size, features::grass);
 
 			for (auto y : bump::range(1, size.y - 1))
 			{
@@ -19,11 +23,11 @@ namespace rog
 				{
 					auto const n = glm::simplex(glm::vec2{ x, y });
 
-					level.at({ x, y }) = (n > 0.0f) ? features::wall : features::floor;
+					out.m_grid.at({ x, y }) = (n > 0.0f) ? features::wall : features::floor;
 				}
 			}
 			
-			// ...
+			return out;
 		}
 		
 	} // level_gen

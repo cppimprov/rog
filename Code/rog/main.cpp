@@ -62,9 +62,7 @@ namespace rog
 		auto screen_buffer = grid2<screen::cell>();
 		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
 
-		auto level_grid = grid2<feature>();
-		level_gen::generate_level(level_grid, glm::size2(128));
-
+		auto level = level_gen::generate_level(0);
 		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
 
 		auto paused = false;
@@ -81,14 +79,14 @@ namespace rog
 				callbacks.m_resize = [&] (glm::ivec2 window_size) { screen::resize(screen_buffer, window_size, tile_size, { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) }); };
 				callbacks.m_input = [&] (input::control_id id, input::raw_input in)
 				{
-					if (id == input::control_id::KEYBOARDKEY_NUM7 && in.m_value) move_player(player, level_grid, direction::LEFT_UP);
-					if (id == input::control_id::KEYBOARDKEY_NUM8 && in.m_value) move_player(player, level_grid, direction::UP);
-					if (id == input::control_id::KEYBOARDKEY_NUM9 && in.m_value) move_player(player, level_grid, direction::RIGHT_UP);
-					if (id == input::control_id::KEYBOARDKEY_NUM4 && in.m_value) move_player(player, level_grid, direction::LEFT);
-					if (id == input::control_id::KEYBOARDKEY_NUM6 && in.m_value) move_player(player, level_grid, direction::RIGHT);
-					if (id == input::control_id::KEYBOARDKEY_NUM1 && in.m_value) move_player(player, level_grid, direction::LEFT_DOWN);
-					if (id == input::control_id::KEYBOARDKEY_NUM2 && in.m_value) move_player(player, level_grid, direction::DOWN);
-					if (id == input::control_id::KEYBOARDKEY_NUM3 && in.m_value) move_player(player, level_grid, direction::RIGHT_DOWN);
+					if (id == input::control_id::KEYBOARDKEY_NUM7 && in.m_value) move_player(player, level.m_grid, direction::LEFT_UP);
+					if (id == input::control_id::KEYBOARDKEY_NUM8 && in.m_value) move_player(player, level.m_grid, direction::UP);
+					if (id == input::control_id::KEYBOARDKEY_NUM9 && in.m_value) move_player(player, level.m_grid, direction::RIGHT_UP);
+					if (id == input::control_id::KEYBOARDKEY_NUM4 && in.m_value) move_player(player, level.m_grid, direction::LEFT);
+					if (id == input::control_id::KEYBOARDKEY_NUM6 && in.m_value) move_player(player, level.m_grid, direction::RIGHT);
+					if (id == input::control_id::KEYBOARDKEY_NUM1 && in.m_value) move_player(player, level.m_grid, direction::LEFT_DOWN);
+					if (id == input::control_id::KEYBOARDKEY_NUM2 && in.m_value) move_player(player, level.m_grid, direction::DOWN);
+					if (id == input::control_id::KEYBOARDKEY_NUM3 && in.m_value) move_player(player, level.m_grid, direction::RIGHT_DOWN);
 				};
 
 				app.m_input_handler.poll_input(callbacks);
@@ -105,7 +103,7 @@ namespace rog
 
 				// drawing!
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level_grid, player);
+				screen::draw(screen_buffer, level.m_grid, player);
 			}
 
 			// render

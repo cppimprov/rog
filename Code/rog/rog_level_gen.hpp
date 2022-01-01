@@ -1,17 +1,17 @@
 #pragma once
 
+#include "rog_level.hpp"
+
 #include <bump_grid.hpp>
 #include <bump_math.hpp>
 
 namespace rog
 {
 
-	struct feature;
-	
 	namespace level_gen
 	{
 		
-		void generate_level(bump::grid2<feature>& level, glm::size2 size);
+		level generate_level(std::int32_t depth);
 		
 	} // level_gen
 	
