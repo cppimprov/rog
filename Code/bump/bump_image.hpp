@@ -1,9 +1,7 @@
 #pragma once
 
 #include "bump_die.hpp"
-
-#include <glm/glm.hpp>
-#include <glm/gtx/std_based_type.hpp>
+#include "bump_math.hpp"
 
 #include <cstdint>
 #include <vector>

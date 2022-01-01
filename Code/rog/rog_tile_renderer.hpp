@@ -4,8 +4,7 @@
 #include <bump_camera.hpp>
 #include <bump_gl.hpp>
 #include <bump_grid.hpp>
-
-#include <glm/glm.hpp>
+#include <bump_math.hpp>
 
 #include <vector>
 

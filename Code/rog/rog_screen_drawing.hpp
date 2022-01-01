@@ -3,9 +3,7 @@
 #include "rog_screen_cell.hpp"
 
 #include <bump_grid.hpp>
-
-#include <glm/glm.hpp>
-#include <glm/gtx/std_based_type.hpp>
+#include <bump_math.hpp>
 
 #include <string>
 

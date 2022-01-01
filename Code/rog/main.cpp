@@ -1,7 +1,8 @@
 
-#include "rog_color.hpp"
+#include "rog_colors.hpp"
 #include "rog_direction.hpp"
 #include "rog_feature.hpp"
+#include "rog_level_gen.hpp"
 #include "rog_player.hpp"
 #include "rog_screen_drawing.hpp"
 #include "rog_tile_renderer.hpp"
@@ -14,15 +15,11 @@
 #include <bump_grid.hpp>
 #include <bump_input.hpp>
 #include <bump_log.hpp>
+#include <bump_math.hpp>
 #include <bump_timer.hpp>
 #include <bump_transform.hpp>
 #include <bump_range.hpp>
 #include <bump_render_text.hpp>
-
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
-#include <glm/gtx/std_based_type.hpp>
-#include <glm/gtx/string_cast.hpp>
 
 #include <SDL.h>
 #include <SDL_main.h>
@@ -44,8 +41,13 @@ namespace rog
 		if (player.m_position.x == level_size.x - 1 && vec.x > 0) return;
 		if (player.m_position.y == 0 && vec.y < 0) return;
 		if (player.m_position.y == level_size.y - 1 && vec.y > 0) return;
+
+		auto const target = player.m_position + glm::size2(vec);
+
+		if (level.at(target).m_flags & feature::flags::NO_WALK)
+			return;
 		
-		player.m_position += vec;
+		player.m_position = target;
 	}
 
 	bump::gamestate do_start(bump::app& app)
@@ -58,15 +60,12 @@ namespace rog
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
 		auto screen_buffer = grid2<screen::cell>();
-		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', color::light_red, color::dark_red });
+		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
 
-		auto level_grid = grid2<feature>({ 128, 128 }, { { '#', color::white, color::dark_grey } });
+		auto level_grid = grid2<feature>();
+		level_gen::generate_level(level_grid, glm::size2(128));
 
-		for (auto y : bump::range(1, 127))
-			for (auto x : bump::range(1, 127))
-				level_grid.at({ x, y }) = { { '.', color::white, color::black } };
-		
-		auto player = rog::player(glm::size2(0), { '@', color::yellow, color::black });
+		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
 
 		auto paused = false;
 		auto timer = frame_timer();
@@ -105,7 +104,7 @@ namespace rog
 				// ...
 
 				// drawing!
-				screen::fill(screen_buffer, { ' ', color::black, color::black });
+				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
 				screen::draw(screen_buffer, level_grid, player);
 			}
 
@@ -181,13 +180,17 @@ int main(int , char* [])
 
 // todo (now):
 
-	// level:
-		// generation!
+	// level generation:
+
+		// create level_gen namespace / file.
+		// create rect / area type.
+		// add inside / outside subdivision type?
+		// ...
+
+
 
 // todo (sometime):
-	
-	// organising:
-		// fill, fill_area, should work for any grid.
+
 
 
 

@@ -1,8 +1,8 @@
 #pragma once
 
+#include "bump_math.hpp"
 #include "bump_ptr_handle.hpp"
 
-#include <glm/glm.hpp>
 #include <SDL.h>
 
 #include <string>

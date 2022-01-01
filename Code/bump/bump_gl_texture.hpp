@@ -2,8 +2,8 @@
 
 #include "bump_gl_object_handle.hpp"
 #include "bump_gl_traits.hpp"
+#include "bump_math.hpp"
 
-#include <glm/glm.hpp>
 #include <GL/glew.h>
 
 namespace bump

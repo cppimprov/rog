@@ -1,9 +1,9 @@
 #pragma once
 
+#include "bump_math.hpp"
 #include "bump_ptr_handle.hpp"
 #include "bump_sdl_blendmode.hpp"
 
-#include <glm/glm.hpp>
 #include <SDL.h>
 
 namespace bump

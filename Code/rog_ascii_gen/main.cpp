@@ -1,11 +1,9 @@
 
 #include <bump_font.hpp>
 #include <bump_load_image.hpp>
+#include <bump_math.hpp>
 #include <bump_narrow_cast.hpp>
 #include <bump_range.hpp>
-
-#include <glm/glm.hpp>
-#include <glm/gtx/string_cast.hpp>
 
 #include <iostream>
 

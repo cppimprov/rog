@@ -1,7 +1,5 @@
 #include "bump_camera.hpp"
 
-#include <glm/ext.hpp>
-
 namespace bump
 {
 	

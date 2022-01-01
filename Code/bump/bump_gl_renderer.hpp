@@ -1,8 +1,8 @@
 #pragma once
 
 #include "bump_narrow_cast.hpp"
+#include "bump_math.hpp"
 
-#include <glm/glm.hpp>
 #include <GL/glew.h>
 
 namespace bump

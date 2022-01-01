@@ -1,9 +1,8 @@
 #pragma once
 
 #include "bump_die.hpp"
+#include "bump_math.hpp"
 #include "bump_range.hpp"
-
-#include <glm/glm.hpp>
 
 #include <cstdlib>
 #include <initializer_list>
@@ -122,7 +121,7 @@ namespace bump
 
 		constexpr void clear()
 		{
-			m_extents = 0;
+			m_extents = extents_type(0);
 			m_data.clear();
 		}
 

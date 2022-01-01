@@ -1,7 +1,5 @@
 #include "bump_transform.hpp"
 
-#include <glm/ext.hpp>
-
 namespace bump
 {
 	

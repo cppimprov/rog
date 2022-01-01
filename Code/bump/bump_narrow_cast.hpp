@@ -1,9 +1,7 @@
 #pragma once
 
 #include "bump_die.hpp"
-
-#include <glm/ext.hpp>
-#include <glm/glm.hpp>
+#include "bump_math.hpp"
 
 #include <type_traits>
 

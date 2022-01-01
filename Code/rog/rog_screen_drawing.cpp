@@ -1,6 +1,6 @@
 #include "rog_screen_drawing.hpp"
 
-#include "rog_color.hpp"
+#include "rog_colors.hpp"
 #include "rog_feature.hpp"
 #include "rog_player.hpp"
 
@@ -107,7 +107,7 @@ namespace rog
 				for (auto x : bump::range(0, panel_max_size.x))
 				{
 					auto const screen_pos = glm::size2{ x, y };
-					buffer.at(screen_pos) = grid.at({ panel_origin + screen_pos }).m_cell;
+					buffer.at(screen_pos) = grid.at(panel_origin + screen_pos).m_cell;
 				}
 			}
 			

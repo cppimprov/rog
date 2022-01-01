@@ -1,10 +1,9 @@
 #pragma once
 
 #include "bump_gl_object_handle.hpp"
+#include "bump_math.hpp"
 
 #include <GL/glew.h>
-
-#include <glm/glm.hpp>
 
 namespace bump
 {

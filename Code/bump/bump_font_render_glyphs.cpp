@@ -6,6 +6,7 @@
 #include "bump_font_hb_font.hpp"
 #include "bump_font_hb_shaper.hpp"
 #include "bump_log.hpp"
+#include "bump_math.hpp"
 #include "bump_narrow_cast.hpp"
 
 #include <ft2build.h>
@@ -15,8 +16,6 @@
 #include FT_OUTLINE_H
 #include FT_BBOX_H
 #include FT_STROKER_H
-
-#include <glm/glm.hpp>
 
 #include <algorithm>
 #include <cmath>

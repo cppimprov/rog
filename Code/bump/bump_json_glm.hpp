@@ -1,6 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include "bump_math.hpp"
+
 #include <json.hpp>
 
 namespace nlohmann
