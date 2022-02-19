@@ -1,0 +1,23 @@
+
+TODO:
+
+Level gen:
+
+	* Split feature grid into two layers - floors and walls.
+	* Get player movement working again (check both layers).
+
+Stairs:
+
+	* Hardcode some simple levels (say 5).
+	* Add stair floor feature.
+	* Get stairs working to change levels.
+
+Turn logic:
+
+	* Add energy to the player to enable movement.
+	* Add AI (that also accumulate energy).
+
+Mouse input:
+	* Do pathfinding to locations, and move there... once per turn
+	* Clamp the tick rate to a real-time value.
+

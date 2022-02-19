@@ -62,7 +62,7 @@ namespace rog
 		auto screen_buffer = grid2<screen::cell>();
 		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
 
-		auto level = level_gen::generate_level(0);
+		auto level = level_gen::generate_level(50);
 		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
 
 		auto paused = false;
@@ -188,19 +188,3 @@ int main(int , char* [])
 
 
 // todo (sometime):
-
-
-
-
-
-// notes:
-
-	// For a terminal-style roguelike, we can't "center" a tile exactly in the middle of the 
-	// screen, because we use the same grid for the ui (and we need the ui to have a consistent position, and use whole tiles)
-	// if we separate the world / ui, then we don't have to do that.
-
-	// Centering the player would be much better for mouse input (because we don't
-	// have to move the mouse as much to "undo" the move we just made). Though perhaps
-	// this would matter less in a "busy" environment.
-
-	// ...

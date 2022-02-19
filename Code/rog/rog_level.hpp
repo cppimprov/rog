@@ -14,5 +14,5 @@ namespace rog
 		std::int32_t m_depth;
 		bump::grid2<feature> m_grid;
 	};
-	
+
 } // rog
