@@ -16,6 +16,8 @@ namespace rog
 		{
 			NO_WALK = 1u << 1,
 			NO_FLY  = 1u << 2,
+			STAIRS_DOWN = 1u << 3,
+			STAIRS_UP =   1u << 4,
 		};
 		
 		screen::cell m_cell;
@@ -28,6 +30,9 @@ namespace rog
 		const auto empty = feature{ { ' ', colors::black, colors::black }, feature::flags::NO_WALK };
 		const auto wall =  feature{ { '#', colors::white, colors::black }, feature::flags::NO_WALK };
 		const auto floor = feature{ { '.', colors::white, colors::black }, {} };
+
+		const auto stairs_down = feature{ { '>', colors::white, colors::black }, feature::flags::STAIRS_DOWN };
+		const auto stairs_up =   feature{ { '<', colors::white, colors::black }, feature::flags::STAIRS_UP };
 
 	} // features
 

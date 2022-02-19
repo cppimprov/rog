@@ -20,4 +20,10 @@ namespace rog
 
 	glm::ivec2 get_direction_vector(direction dir);
 	
+	enum class stairs_direction
+	{
+		UP,
+		DOWN,
+	};
+
 } // rog

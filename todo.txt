@@ -1,16 +1,9 @@
 
 TODO:
 
-Level gen:
-
-	* Split feature grid into two layers - floors and walls.
-	* Get player movement working again (check both layers).
-
 Stairs:
 
 	* Hardcode some simple levels (say 5).
-	* Add stair floor feature.
-	* Get stairs working to change levels.
 
 Turn logic:
 
