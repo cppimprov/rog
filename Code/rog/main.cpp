@@ -101,43 +101,77 @@ namespace rog
 		auto paused = false;
 		auto timer = frame_timer();
 
-		auto shift_pressed = false;
+		auto input_events = std::queue<bump::input::input_event>();
+		auto app_events = std::queue<bump::input::app_event>();
 
 		while (true)
 		{
 			// input
 			{
-				auto quit = false;
-				auto change_level = std::optional<stairs_direction>();
-				auto callbacks = input::input_callbacks();
-				callbacks.m_quit = [&] () { quit = true; };
-				callbacks.m_pause = [&] (bool pause) { paused = pause; if (!paused) timer = frame_timer(); };
-				callbacks.m_resize = [&] (glm::ivec2 window_size) { screen::resize(screen_buffer, window_size, tile_size, { ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) }); };
-				callbacks.m_input = [&] (input::control_id id, input::raw_input in)
+				app.m_input_handler.poll(input_events, app_events);
+
+				while (!app_events.empty())
 				{
-					if (id == input::control_id::KEYBOARDKEY_NUM7 && in.m_value) move_player(player, level.m_grid, direction::LEFT_UP);
-					if (id == input::control_id::KEYBOARDKEY_NUM8 && in.m_value) move_player(player, level.m_grid, direction::UP);
-					if (id == input::control_id::KEYBOARDKEY_NUM9 && in.m_value) move_player(player, level.m_grid, direction::RIGHT_UP);
-					if (id == input::control_id::KEYBOARDKEY_NUM4 && in.m_value) move_player(player, level.m_grid, direction::LEFT);
-					if (id == input::control_id::KEYBOARDKEY_NUM6 && in.m_value) move_player(player, level.m_grid, direction::RIGHT);
-					if (id == input::control_id::KEYBOARDKEY_NUM1 && in.m_value) move_player(player, level.m_grid, direction::LEFT_DOWN);
-					if (id == input::control_id::KEYBOARDKEY_NUM2 && in.m_value) move_player(player, level.m_grid, direction::DOWN);
-					if (id == input::control_id::KEYBOARDKEY_NUM3 && in.m_value) move_player(player, level.m_grid, direction::RIGHT_DOWN);
+					auto event = std::move(app_events.front());
+					app_events.pop();
 
-					if (id == input::control_id::KEYBOARDKEY_LEFTSHIFT || id == input::control_id::KEYBOARDKEY_RIGHTSHIFT) shift_pressed = in.m_value;
-					if (id == input::control_id::KEYBOARDKEY_DOT && in.m_value && shift_pressed && use_stairs(player, level.m_grid, stairs_direction::DOWN))
-						change_level = stairs_direction::DOWN;
-					if (id == input::control_id::KEYBOARDKEY_COMMA && in.m_value && shift_pressed && use_stairs(player, level.m_grid, stairs_direction::UP))
-						change_level = stairs_direction::UP;
+					if (std::holds_alternative<input::app_events::quit>(event))
+					{
+						return { };
+					}
 
-					if (id == input::control_id::KEYBOARDKEY_ESCAPE && in.m_value)
-						quit = true;
-				};
+					if (std::holds_alternative<input::app_events::pause>(event))
+					{
+						paused = true;
+						continue;
+					}
 
-				app.m_input_handler.poll_input(callbacks);
+					if (std::holds_alternative<input::app_events::resize>(event))
+					{
+						auto const& window_size = std::get<input::app_events::resize>(event).m_size;
 
-				if (quit)
-					return { };
+						screen::resize(screen_buffer, window_size, tile_size, 
+							{ ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
+
+						continue;
+					}
+				}
+				
+				auto change_level = std::optional<stairs_direction>();
+				
+				while (!input_events.empty())
+				{
+					auto event = std::move(input_events.front());
+					input_events.pop();
+
+					if (std::holds_alternative<input::input_events::keyboard_key>(event))
+					{
+						auto const& key = std::get<input::input_events::keyboard_key>(event);
+
+						if (key.m_key == input::keyboard_key::NUM7 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::LEFT_UP);
+						else if (key.m_key == input::keyboard_key::NUM8 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::UP);
+						else if (key.m_key == input::keyboard_key::NUM9 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::RIGHT_UP);
+						else if (key.m_key == input::keyboard_key::NUM4 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::LEFT);
+						else if (key.m_key == input::keyboard_key::NUM6 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::RIGHT);
+						else if (key.m_key == input::keyboard_key::NUM1 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::LEFT_DOWN);
+						else if (key.m_key == input::keyboard_key::NUM2 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::DOWN);
+						else if (key.m_key == input::keyboard_key::NUM3 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::RIGHT_DOWN);
+
+						else if (key.m_key == input::keyboard_key::DOT && key.m_state == input::button_state::DOWN && 
+						         app.m_input_handler.get_keyboard_key_state(bump::input::keyboard_key::LEFTSHIFT) == bump::input::button_state::DOWN && 
+								 use_stairs(player, level.m_grid, stairs_direction::DOWN))
+							change_level = stairs_direction::DOWN;
+						else if (key.m_key == input::keyboard_key::COMMA && key.m_state == input::button_state::DOWN && 
+						         app.m_input_handler.get_keyboard_key_state(bump::input::keyboard_key::LEFTSHIFT) == bump::input::button_state::DOWN && 
+								 use_stairs(player, level.m_grid, stairs_direction::UP))
+							change_level = stairs_direction::UP;
+						
+						else if (key.m_key == input::keyboard_key::ESCAPE && key.m_state == input::button_state::DOWN)
+							return { };
+
+						continue;
+					}
+				}
 
 				if (change_level)
 				{

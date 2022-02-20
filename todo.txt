@@ -1,9 +1,10 @@
 
 TODO:
 
-Stairs:
-
-	* Hardcode some simple levels (say 5).
+Input:
+	* Use a bool instead of input::button_state, and change m_state in the events to m_pressed.
+	* Remove shift_pressed variable.
+	* Add some kind of switch between game logic and frames.
 
 Turn logic:
 

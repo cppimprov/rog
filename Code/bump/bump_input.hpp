@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <string>
+#include <variant>
 
 namespace bump
 {
@@ -11,84 +12,113 @@ namespace bump
 	namespace input
 	{
 
-		enum class control_id
+		enum class keyboard_key
 		{
-			// KEYBOARD:
-			KEYBOARDKEY_A, KEYBOARDKEY_B, KEYBOARDKEY_C, KEYBOARDKEY_D, KEYBOARDKEY_E, KEYBOARDKEY_F, KEYBOARDKEY_G, KEYBOARDKEY_H, KEYBOARDKEY_I, KEYBOARDKEY_J, KEYBOARDKEY_K, KEYBOARDKEY_L, KEYBOARDKEY_M, KEYBOARDKEY_N, KEYBOARDKEY_O, KEYBOARDKEY_P, KEYBOARDKEY_Q, KEYBOARDKEY_R, KEYBOARDKEY_S, KEYBOARDKEY_T, KEYBOARDKEY_U, KEYBOARDKEY_V, KEYBOARDKEY_W, KEYBOARDKEY_X, KEYBOARDKEY_Y, KEYBOARDKEY_Z,
-			KEYBOARDKEY_1, KEYBOARDKEY_2, KEYBOARDKEY_3, KEYBOARDKEY_4, KEYBOARDKEY_5, KEYBOARDKEY_6, KEYBOARDKEY_7, KEYBOARDKEY_8, KEYBOARDKEY_9, KEYBOARDKEY_0,
-			KEYBOARDKEY_F1, KEYBOARDKEY_F2, KEYBOARDKEY_F3, KEYBOARDKEY_F4, KEYBOARDKEY_F5, KEYBOARDKEY_F6, KEYBOARDKEY_F7, KEYBOARDKEY_F8, KEYBOARDKEY_F9, KEYBOARDKEY_F10, KEYBOARDKEY_F11, KEYBOARDKEY_F12,
+			A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+			N1, N2, N3, N4, N5, N6, N7, N8, N9, N0,
+			F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
 
-			KEYBOARDKEY_ESCAPE,
+			ESCAPE,
 
-			KEYBOARDKEY_PRINTSCREEN, KEYBOARDKEY_SCROLLLOCK, KEYBOARDKEY_PAUSE,
+			PRINTSCREEN, SCROLLLOCK, PAUSE,
 
-			KEYBOARDKEY_BACKTICK, KEYBOARDKEY_MINUS, KEYBOARDKEY_EQUALS,
-			KEYBOARDKEY_LEFTSQUAREBRACKET, KEYBOARDKEY_RIGHTSQUAREBRACKET,
-			KEYBOARDKEY_SEMICOLON, KEYBOARDKEY_SINGLEQUOTE, KEYBOARDKEY_HASH,
-			KEYBOARDKEY_BACKSLASH, KEYBOARDKEY_COMMA, KEYBOARDKEY_DOT, KEYBOARDKEY_FORWARDSLASH,
+			BACKTICK, MINUS, EQUALS,
+			LEFTSQUAREBRACKET, RIGHTSQUAREBRACKET,
+			SEMICOLON, SINGLEQUOTE, HASH,
+			BACKSLASH, COMMA, DOT, FORWARDSLASH,
 
-			KEYBOARDKEY_BACKSPACE, KEYBOARDKEY_RETURN, KEYBOARDKEY_TAB, KEYBOARDKEY_CAPSLOCK,
-			KEYBOARDKEY_LEFTSHIFT, KEYBOARDKEY_RIGHTSHIFT,
-			KEYBOARDKEY_LEFTCTRL, KEYBOARDKEY_RIGHTCTRL,
-			KEYBOARDKEY_LEFTALT, KEYBOARDKEY_RIGHTALT,
-			KEYBOARDKEY_SPACE,
+			BACKSPACE, RETURN, TAB, CAPSLOCK,
+			LEFTSHIFT, RIGHTSHIFT,
+			LEFTCTRL, RIGHTCTRL,
+			LEFTALT, RIGHTALT,
+			SPACE,
 
-			KEYBOARDKEY_LEFTWINDOWS, KEYBOARDKEY_RIGHTWINDOWS,
-			KEYBOARDKEY_CONTEXTMENU,
+			LEFTWINDOWS, RIGHTWINDOWS,
+			CONTEXTMENU,
 
-			KEYBOARDKEY_INSERT, KEYBOARDKEY_DELETE, KEYBOARDKEY_HOME, KEYBOARDKEY_END,
-			KEYBOARDKEY_PAGEUP, KEYBOARDKEY_PAGEDOWN,
+			INSERT, DELETE, HOME, END,
+			PAGEUP, PAGEDOWN,
 
-			KEYBOARDKEY_NUMLOCK, KEYBOARDKEY_NUMDIVIDE, KEYBOARDKEY_NUMMULTIPLY, KEYBOARDKEY_NUMMINUS, KEYBOARDKEY_NUMPLUS, KEYBOARDKEY_NUMENTER, KEYBOARDKEY_NUMDOT,
-			KEYBOARDKEY_NUM1, KEYBOARDKEY_NUM2, KEYBOARDKEY_NUM3, KEYBOARDKEY_NUM4, KEYBOARDKEY_NUM5, KEYBOARDKEY_NUM6, KEYBOARDKEY_NUM7, KEYBOARDKEY_NUM8, KEYBOARDKEY_NUM9, KEYBOARDKEY_NUM0,
+			NUMLOCK, NUMDIVIDE, NUMMULTIPLY, NUMMINUS, NUMPLUS, NUMENTER, NUMDOT,
+			NUM1, NUM2, NUM3, NUM4, NUM5, NUM6, NUM7, NUM8, NUM9, NUM0,
 
-			KEYBOARDKEY_ARROWLEFT, KEYBOARDKEY_ARROWRIGHT, KEYBOARDKEY_ARROWUP, KEYBOARDKEY_ARROWDOWN,
+			ARROWLEFT, ARROWRIGHT, ARROWUP, ARROWDOWN,
 
-			KEYBOARDKEY_UNRECOGNISED,
-
-			// MOUSE:
-			MOUSEBUTTON_LEFT, MOUSEBUTTON_MIDDLE, MOUSEBUTTON_RIGHT,
-			MOUSEBUTTON_X1, MOUSEBUTTON_X2, MOUSEBUTTON_X3, MOUSEBUTTON_X4, MOUSEBUTTON_X5, MOUSEBUTTON_X6, MOUSEBUTTON_X7, MOUSEBUTTON_X8, MOUSEBUTTON_X9, MOUSEBUTTON_X10, MOUSEBUTTON_X11, MOUSEBUTTON_X12, MOUSEBUTTON_X13, MOUSEBUTTON_X14, MOUSEBUTTON_X15, MOUSEBUTTON_X16, MOUSEBUTTON_X17, MOUSEBUTTON_X18, MOUSEBUTTON_X19, MOUSEBUTTON_X20,
-
-			MOUSESCROLLWHEEL_X, MOUSESCROLLWHEEL_Y,
-
-			MOUSEPOSITION_X, MOUSEPOSITION_Y,
-			MOUSEMOTION_X, MOUSEMOTION_Y,
-
-			// GAMEPAD:
-			GAMEPADBUTTON_X, GAMEPADBUTTON_Y, GAMEPADBUTTON_A, GAMEPADBUTTON_B,
-			GAMEPADBUTTON_DPADLEFT, GAMEPADBUTTON_DPADRIGHT, GAMEPADBUTTON_DPADUP, GAMEPADBUTTON_DPADDOWN,
-			GAMEPADBUTTON_LEFTBUMPER, GAMEPADBUTTON_RIGHTBUMPER,
-			GAMEPADBUTTON_BACK, GAMEPADBUTTON_START, GAMEPADBUTTON_GUIDE,
-			GAMEPADBUTTON_LEFTSTICK, GAMEPADBUTTON_RIGHTSTICK,
-
-			GAMEPADSTICK_LEFTX, GAMEPADSTICK_LEFTY,
-			GAMEPADSTICK_RIGHTX, GAMEPADSTICK_RIGHTY,
-
-			GAMEPADTRIGGER_LEFT, GAMEPADTRIGGER_RIGHT,
-
-			SIZE, // placeholder...
-		};
-
-		auto constexpr control_id_size = static_cast<std::size_t>(control_id::SIZE);
-
-		std::string to_string(control_id id);
-		control_id from_string(std::string const& str);
-		
-		struct raw_input
-		{
-			float m_value = 0.f;
-			bool m_normalized = true;
-		};
-
-		struct input_callbacks
-		{
-			std::function<void()> m_quit;
-			std::function<void(bool)> m_pause; // true is paused
-			std::function<void(control_id, raw_input)> m_input;
-			std::function<void(glm::ivec2)> m_resize;
+			UNRECOGNISED,
 		};
 		
+		std::string keyboard_key_to_string(keyboard_key key);
+		keyboard_key keyboard_key_from_string(std::string const& str);
+
+		enum class mouse_button
+		{
+			LEFT, MIDDLE, RIGHT,
+			X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20,
+		};
+		
+		std::string mouse_button_to_string(mouse_button key);
+		mouse_button mouse_button_from_string(std::string const& str);
+
+		enum class gamepad_button
+		{
+			X, Y, A, B,
+			DPADLEFT, DPADRIGHT, DPADUP, DPADDOWN,
+			LEFTBUMPER, RIGHTBUMPER,
+			BACK, START, GUIDE,
+			LEFTSTICK, RIGHTSTICK,
+		};
+
+		std::string gamepad_button_to_string(gamepad_button key);
+		gamepad_button gamepad_button_from_string(std::string const& str);
+
+		enum class gamepad_axis
+		{
+			STICK_LEFTX, STICK_LEFTY,
+			STICK_RIGHTX, STICK_RIGHTY,
+
+			TRIGGER_LEFT, TRIGGER_RIGHT,
+		};
+		
+		std::string gamepad_axis_to_string(gamepad_axis key);
+		gamepad_axis gamepad_axis_from_string(std::string const& str);
+
+		enum class button_state { UP, DOWN };
+
+		namespace input_events
+		{
+			struct keyboard_key   { input::keyboard_key m_key; button_state m_state; };
+			struct mouse_button   { input::mouse_button m_button; button_state m_state; };
+			struct mouse_wheel    { glm::ivec2 m_motion; };
+			struct mouse_motion   { glm::ivec2 m_motion; };
+			struct gamepad_button { input::gamepad_button m_button; button_state m_state; };
+			struct gamepad_axis   { input::gamepad_axis m_axis; float m_value; };
+		}
+
+		using input_event = std::variant
+		<
+			input_events::keyboard_key,
+			input_events::mouse_button,
+			input_events::mouse_wheel,
+			input_events::mouse_motion,
+			input_events::gamepad_button,
+			input_events::gamepad_axis
+		>;
+
+		namespace app_events
+		{
+			// app events
+			struct resize { glm::ivec2 m_size; };
+			struct pause  { bool m_pause; };
+			struct quit   { };
+		}
+
+		using app_event = std::variant
+		<
+			app_events::resize,
+			app_events::pause,
+			app_events::quit
+		>;
+
 	} // input
 	
 } // bump

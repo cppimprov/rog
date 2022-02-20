@@ -59,19 +59,19 @@ namespace rog
 		auto const level_2 = level_from_string
 		(
 			{ 5, 4 },
-			">...."
-			"....."
-			"....."
-			"....<"
+			">...#"
+			"....#"
+			"....#"
+			"####<"
 		);
 		
 		auto const level_3 = level_from_string
 		(
 			{ 5, 4 },
-			">...."
-			"....."
-			"....."
-			"....."
+			">.###"
+			"....#"
+			"#.###"
+			"#####"
 		);
 
 		level generate_level(std::int32_t depth)

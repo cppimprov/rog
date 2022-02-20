@@ -11,223 +11,241 @@ namespace bump
 		namespace
 		{
 
-			using pair_type = std::pair<control_id, std::string>;
-
-			auto control_id_strings = pair_map<control_id, std::string>
+			auto const keyboard_key_strings = pair_map<keyboard_key, std::string>
 			{
-#pragma region keyboard
+				{ keyboard_key::A, "A" },
+				{ keyboard_key::B, "B" },
+				{ keyboard_key::C, "C" },
+				{ keyboard_key::D, "D" },
+				{ keyboard_key::E, "E" },
+				{ keyboard_key::F, "F" },
+				{ keyboard_key::G, "G" },
+				{ keyboard_key::H, "H" },
+				{ keyboard_key::I, "I" },
+				{ keyboard_key::J, "J" },
+				{ keyboard_key::K, "K" },
+				{ keyboard_key::L, "L" },
+				{ keyboard_key::M, "M" },
+				{ keyboard_key::N, "N" },
+				{ keyboard_key::O, "O" },
+				{ keyboard_key::P, "P" },
+				{ keyboard_key::Q, "Q" },
+				{ keyboard_key::R, "R" },
+				{ keyboard_key::S, "S" },
+				{ keyboard_key::T, "T" },
+				{ keyboard_key::U, "U" },
+				{ keyboard_key::V, "V" },
+				{ keyboard_key::W, "W" },
+				{ keyboard_key::X, "X" },
+				{ keyboard_key::Y, "Y" },
+				{ keyboard_key::Z, "Z" },
 
-				pair_type{ control_id::KEYBOARDKEY_A, "KEYBOARDKEY_A" },
-				pair_type{ control_id::KEYBOARDKEY_B, "KEYBOARDKEY_B" },
-				pair_type{ control_id::KEYBOARDKEY_C, "KEYBOARDKEY_C" },
-				pair_type{ control_id::KEYBOARDKEY_D, "KEYBOARDKEY_D" },
-				pair_type{ control_id::KEYBOARDKEY_E, "KEYBOARDKEY_E" },
-				pair_type{ control_id::KEYBOARDKEY_F, "KEYBOARDKEY_F" },
-				pair_type{ control_id::KEYBOARDKEY_G, "KEYBOARDKEY_G" },
-				pair_type{ control_id::KEYBOARDKEY_H, "KEYBOARDKEY_H" },
-				pair_type{ control_id::KEYBOARDKEY_I, "KEYBOARDKEY_I" },
-				pair_type{ control_id::KEYBOARDKEY_J, "KEYBOARDKEY_J" },
-				pair_type{ control_id::KEYBOARDKEY_K, "KEYBOARDKEY_K" },
-				pair_type{ control_id::KEYBOARDKEY_L, "KEYBOARDKEY_L" },
-				pair_type{ control_id::KEYBOARDKEY_M, "KEYBOARDKEY_M" },
-				pair_type{ control_id::KEYBOARDKEY_N, "KEYBOARDKEY_N" },
-				pair_type{ control_id::KEYBOARDKEY_O, "KEYBOARDKEY_O" },
-				pair_type{ control_id::KEYBOARDKEY_P, "KEYBOARDKEY_P" },
-				pair_type{ control_id::KEYBOARDKEY_Q, "KEYBOARDKEY_Q" },
-				pair_type{ control_id::KEYBOARDKEY_R, "KEYBOARDKEY_R" },
-				pair_type{ control_id::KEYBOARDKEY_S, "KEYBOARDKEY_S" },
-				pair_type{ control_id::KEYBOARDKEY_T, "KEYBOARDKEY_T" },
-				pair_type{ control_id::KEYBOARDKEY_U, "KEYBOARDKEY_U" },
-				pair_type{ control_id::KEYBOARDKEY_V, "KEYBOARDKEY_V" },
-				pair_type{ control_id::KEYBOARDKEY_W, "KEYBOARDKEY_W" },
-				pair_type{ control_id::KEYBOARDKEY_X, "KEYBOARDKEY_X" },
-				pair_type{ control_id::KEYBOARDKEY_Y, "KEYBOARDKEY_Y" },
-				pair_type{ control_id::KEYBOARDKEY_Z, "KEYBOARDKEY_Z" },
+				{ keyboard_key::N1, "1" },
+				{ keyboard_key::N2, "2" },
+				{ keyboard_key::N3, "3" },
+				{ keyboard_key::N4, "4" },
+				{ keyboard_key::N5, "5" },
+				{ keyboard_key::N6, "6" },
+				{ keyboard_key::N7, "7" },
+				{ keyboard_key::N8, "8" },
+				{ keyboard_key::N9, "9" },
+				{ keyboard_key::N0, "0" },
 
-				pair_type{ control_id::KEYBOARDKEY_1, "KEYBOARDKEY_1" },
-				pair_type{ control_id::KEYBOARDKEY_2, "KEYBOARDKEY_2" },
-				pair_type{ control_id::KEYBOARDKEY_3, "KEYBOARDKEY_3" },
-				pair_type{ control_id::KEYBOARDKEY_4, "KEYBOARDKEY_4" },
-				pair_type{ control_id::KEYBOARDKEY_5, "KEYBOARDKEY_5" },
-				pair_type{ control_id::KEYBOARDKEY_6, "KEYBOARDKEY_6" },
-				pair_type{ control_id::KEYBOARDKEY_7, "KEYBOARDKEY_7" },
-				pair_type{ control_id::KEYBOARDKEY_8, "KEYBOARDKEY_8" },
-				pair_type{ control_id::KEYBOARDKEY_9, "KEYBOARDKEY_9" },
-				pair_type{ control_id::KEYBOARDKEY_0, "KEYBOARDKEY_0" },
+				{ keyboard_key::F1, "F1" },
+				{ keyboard_key::F2, "F2" },
+				{ keyboard_key::F3, "F3" },
+				{ keyboard_key::F4, "F4" },
+				{ keyboard_key::F5, "F5" },
+				{ keyboard_key::F6, "F6" },
+				{ keyboard_key::F7, "F7" },
+				{ keyboard_key::F8, "F8" },
+				{ keyboard_key::F9, "F9" },
+				{ keyboard_key::F10, "F10" },
+				{ keyboard_key::F11, "F11" },
+				{ keyboard_key::F12, "F12" },
 
-				pair_type{ control_id::KEYBOARDKEY_F1, "KEYBOARDKEY_F1" },
-				pair_type{ control_id::KEYBOARDKEY_F2, "KEYBOARDKEY_F2" },
-				pair_type{ control_id::KEYBOARDKEY_F3, "KEYBOARDKEY_F3" },
-				pair_type{ control_id::KEYBOARDKEY_F4, "KEYBOARDKEY_F4" },
-				pair_type{ control_id::KEYBOARDKEY_F5, "KEYBOARDKEY_F5" },
-				pair_type{ control_id::KEYBOARDKEY_F6, "KEYBOARDKEY_F6" },
-				pair_type{ control_id::KEYBOARDKEY_F7, "KEYBOARDKEY_F7" },
-				pair_type{ control_id::KEYBOARDKEY_F8, "KEYBOARDKEY_F8" },
-				pair_type{ control_id::KEYBOARDKEY_F9, "KEYBOARDKEY_F9" },
-				pair_type{ control_id::KEYBOARDKEY_F10, "KEYBOARDKEY_F10" },
-				pair_type{ control_id::KEYBOARDKEY_F11, "KEYBOARDKEY_F11" },
-				pair_type{ control_id::KEYBOARDKEY_F12, "KEYBOARDKEY_F12" },
+				{ keyboard_key::ESCAPE, "ESCAPE" },
 
-				pair_type{ control_id::KEYBOARDKEY_ESCAPE, "KEYBOARDKEY_ESCAPE" },
+				{ keyboard_key::PRINTSCREEN, "PRINTSCREEN" },
+				{ keyboard_key::SCROLLLOCK, "SCROLLLOCK" },
+				{ keyboard_key::PAUSE, "PAUSE" },
 
-				pair_type{ control_id::KEYBOARDKEY_PRINTSCREEN, "KEYBOARDKEY_PRINTSCREEN" },
-				pair_type{ control_id::KEYBOARDKEY_SCROLLLOCK, "KEYBOARDKEY_SCROLLLOCK" },
-				pair_type{ control_id::KEYBOARDKEY_PAUSE, "KEYBOARDKEY_PAUSE" },
+				{ keyboard_key::BACKTICK, "BACKTICK" },
+				{ keyboard_key::MINUS, "MINUS" },
+				{ keyboard_key::EQUALS, "EQUALS" },
 
-				pair_type{ control_id::KEYBOARDKEY_BACKTICK, "KEYBOARDKEY_BACKTICK" },
-				pair_type{ control_id::KEYBOARDKEY_MINUS, "KEYBOARDKEY_MINUS" },
-				pair_type{ control_id::KEYBOARDKEY_EQUALS, "KEYBOARDKEY_EQUALS" },
+				{ keyboard_key::LEFTSQUAREBRACKET, "LEFTSQUAREBRACKET" },
+				{ keyboard_key::RIGHTSQUAREBRACKET, "RIGHTSQUAREBRACKET" },
 
-				pair_type{ control_id::KEYBOARDKEY_LEFTSQUAREBRACKET, "KEYBOARDKEY_LEFTSQUAREBRACKET" },
-				pair_type{ control_id::KEYBOARDKEY_RIGHTSQUAREBRACKET, "KEYBOARDKEY_RIGHTSQUAREBRACKET" },
+				{ keyboard_key::SEMICOLON, "SEMICOLON" },
+				{ keyboard_key::SINGLEQUOTE, "SINGLEQUOTE" },
+				{ keyboard_key::HASH, "HASH" },
 
-				pair_type{ control_id::KEYBOARDKEY_SEMICOLON, "KEYBOARDKEY_SEMICOLON" },
-				pair_type{ control_id::KEYBOARDKEY_SINGLEQUOTE, "KEYBOARDKEY_SINGLEQUOTE" },
-				pair_type{ control_id::KEYBOARDKEY_HASH, "KEYBOARDKEY_HASH" },
+				{ keyboard_key::BACKSLASH, "BACKSLASH" },
+				{ keyboard_key::COMMA, "COMMA" },
+				{ keyboard_key::DOT, "DOT" },
+				{ keyboard_key::FORWARDSLASH, "FORWARDSLASH" },
 
-				pair_type{ control_id::KEYBOARDKEY_BACKSLASH, "KEYBOARDKEY_BACKSLASH" },
-				pair_type{ control_id::KEYBOARDKEY_COMMA, "KEYBOARDKEY_COMMA" },
-				pair_type{ control_id::KEYBOARDKEY_DOT, "KEYBOARDKEY_DOT" },
-				pair_type{ control_id::KEYBOARDKEY_FORWARDSLASH, "KEYBOARDKEY_FORWARDSLASH" },
+				{ keyboard_key::BACKSPACE, "BACKSPACE" },
+				{ keyboard_key::RETURN, "RETURN" },
+				{ keyboard_key::TAB, "TAB" },
+				{ keyboard_key::CAPSLOCK, "CAPSLOCK" },
 
-				pair_type{ control_id::KEYBOARDKEY_BACKSPACE, "KEYBOARDKEY_BACKSPACE" },
-				pair_type{ control_id::KEYBOARDKEY_RETURN, "KEYBOARDKEY_RETURN" },
-				pair_type{ control_id::KEYBOARDKEY_TAB, "KEYBOARDKEY_TAB" },
-				pair_type{ control_id::KEYBOARDKEY_CAPSLOCK, "KEYBOARDKEY_CAPSLOCK" },
+				{ keyboard_key::LEFTSHIFT, "LEFTSHIFT" },
+				{ keyboard_key::RIGHTSHIFT, "RIGHTSHIFT" },
 
-				pair_type{ control_id::KEYBOARDKEY_LEFTSHIFT, "KEYBOARDKEY_LEFTSHIFT" },
-				pair_type{ control_id::KEYBOARDKEY_RIGHTSHIFT, "KEYBOARDKEY_RIGHTSHIFT" },
+				{ keyboard_key::LEFTCTRL, "LEFTCTRL" },
+				{ keyboard_key::RIGHTCTRL, "RIGHTCTRL" },
 
-				pair_type{ control_id::KEYBOARDKEY_LEFTCTRL, "KEYBOARDKEY_LEFTCTRL" },
-				pair_type{ control_id::KEYBOARDKEY_RIGHTCTRL, "KEYBOARDKEY_RIGHTCTRL" },
+				{ keyboard_key::LEFTALT, "LEFTALT" },
+				{ keyboard_key::RIGHTALT, "RIGHTALT" },
 
-				pair_type{ control_id::KEYBOARDKEY_LEFTALT, "KEYBOARDKEY_LEFTALT" },
-				pair_type{ control_id::KEYBOARDKEY_RIGHTALT, "KEYBOARDKEY_RIGHTALT" },
+				{ keyboard_key::SPACE, "SPACE" },
 
-				pair_type{ control_id::KEYBOARDKEY_SPACE, "KEYBOARDKEY_SPACE" },
+				{ keyboard_key::LEFTWINDOWS, "LEFTWINDOWS" },
+				{ keyboard_key::RIGHTWINDOWS, "RIGHTWINDOWS" },
 
-				pair_type{ control_id::KEYBOARDKEY_LEFTWINDOWS, "KEYBOARDKEY_LEFTWINDOWS" },
-				pair_type{ control_id::KEYBOARDKEY_RIGHTWINDOWS, "KEYBOARDKEY_RIGHTWINDOWS" },
+				{ keyboard_key::CONTEXTMENU, "CONTEXTMENU" },
 
-				pair_type{ control_id::KEYBOARDKEY_CONTEXTMENU, "KEYBOARDKEY_CONTEXTMENU" },
+				{ keyboard_key::INSERT, "INSERT" },
+				{ keyboard_key::DELETE, "DELETE" },
+				{ keyboard_key::HOME, "HOME" },
+				{ keyboard_key::END, "END" },
 
-				pair_type{ control_id::KEYBOARDKEY_INSERT, "KEYBOARDKEY_INSERT" },
-				pair_type{ control_id::KEYBOARDKEY_DELETE, "KEYBOARDKEY_DELETE" },
-				pair_type{ control_id::KEYBOARDKEY_HOME, "KEYBOARDKEY_HOME" },
-				pair_type{ control_id::KEYBOARDKEY_END, "KEYBOARDKEY_END" },
+				{ keyboard_key::PAGEUP, "PAGEUP" },
+				{ keyboard_key::PAGEDOWN, "PAGEDOWN" },
 
-				pair_type{ control_id::KEYBOARDKEY_PAGEUP, "KEYBOARDKEY_PAGEUP" },
-				pair_type{ control_id::KEYBOARDKEY_PAGEDOWN, "KEYBOARDKEY_PAGEDOWN" },
+				{ keyboard_key::NUMLOCK, "NUMLOCK" },
+				{ keyboard_key::NUMDIVIDE, "NUMDIVIDE" },
+				{ keyboard_key::NUMMULTIPLY, "NUMMULTIPLY" },
+				{ keyboard_key::NUMMINUS, "NUMMINUS" },
+				{ keyboard_key::NUMPLUS, "NUMPLUS" },
+				{ keyboard_key::NUMENTER, "NUMENTER" },
+				{ keyboard_key::NUMDOT, "NUMDOT" },
 
-				pair_type{ control_id::KEYBOARDKEY_NUMLOCK, "KEYBOARDKEY_NUMLOCK" },
-				pair_type{ control_id::KEYBOARDKEY_NUMDIVIDE, "KEYBOARDKEY_NUMDIVIDE" },
-				pair_type{ control_id::KEYBOARDKEY_NUMMULTIPLY, "KEYBOARDKEY_NUMMULTIPLY" },
-				pair_type{ control_id::KEYBOARDKEY_NUMMINUS, "KEYBOARDKEY_NUMMINUS" },
-				pair_type{ control_id::KEYBOARDKEY_NUMPLUS, "KEYBOARDKEY_NUMPLUS" },
-				pair_type{ control_id::KEYBOARDKEY_NUMENTER, "KEYBOARDKEY_NUMENTER" },
-				pair_type{ control_id::KEYBOARDKEY_NUMDOT, "KEYBOARDKEY_NUMDOT" },
+				{ keyboard_key::NUM1, "NUM1" },
+				{ keyboard_key::NUM2, "NUM2" },
+				{ keyboard_key::NUM3, "NUM3" },
+				{ keyboard_key::NUM4, "NUM4" },
+				{ keyboard_key::NUM5, "NUM5" },
+				{ keyboard_key::NUM6, "NUM6" },
+				{ keyboard_key::NUM7, "NUM7" },
+				{ keyboard_key::NUM8, "NUM8" },
+				{ keyboard_key::NUM9, "NUM9" },
+				{ keyboard_key::NUM0, "NUM0" },
 
-				pair_type{ control_id::KEYBOARDKEY_NUM1, "KEYBOARDKEY_NUM1" },
-				pair_type{ control_id::KEYBOARDKEY_NUM2, "KEYBOARDKEY_NUM2" },
-				pair_type{ control_id::KEYBOARDKEY_NUM3, "KEYBOARDKEY_NUM3" },
-				pair_type{ control_id::KEYBOARDKEY_NUM4, "KEYBOARDKEY_NUM4" },
-				pair_type{ control_id::KEYBOARDKEY_NUM5, "KEYBOARDKEY_NUM5" },
-				pair_type{ control_id::KEYBOARDKEY_NUM6, "KEYBOARDKEY_NUM6" },
-				pair_type{ control_id::KEYBOARDKEY_NUM7, "KEYBOARDKEY_NUM7" },
-				pair_type{ control_id::KEYBOARDKEY_NUM8, "KEYBOARDKEY_NUM8" },
-				pair_type{ control_id::KEYBOARDKEY_NUM9, "KEYBOARDKEY_NUM9" },
-				pair_type{ control_id::KEYBOARDKEY_NUM0, "KEYBOARDKEY_NUM0" },
+				{ keyboard_key::ARROWLEFT, "ARROWLEFT" },
+				{ keyboard_key::ARROWRIGHT, "ARROWRIGHT" },
+				{ keyboard_key::ARROWUP, "ARROWUP" },
+				{ keyboard_key::ARROWDOWN, "ARROWDOWN" },
 
-				pair_type{ control_id::KEYBOARDKEY_ARROWLEFT, "KEYBOARDKEY_ARROWLEFT" },
-				pair_type{ control_id::KEYBOARDKEY_ARROWRIGHT, "KEYBOARDKEY_ARROWRIGHT" },
-				pair_type{ control_id::KEYBOARDKEY_ARROWUP, "KEYBOARDKEY_ARROWUP" },
-				pair_type{ control_id::KEYBOARDKEY_ARROWDOWN, "KEYBOARDKEY_ARROWDOWN" },
+				{ keyboard_key::UNRECOGNISED, "UNRECOGNISED" },
+			};
 
-				pair_type{ control_id::KEYBOARDKEY_UNRECOGNISED, "KEYBOARDKEY_UNRECOGNISED" },
 
-#pragma endregion
+			auto const mouse_button_strings = pair_map<mouse_button, std::string>
+			{
+				{ mouse_button::LEFT, "LEFT" },
+				{ mouse_button::MIDDLE, "MIDDLE" },
+				{ mouse_button::RIGHT, "RIGHT" },
 
-#pragma region mouse
+				{ mouse_button::X1, "X1" },
+				{ mouse_button::X2, "X2" },
+				{ mouse_button::X3, "X3" },
+				{ mouse_button::X4, "X4" },
+				{ mouse_button::X5, "X5" },
+				{ mouse_button::X6, "X6" },
+				{ mouse_button::X7, "X7" },
+				{ mouse_button::X8, "X8" },
+				{ mouse_button::X9, "X9" },
+				{ mouse_button::X10, "X10" },
+				{ mouse_button::X11, "X11" },
+				{ mouse_button::X12, "X12" },
+				{ mouse_button::X13, "X13" },
+				{ mouse_button::X14, "X14" },
+				{ mouse_button::X15, "X15" },
+				{ mouse_button::X16, "X16" },
+				{ mouse_button::X17, "X17" },
+				{ mouse_button::X18, "X18" },
+				{ mouse_button::X19, "X19" },
+				{ mouse_button::X20, "X20" },
+			};
 
-				pair_type{ control_id::MOUSEBUTTON_LEFT, "MOUSEBUTTON_LEFT" },
-				pair_type{ control_id::MOUSEBUTTON_MIDDLE, "MOUSEBUTTON_MIDDLE" },
-				pair_type{ control_id::MOUSEBUTTON_RIGHT, "MOUSEBUTTON_RIGHT" },
+			auto const gamepad_button_strings = pair_map<gamepad_button, std::string>
+			{
+				{ gamepad_button::X, "X" },
+				{ gamepad_button::Y, "Y" },
+				{ gamepad_button::A, "A" },
+				{ gamepad_button::B, "B" },
 
-				pair_type{ control_id::MOUSEBUTTON_X1, "MOUSEBUTTON_X1" },
-				pair_type{ control_id::MOUSEBUTTON_X2, "MOUSEBUTTON_X2" },
-				pair_type{ control_id::MOUSEBUTTON_X3, "MOUSEBUTTON_X3" },
-				pair_type{ control_id::MOUSEBUTTON_X4, "MOUSEBUTTON_X4" },
-				pair_type{ control_id::MOUSEBUTTON_X5, "MOUSEBUTTON_X5" },
-				pair_type{ control_id::MOUSEBUTTON_X6, "MOUSEBUTTON_X6" },
-				pair_type{ control_id::MOUSEBUTTON_X7, "MOUSEBUTTON_X7" },
-				pair_type{ control_id::MOUSEBUTTON_X8, "MOUSEBUTTON_X8" },
-				pair_type{ control_id::MOUSEBUTTON_X9, "MOUSEBUTTON_X9" },
-				pair_type{ control_id::MOUSEBUTTON_X10, "MOUSEBUTTON_X10" },
-				pair_type{ control_id::MOUSEBUTTON_X11, "MOUSEBUTTON_X11" },
-				pair_type{ control_id::MOUSEBUTTON_X12, "MOUSEBUTTON_X12" },
-				pair_type{ control_id::MOUSEBUTTON_X13, "MOUSEBUTTON_X13" },
-				pair_type{ control_id::MOUSEBUTTON_X14, "MOUSEBUTTON_X14" },
-				pair_type{ control_id::MOUSEBUTTON_X15, "MOUSEBUTTON_X15" },
-				pair_type{ control_id::MOUSEBUTTON_X16, "MOUSEBUTTON_X16" },
-				pair_type{ control_id::MOUSEBUTTON_X17, "MOUSEBUTTON_X17" },
-				pair_type{ control_id::MOUSEBUTTON_X18, "MOUSEBUTTON_X18" },
-				pair_type{ control_id::MOUSEBUTTON_X19, "MOUSEBUTTON_X19" },
-				pair_type{ control_id::MOUSEBUTTON_X20, "MOUSEBUTTON_X20" },
+				{ gamepad_button::DPADLEFT, "DPADLEFT" },
+				{ gamepad_button::DPADRIGHT, "DPADRIGHT" },
+				{ gamepad_button::DPADUP, "DPADUP" },
+				{ gamepad_button::DPADDOWN, "DPADDOWN" },
 
-				pair_type{ control_id::MOUSESCROLLWHEEL_Y, "MOUSESCROLLWHEEL_Y" },
-				pair_type{ control_id::MOUSESCROLLWHEEL_X, "MOUSESCROLLWHEEL_X" },
+				{ gamepad_button::LEFTBUMPER, "LEFTBUMPER" },
+				{ gamepad_button::RIGHTBUMPER, "RIGHTBUMPER" },
 
-				pair_type{ control_id::MOUSEPOSITION_X, "MOUSEPOSITION_X" },
-				pair_type{ control_id::MOUSEPOSITION_Y, "MOUSEPOSITION_Y" },
-				pair_type{ control_id::MOUSEMOTION_X, "MOUSEMOTION_X" },
-				pair_type{ control_id::MOUSEMOTION_Y, "MOUSEMOTION_Y" },
+				{ gamepad_button::LEFTSTICK, "LEFTSTICK" },
+				{ gamepad_button::RIGHTSTICK, "RIGHTSTICK" },
 
-#pragma endregion
+				{ gamepad_button::BACK, "BACK" },
+				{ gamepad_button::START, "START" },
+				{ gamepad_button::GUIDE, "GUIDE" },
+			};
 
-#pragma region gamepad
+			auto const gamepad_axis_strings = pair_map<gamepad_axis, std::string>
+			{
+				{ gamepad_axis::STICK_LEFTX, "STICK_LEFTX" },
+				{ gamepad_axis::STICK_LEFTY, "STICK_LEFTY" },
+				{ gamepad_axis::STICK_RIGHTX, "STICK_RIGHTX" },
+				{ gamepad_axis::STICK_RIGHTY, "STICK_RIGHTY" },
 
-				pair_type{ control_id::GAMEPADBUTTON_X, "GAMEPADBUTTON_X" },
-				pair_type{ control_id::GAMEPADBUTTON_Y, "GAMEPADBUTTON_Y" },
-				pair_type{ control_id::GAMEPADBUTTON_A, "GAMEPADBUTTON_A" },
-				pair_type{ control_id::GAMEPADBUTTON_B, "GAMEPADBUTTON_B" },
-
-				pair_type{ control_id::GAMEPADBUTTON_DPADLEFT, "GAMEPADBUTTON_DPADLEFT" },
-				pair_type{ control_id::GAMEPADBUTTON_DPADRIGHT, "GAMEPADBUTTON_DPADRIGHT" },
-				pair_type{ control_id::GAMEPADBUTTON_DPADUP, "GAMEPADBUTTON_DPADUP" },
-				pair_type{ control_id::GAMEPADBUTTON_DPADDOWN, "GAMEPADBUTTON_DPADDOWN" },
-
-				pair_type{ control_id::GAMEPADBUTTON_LEFTBUMPER, "GAMEPADBUTTON_LEFTBUMPER" },
-				pair_type{ control_id::GAMEPADBUTTON_RIGHTBUMPER, "GAMEPADBUTTON_RIGHTBUMPER" },
-
-				pair_type{ control_id::GAMEPADBUTTON_LEFTSTICK, "GAMEPADBUTTON_LEFTSTICK" },
-				pair_type{ control_id::GAMEPADBUTTON_RIGHTSTICK, "GAMEPADBUTTON_RIGHTSTICK" },
-
-				pair_type{ control_id::GAMEPADBUTTON_BACK, "GAMEPADBUTTON_BACK" },
-				pair_type{ control_id::GAMEPADBUTTON_START, "GAMEPADBUTTON_START" },
-				pair_type{ control_id::GAMEPADBUTTON_GUIDE, "GAMEPADBUTTON_GUIDE" },
-
-				pair_type{ control_id::GAMEPADSTICK_LEFTX, "GAMEPADSTICK_LEFTX" },
-				pair_type{ control_id::GAMEPADSTICK_LEFTY, "GAMEPADSTICK_LEFTY" },
-				pair_type{ control_id::GAMEPADSTICK_RIGHTX, "GAMEPADSTICK_RIGHTX" },
-				pair_type{ control_id::GAMEPADSTICK_RIGHTY, "GAMEPADSTICK_RIGHTY" },
-
-				pair_type{ control_id::GAMEPADTRIGGER_LEFT, "GAMEPADTRIGGER_LEFT" },
-				pair_type{ control_id::GAMEPADTRIGGER_RIGHT, "GAMEPADTRIGGER_RIGHT" },
-
-#pragma endregion
+				{ gamepad_axis::TRIGGER_LEFT, "TRIGGER_LEFT" },
+				{ gamepad_axis::TRIGGER_RIGHT, "TRIGGER_RIGHT" },
 
 			};
 
 		} // unnamed
 	
-		std::string to_string(control_id id)
+		std::string keyboard_key_to_string(keyboard_key key)
 		{
-			return control_id_strings.get_second(id);
+			return keyboard_key_strings.get_second(key);
 		}
 
-		control_id from_string(std::string const& str)
+		keyboard_key keyboard_key_from_string(std::string const& str)
 		{
-			return control_id_strings.get_first(str);
+			return keyboard_key_strings.get_first(str);
+		}
+		
+		std::string mouse_button_to_string(mouse_button key)
+		{
+			return mouse_button_strings.get_second(key);
+		}
+
+		mouse_button mouse_button_from_string(std::string const& str)
+		{
+			return mouse_button_strings.get_first(str);
+		}
+		
+		std::string gamepad_button_to_string(gamepad_button key)
+		{
+			return gamepad_button_strings.get_second(key);
+		}
+
+		gamepad_button gamepad_button_from_string(std::string const& str)
+		{
+			return gamepad_button_strings.get_first(str);
+		}
+
+		std::string gamepad_axis_to_string(gamepad_axis key)
+		{
+			return gamepad_axis_strings.get_second(key);
+		}
+
+		gamepad_axis gamepad_axis_from_string(std::string const& str)
+		{
+			return gamepad_axis_strings.get_first(str);
 		}
 		
 	} // input
