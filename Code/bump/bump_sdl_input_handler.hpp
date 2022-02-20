@@ -23,8 +23,8 @@ namespace bump
 
 			explicit input_handler(window& window);
 
-			input::button_state get_keyboard_key_state(input::keyboard_key key) const;
-			input::button_state get_mouse_button_state(input::mouse_button button) const;
+			bool is_keyboard_key_pressed(input::keyboard_key key) const;
+			bool is_mouse_button_pressed(input::mouse_button button) const;
 			glm::ivec2 get_mouse_position() const;
 
 			void poll(std::queue<input::input_event>& input_events, std::queue<input::app_event>& app_events);

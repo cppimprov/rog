@@ -148,25 +148,25 @@ namespace rog
 					{
 						auto const& key = std::get<input::input_events::keyboard_key>(event);
 
-						if (key.m_key == input::keyboard_key::NUM7 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::LEFT_UP);
-						else if (key.m_key == input::keyboard_key::NUM8 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::UP);
-						else if (key.m_key == input::keyboard_key::NUM9 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::RIGHT_UP);
-						else if (key.m_key == input::keyboard_key::NUM4 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::LEFT);
-						else if (key.m_key == input::keyboard_key::NUM6 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::RIGHT);
-						else if (key.m_key == input::keyboard_key::NUM1 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::LEFT_DOWN);
-						else if (key.m_key == input::keyboard_key::NUM2 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::DOWN);
-						else if (key.m_key == input::keyboard_key::NUM3 && key.m_state == input::button_state::DOWN) move_player(player, level.m_grid, direction::RIGHT_DOWN);
+						     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) move_player(player, level.m_grid, direction::LEFT_UP);
+						else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) move_player(player, level.m_grid, direction::UP);
+						else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_UP);
+						else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) move_player(player, level.m_grid, direction::LEFT);
+						else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) move_player(player, level.m_grid, direction::RIGHT);
+						else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) move_player(player, level.m_grid, direction::LEFT_DOWN);
+						else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) move_player(player, level.m_grid, direction::DOWN);
+						else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_DOWN);
 
-						else if (key.m_key == input::keyboard_key::DOT && key.m_state == input::button_state::DOWN && 
-						         app.m_input_handler.get_keyboard_key_state(bump::input::keyboard_key::LEFTSHIFT) == bump::input::button_state::DOWN && 
+						else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
+						         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
 								 use_stairs(player, level.m_grid, stairs_direction::DOWN))
 							change_level = stairs_direction::DOWN;
-						else if (key.m_key == input::keyboard_key::COMMA && key.m_state == input::button_state::DOWN && 
-						         app.m_input_handler.get_keyboard_key_state(bump::input::keyboard_key::LEFTSHIFT) == bump::input::button_state::DOWN && 
+						else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
+						         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
 								 use_stairs(player, level.m_grid, stairs_direction::UP))
 							change_level = stairs_direction::UP;
 						
-						else if (key.m_key == input::keyboard_key::ESCAPE && key.m_state == input::button_state::DOWN)
+						else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
 							return { };
 
 						continue;

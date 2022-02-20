@@ -243,29 +243,24 @@ namespace bump
 				return (value < 0 ? static_cast<float>(value) / 32768 : static_cast<float>(value) / 32767);
 			}
 			
-			input::button_state sdl_buttonstate_to_button_state(Uint8 state)
-			{
-				return (state == SDL_PRESSED ? input::button_state::DOWN : input::button_state::UP);
-			}
-
 		} // unnamed
 
 
 		input_handler::input_handler(window& window):
 			m_window(window) { }
 			
-		input::button_state input_handler::get_keyboard_key_state(input::keyboard_key key) const
+		bool input_handler::is_keyboard_key_pressed(input::keyboard_key key) const
 		{
 			auto const scancode = keyboard_key_to_sdl_scancode(key);
 			auto const states = SDL_GetKeyboardState(nullptr);
-			return sdl_buttonstate_to_button_state(states[scancode]);
+			return (states[scancode] == SDL_PRESSED);
 		}
 
-		input::button_state input_handler::get_mouse_button_state(input::mouse_button button) const
+		bool input_handler::is_mouse_button_pressed(input::mouse_button button) const
 		{
 			auto const sdl_button = mouse_button_to_sdl_mousebutton(button);
 			auto const states = SDL_GetMouseState(nullptr, nullptr);
-			return (states & sdl_button) ? input::button_state::DOWN : input::button_state::UP;
+			return (states & sdl_button) != 0;
 		}
 		
 		glm::ivec2 input_handler::get_mouse_position() const
@@ -355,7 +350,7 @@ namespace bump
 				if (e.type == SDL_MOUSEBUTTONUP || e.type == SDL_MOUSEBUTTONDOWN)
 				{
 					auto const id = sdl_mousebutton_to_mouse_button(e.button.button);
-					auto const value = sdl_buttonstate_to_button_state(e.button.state);
+					auto const value = (e.button.state == SDL_PRESSED);
 
 					input_events.emplace(input::input_events::mouse_button{ id, value });
 					
@@ -378,7 +373,7 @@ namespace bump
 				if (e.type == SDL_KEYUP || e.type == SDL_KEYDOWN)
 				{
 					auto const id = sdl_scancode_to_keyboard_key(e.key.keysym.scancode);
-					auto const value = sdl_buttonstate_to_button_state(e.key.state);
+					auto const value = (e.key.state == SDL_PRESSED);
 
 					input_events.emplace(input::input_events::keyboard_key{ id, value });
 					
@@ -398,7 +393,7 @@ namespace bump
 				if (e.type == SDL_CONTROLLERBUTTONUP || e.type == SDL_CONTROLLERBUTTONDOWN)
 				{
 					auto const id = sdl_controllerbutton_to_gamepad_button(e.cbutton.button);
-					auto const value = sdl_buttonstate_to_button_state(e.cbutton.state);
+					auto const value = (e.cbutton.state == SDL_PRESSED);
 
 					input_events.emplace(input::input_events::gamepad_button{ id, value });
 					

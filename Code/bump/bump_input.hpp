@@ -82,15 +82,13 @@ namespace bump
 		std::string gamepad_axis_to_string(gamepad_axis key);
 		gamepad_axis gamepad_axis_from_string(std::string const& str);
 
-		enum class button_state { UP, DOWN };
-
 		namespace input_events
 		{
-			struct keyboard_key   { input::keyboard_key m_key; button_state m_state; };
-			struct mouse_button   { input::mouse_button m_button; button_state m_state; };
+			struct keyboard_key   { input::keyboard_key m_key; bool m_value; };
+			struct mouse_button   { input::mouse_button m_button; bool m_value; };
 			struct mouse_wheel    { glm::ivec2 m_motion; };
 			struct mouse_motion   { glm::ivec2 m_motion; };
-			struct gamepad_button { input::gamepad_button m_button; button_state m_state; };
+			struct gamepad_button { input::gamepad_button m_button; bool m_value; };
 			struct gamepad_axis   { input::gamepad_axis m_axis; float m_value; };
 		}
 
