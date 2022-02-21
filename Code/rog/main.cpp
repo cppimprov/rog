@@ -29,6 +29,7 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 namespace rog
 {
@@ -83,11 +84,99 @@ namespace rog
 		}
 	}
 
-	bump::gamestate play_level(bump::app& app, std::int32_t depth)
+	bump::gamestate play_level(
+		bump::app& app, 
+		std::queue<bump::input::input_event>& input_events, 
+		bump::grid2<screen::cell>& screen_buffer, 
+		bool const& request_quit,
+		rog::player& player,
+		std::int32_t level_depth)
 	{
 		using namespace bump;
 
-		log_info("start state");
+		auto level = level_gen::generate_level(level_depth);
+		
+		while (true)
+		{
+			// todo: notify and wait
+
+			if (request_quit)
+				return { }; // todo: save game.
+
+			auto change_level = std::optional<stairs_direction>();
+			while (!input_events.empty())
+			{
+				auto event = std::move(input_events.front());
+				input_events.pop();
+
+				if (std::holds_alternative<input::input_events::keyboard_key>(event))
+				{
+					auto const& key = std::get<input::input_events::keyboard_key>(event);
+
+					     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) move_player(player, level.m_grid, direction::LEFT_UP);
+					else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) move_player(player, level.m_grid, direction::UP);
+					else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_UP);
+					else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) move_player(player, level.m_grid, direction::LEFT);
+					else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) move_player(player, level.m_grid, direction::RIGHT);
+					else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) move_player(player, level.m_grid, direction::LEFT_DOWN);
+					else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) move_player(player, level.m_grid, direction::DOWN);
+					else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_DOWN);
+
+					else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
+							app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
+							use_stairs(player, level.m_grid, stairs_direction::DOWN))
+						change_level = stairs_direction::DOWN;
+					else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
+							app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
+							use_stairs(player, level.m_grid, stairs_direction::UP))
+						change_level = stairs_direction::UP;
+					
+					else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
+						return { };
+
+					continue;
+				}
+			}
+			
+			if (change_level)
+			{
+				auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
+				return { [&, next_depth] (bump::app& app) { return play_level(app, input_events, screen_buffer, request_quit, player, next_depth); } };
+			}
+
+			// drawing!
+			{
+				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
+				screen::draw(screen_buffer, level.m_grid, player);
+			}
+		}
+
+		return { };
+	}
+
+	void play_game(
+		bump::app& app, 
+		std::queue<bump::input::input_event>& input_events, 
+		bump::grid2<screen::cell>& screen_buffer, 
+		bool const& request_quit,
+		bool& game_thread_done)
+	{
+		using namespace bump;
+
+		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
+
+		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, input_events, screen_buffer, request_quit, player, 1); } };
+		bump::run_state(state_wrapper, app);
+
+		game_thread_done = true;
+		// todo: notify and wait
+	}
+
+	void main_loop(bump::app& app)
+	{
+		using namespace bump;
+
+		log_info("main loop - start");
 
 		auto const tile_size = glm::ivec2{ 24, 36 };
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
@@ -95,123 +184,93 @@ namespace rog
 		auto screen_buffer = grid2<screen::cell>();
 		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
 
-		auto level = level_gen::generate_level(depth);
-		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
-
+		auto request_quit = false;
+		auto game_thread_done = false;
 		auto paused = false;
+		auto input_events = std::queue<input::input_event>();
+		auto app_events = std::queue<input::app_event>();
+		
 		auto timer = frame_timer();
 
-		auto input_events = std::queue<bump::input::input_event>();
-		auto app_events = std::queue<bump::input::app_event>();
-
-		while (true)
 		{
-			// input
+			auto game_thread = std::thread(play_game, std::ref(app), std::ref(input_events), std::ref(screen_buffer), std::cref(request_quit), std::ref(game_thread_done));
+
+			while (true)
 			{
-				app.m_input_handler.poll(input_events, app_events);
-
-				while (!app_events.empty())
+				// input
 				{
-					auto event = std::move(app_events.front());
-					app_events.pop();
+					app.m_input_handler.poll(input_events, app_events);
 
-					if (std::holds_alternative<input::app_events::quit>(event))
+					// process app events:
+					while (!app_events.empty())
 					{
-						return { };
+						auto event = std::move(app_events.front());
+						app_events.pop();
+
+						if (std::holds_alternative<input::app_events::quit>(event))
+						{
+							request_quit = true;
+
+							break;
+						}
+
+						if (std::holds_alternative<input::app_events::pause>(event))
+						{
+							auto const& p = std::get<input::app_events::pause>(event);
+
+							// todo: we probably want to recognise the actual event and do
+							// some things (mute audio, not send input to game thread, not 
+							// do rendering, etc.)
+							paused = p.m_pause;
+
+							continue;
+						}
+
+						if (std::holds_alternative<input::app_events::resize>(event))
+						{
+							auto const& r = std::get<input::app_events::resize>(event);
+							auto const& window_size = r.m_size;
+
+							screen::resize(screen_buffer, window_size, tile_size, 
+								{ ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
+
+							continue;
+						}
 					}
 
-					if (std::holds_alternative<input::app_events::pause>(event))
-					{
-						paused = true;
-						continue;
-					}
-
-					if (std::holds_alternative<input::app_events::resize>(event))
-					{
-						auto const& window_size = std::get<input::app_events::resize>(event).m_size;
-
-						screen::resize(screen_buffer, window_size, tile_size, 
-							{ ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
-
-						continue;
-					}
 				}
+
+				// todo: notify and wait
 				
-				auto change_level = std::optional<stairs_direction>();
-				
-				while (!input_events.empty())
+				if (game_thread_done)
+					break;
+
+				// render
 				{
-					auto event = std::move(input_events.front());
-					input_events.pop();
+					auto const& window_size = app.m_window.get_size();
+					auto const window_size_f = glm::vec2(window_size);
+					auto const window_size_u = glm::uvec2(window_size);
 
-					if (std::holds_alternative<input::input_events::keyboard_key>(event))
-					{
-						auto const& key = std::get<input::input_events::keyboard_key>(event);
+					auto& renderer = app.m_renderer;
 
-						     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) move_player(player, level.m_grid, direction::LEFT_UP);
-						else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) move_player(player, level.m_grid, direction::UP);
-						else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_UP);
-						else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) move_player(player, level.m_grid, direction::LEFT);
-						else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) move_player(player, level.m_grid, direction::RIGHT);
-						else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) move_player(player, level.m_grid, direction::LEFT_DOWN);
-						else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) move_player(player, level.m_grid, direction::DOWN);
-						else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_DOWN);
+					renderer.clear_color_buffers({ 0.f, 0.f, 0.f, 1.f });
+					renderer.clear_depth_buffers();
+					renderer.set_viewport({ 0, 0 }, window_size_u);
 
-						else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
-						         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-								 use_stairs(player, level.m_grid, stairs_direction::DOWN))
-							change_level = stairs_direction::DOWN;
-						else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
-						         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-								 use_stairs(player, level.m_grid, stairs_direction::UP))
-							change_level = stairs_direction::UP;
-						
-						else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
-							return { };
+					tile_renderer.render(renderer, window_size_f, screen_buffer);
 
-						continue;
-					}
+					app.m_window.swap_buffers();
 				}
 
-				if (change_level)
-				{
-					auto const next_depth = depth + (change_level == stairs_direction::UP ? 1 : -1);
-					return { [next_depth] (bump::app& app) { return play_level(app, next_depth); } };
-				}
+				timer.tick();
 			}
-
-			// update
-			{
-				// auto const dt = paused ? frame_timer::clock_t::duration{ 0 } : timer.get_last_frame_time();
-
-				// ...
-
-				// drawing!
-				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level.m_grid, player);
-			}
-
-			// render
-			{
-				auto const& window_size = app.m_window.get_size();
-				auto const window_size_f = glm::vec2(window_size);
-				auto const window_size_u = glm::uvec2(window_size);
-
-				auto& renderer = app.m_renderer;
-
-				renderer.clear_color_buffers({ 0.f, 0.f, 0.f, 1.f });
-				renderer.clear_depth_buffers();
-				renderer.set_viewport({ 0, 0 }, window_size_u);
-
-				tile_renderer.render(renderer, window_size_f, screen_buffer);
-
-				app.m_window.swap_buffers();
-			}
-
-			timer.tick();
-		}
 		
-		return { };
+			// todo: notify and wait
+
+			game_thread.join();
+		}
+
+		log_info("main loop - exit");
 	}
 
 } // rog
@@ -253,23 +312,10 @@ int main(int , char* [])
 		};
 
 		auto app = bump::app(metadata, { 1024, 768 }, "rog", bump::sdl::window::display_mode::WINDOWED);
-		bump::run_state({ [] (bump::app& app) { return rog::play_level(app, 1); } }, app);
+		rog::main_loop(app);
 	}
 
 	bump::log_info("done!");
 
 	return EXIT_SUCCESS;
 }
-
-// todo (now):
-
-	// level generation:
-
-		// create level_gen namespace / file.
-		// create rect / area type.
-		// add inside / outside subdivision type?
-		// ...
-
-
-
-// todo (sometime):

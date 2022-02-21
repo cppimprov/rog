@@ -9,8 +9,5 @@ use_stairs
 	-> should output message in game.
 	-> should use mouse for input.
 
-shift_pressed
-	-> shouldn't exist! want to get key state directly from the input handler.
-
 next_depth
 	-> check to make sure that we don't go outside dungeon depth.
