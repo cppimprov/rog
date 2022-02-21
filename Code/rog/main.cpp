@@ -47,17 +47,84 @@ namespace rog
 			view.get<comp_actor>(actor).m_energy += ACTOR_ENERGY_PER_CYCLE;
 	}
 
-	bool actor_can_take_turn(entt::handle actor_handle)
+	bool actor_has_turn_energy(entt::handle actor_handle)
 	{
 		return actor_handle.get<comp_actor>().m_energy >= ACTOR_ENERGY_PER_TURN;
 	}
 
+	void actor_take_turn_energy(entt::handle actor_handle)
+	{
+		actor_handle.get<comp_actor>().m_energy -= ACTOR_ENERGY_PER_TURN;
+	}
+
+	struct thread_context
+	{
+		thread_switch m_switch;
+		std::queue<bump::input::input_event> m_events;
+		bool m_main_thread_request_quit = false;
+		bool m_game_thread_done = false;
+	};
+
+	void player_update(entt::handle player_handle, bump::app& app, thread_context& tc, level const& level, bool& quit, std::optional<stairs_direction>& change_level)
+	{
+		while (true)
+		{
+			tc.m_switch.notify_main_thread_and_wait();
+
+			if (tc.m_main_thread_request_quit)
+				return;
+
+			while (!tc.m_events.empty())
+			{
+				auto event = std::move(tc.m_events.front());
+				tc.m_events.pop();
+
+				namespace ie = bump::input::input_events;
+				using kt = bump::input::keyboard_key;
+
+				if (std::holds_alternative<ie::keyboard_key>(event))
+				{
+					auto const& key = std::get<ie::keyboard_key>(event);
+
+					     if (key.m_key == kt::NUM7 && key.m_value) { player_move(player_handle, level, direction::LEFT_UP); return; }
+					else if (key.m_key == kt::NUM8 && key.m_value) { player_move(player_handle, level, direction::UP); return; }
+					else if (key.m_key == kt::NUM9 && key.m_value) { player_move(player_handle, level, direction::RIGHT_UP); return; }
+					else if (key.m_key == kt::NUM4 && key.m_value) { player_move(player_handle, level, direction::LEFT); return; }
+					else if (key.m_key == kt::NUM6 && key.m_value) { player_move(player_handle, level, direction::RIGHT); return; }
+					else if (key.m_key == kt::NUM1 && key.m_value) { player_move(player_handle, level, direction::LEFT_DOWN); return; }
+					else if (key.m_key == kt::NUM2 && key.m_value) { player_move(player_handle, level, direction::DOWN); return; }
+					else if (key.m_key == kt::NUM3 && key.m_value) { player_move(player_handle, level, direction::RIGHT_DOWN); return; }
+
+					else if (key.m_key == kt::DOT && key.m_value && 
+					         app.m_input_handler.is_keyboard_key_pressed(kt::LEFTSHIFT) && 
+					         player_use_stairs(player_handle, level, stairs_direction::DOWN))
+					{
+						change_level = stairs_direction::DOWN;
+						return;
+					}
+					else if (key.m_key == kt::COMMA && key.m_value && 
+					         app.m_input_handler.is_keyboard_key_pressed(kt::LEFTSHIFT) && 
+					         player_use_stairs(player_handle, level, stairs_direction::UP))
+					{
+						change_level = stairs_direction::UP;
+						return;
+					}
+					else if (key.m_key == kt::ESCAPE && key.m_value)
+					{
+						quit = true;
+						return;
+					}
+
+					continue;
+				}
+			}
+		}
+	}
+
 	bump::gamestate play_level(
 		bump::app& app, 
-		thread_switch& ts,
-		std::queue<bump::input::input_event>& input_events, 
+		thread_context& tc,
 		bump::grid2<screen::cell>& screen_buffer, 
-		bool const& request_quit,
 		std::int32_t level_depth)
 	{
 		using namespace bump;
@@ -80,62 +147,23 @@ namespace rog
 			{
 				actors_add_energy(level.m_registry);
 
-				auto player_turn_complete = false;
-
-				while (!player_turn_complete)
+				if (actor_has_turn_energy({ level.m_registry, player }))
 				{
-					ts.notify_main_thread_and_wait();
-
-					if (request_quit)
-						return { }; // todo: save game.
-
+					bool quit = false;
 					auto change_level = std::optional<stairs_direction>();
-					while (!input_events.empty())
-					{
-						auto event = std::move(input_events.front());
-						input_events.pop();
 
-						if (std::holds_alternative<input::input_events::keyboard_key>(event))
-						{
-							auto const& key = std::get<input::input_events::keyboard_key>(event);
+					player_update({ level.m_registry, player }, app, tc, level, quit, change_level);
 
-							     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) { player_move({ level.m_registry, player }, level, direction::LEFT_UP); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) { player_move({ level.m_registry, player }, level, direction::UP); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) { player_move({ level.m_registry, player }, level, direction::RIGHT_UP); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) { player_move({ level.m_registry, player }, level, direction::LEFT); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) { player_move({ level.m_registry, player }, level, direction::RIGHT); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) { player_move({ level.m_registry, player }, level, direction::LEFT_DOWN); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) { player_move({ level.m_registry, player }, level, direction::DOWN); player_turn_complete = true; break; }
-							else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) { player_move({ level.m_registry, player }, level, direction::RIGHT_DOWN); player_turn_complete = true; break; }
-
-							else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
-							         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-							         player_use_stairs({ level.m_registry, player }, level, stairs_direction::DOWN))
-							{
-								change_level = stairs_direction::DOWN;
-								player_turn_complete = true;
-								break;
-							}
-							else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
-							         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-							         player_use_stairs({ level.m_registry, player }, level, stairs_direction::UP))
-							{
-								change_level = stairs_direction::UP;
-								player_turn_complete = true;
-								break;
-							}
-							else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
-								return { };
-
-							continue;
-						}
-					}
+					if (tc.m_main_thread_request_quit || quit)
+						return { }; // todo: save game etc.
 					
 					if (change_level)
 					{
 						auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
-						return { [&, next_depth] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, next_depth); } };
+						return { [&, next_depth] (bump::app& app) { return play_level(app, tc, screen_buffer, next_depth); } };
 					}
+
+					actor_take_turn_energy({ level.m_registry, player });
 				}
 
 				// todo: other actor turns!
@@ -145,21 +173,15 @@ namespace rog
 		return { };
 	}
 
-	void play_game(
-		bump::app& app, 
-		thread_switch& ts,
-		std::queue<bump::input::input_event>& input_events, 
-		bump::grid2<screen::cell>& screen_buffer, 
-		bool const& request_quit,
-		bool& game_thread_done)
+	void play_game(bump::app& app, thread_context& tc, bump::grid2<screen::cell>& screen_buffer)
 	{
 		using namespace bump;
 
-		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, 1); } };
+		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, tc, screen_buffer, 1); } };
 		bump::run_state(state_wrapper, app);
 
-		game_thread_done = true;
-		ts.notify_main_thread();
+		tc.m_game_thread_done = true;
+		tc.m_switch.notify_main_thread();
 	}
 
 	void main_loop(bump::app& app)
@@ -168,98 +190,97 @@ namespace rog
 
 		log_info("main loop - start");
 
+		// setup
 		auto const tile_size = glm::ivec2{ 24, 36 };
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
 		auto screen_buffer = grid2<screen::cell>();
 		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
 
-		auto request_quit = false;
-		auto game_thread_done = false;
-		auto paused = false;
-		auto input_events = std::queue<input::input_event>();
+		// start game thread
+		auto tc = thread_context();
 		auto app_events = std::queue<input::app_event>();
-		
+		auto game_thread = std::thread(play_game, std::ref(app), std::ref(tc), std::ref(screen_buffer));
+		tc.m_switch.notify_game_thread_and_wait();
+
+		// main loop
+		auto paused = false;
 		auto timer = frame_timer();
 
+		while (true)
 		{
-			auto ts = thread_switch();
-			auto game_thread = std::thread(play_game, std::ref(app), std::ref(ts), std::ref(input_events), std::ref(screen_buffer), std::cref(request_quit), std::ref(game_thread_done));
-			ts.notify_game_thread_and_wait();
-
-			while (true)
+			// input
 			{
-				// input
+				app.m_input_handler.poll(tc.m_events, app_events);
+
+				// process app events:
+				while (!app_events.empty())
 				{
-					app.m_input_handler.poll(input_events, app_events);
+					auto event = std::move(app_events.front());
+					app_events.pop();
 
-					// process app events:
-					while (!app_events.empty())
+					if (std::holds_alternative<input::app_events::quit>(event))
 					{
-						auto event = std::move(app_events.front());
-						app_events.pop();
+						tc.m_main_thread_request_quit = true;
 
-						if (std::holds_alternative<input::app_events::quit>(event))
-						{
-							request_quit = true;
-
-							break;
-						}
-
-						if (std::holds_alternative<input::app_events::pause>(event))
-						{
-							auto const& p = std::get<input::app_events::pause>(event);
-
-							// todo: we probably want to recognise the actual event and do
-							// some things (mute audio, not send input to game thread, not 
-							// do rendering, etc.)
-							paused = p.m_pause;
-
-							continue;
-						}
-
-						if (std::holds_alternative<input::app_events::resize>(event))
-						{
-							auto const& r = std::get<input::app_events::resize>(event);
-							auto const& window_size = r.m_size;
-
-							screen::resize(screen_buffer, window_size, tile_size, 
-								{ ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
-
-							continue;
-						}
+						break;
 					}
 
+					if (std::holds_alternative<input::app_events::pause>(event))
+					{
+						auto const& p = std::get<input::app_events::pause>(event);
+
+						// todo: we probably want to recognise the actual event and do
+						// some things (mute audio, not send input to game thread, not 
+						// do rendering, etc.)
+						paused = p.m_pause;
+
+						continue;
+					}
+
+					if (std::holds_alternative<input::app_events::resize>(event))
+					{
+						auto const& r = std::get<input::app_events::resize>(event);
+						auto const& window_size = r.m_size;
+
+						screen::resize(screen_buffer, window_size, tile_size, 
+							{ ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
+
+						continue;
+					}
 				}
 
-				// update
-				ts.notify_game_thread_and_wait();
-				
-				if (game_thread_done)
-					break;
-
-				// render
-				{
-					auto const& window_size = app.m_window.get_size();
-					auto const window_size_f = glm::vec2(window_size);
-					auto const window_size_u = glm::uvec2(window_size);
-
-					auto& renderer = app.m_renderer;
-
-					renderer.clear_color_buffers({ 0.f, 0.f, 0.f, 1.f });
-					renderer.clear_depth_buffers();
-					renderer.set_viewport({ 0, 0 }, window_size_u);
-
-					tile_renderer.render(renderer, window_size_f, screen_buffer);
-
-					app.m_window.swap_buffers();
-				}
-
-				timer.tick();
 			}
-		
-			game_thread.join();
+
+			// update
+			{
+				tc.m_switch.notify_game_thread_and_wait();
+				
+				if (tc.m_game_thread_done)
+					break;
+			}
+
+			// render
+			{
+				auto const& window_size = app.m_window.get_size();
+				auto const window_size_f = glm::vec2(window_size);
+				auto const window_size_u = glm::uvec2(window_size);
+
+				auto& renderer = app.m_renderer;
+
+				renderer.clear_color_buffers({ 0.f, 0.f, 0.f, 1.f });
+				renderer.clear_depth_buffers();
+				renderer.set_viewport({ 0, 0 }, window_size_u);
+
+				tile_renderer.render(renderer, window_size_f, screen_buffer);
+
+				app.m_window.swap_buffers();
+			}
+
+			timer.tick();
 		}
+	
+		game_thread.join();
 
 		log_info("main loop - exit");
 	}

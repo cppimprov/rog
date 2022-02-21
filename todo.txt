@@ -5,8 +5,7 @@ TODO:
 
 Turn logic:
 
-	* Add energy to the player to enable movement.
-	* Add AI (that also accumulate energy).
+	* Add an ai that moves randomly in bounds (for now).
 
 Mouse input:
 
