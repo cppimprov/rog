@@ -5,6 +5,7 @@
 #include "rog_level_gen.hpp"
 #include "rog_player.hpp"
 #include "rog_screen_drawing.hpp"
+#include "rog_thread_switch.hpp"
 #include "rog_tile_renderer.hpp"
 
 #include <bump_app.hpp>
@@ -86,6 +87,7 @@ namespace rog
 
 	bump::gamestate play_level(
 		bump::app& app, 
+		thread_switch& ts,
 		std::queue<bump::input::input_event>& input_events, 
 		bump::grid2<screen::cell>& screen_buffer, 
 		bool const& request_quit,
@@ -98,7 +100,7 @@ namespace rog
 		
 		while (true)
 		{
-			// todo: notify and wait
+			ts.notify_main_thread_and_wait();
 
 			if (request_quit)
 				return { }; // todo: save game.
@@ -141,7 +143,7 @@ namespace rog
 			if (change_level)
 			{
 				auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
-				return { [&, next_depth] (bump::app& app) { return play_level(app, input_events, screen_buffer, request_quit, player, next_depth); } };
+				return { [&, next_depth] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, player, next_depth); } };
 			}
 
 			// drawing!
@@ -156,6 +158,7 @@ namespace rog
 
 	void play_game(
 		bump::app& app, 
+		thread_switch& ts,
 		std::queue<bump::input::input_event>& input_events, 
 		bump::grid2<screen::cell>& screen_buffer, 
 		bool const& request_quit,
@@ -165,11 +168,11 @@ namespace rog
 
 		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
 
-		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, input_events, screen_buffer, request_quit, player, 1); } };
+		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, player, 1); } };
 		bump::run_state(state_wrapper, app);
 
 		game_thread_done = true;
-		// todo: notify and wait
+		ts.notify_main_thread();
 	}
 
 	void main_loop(bump::app& app)
@@ -193,7 +196,9 @@ namespace rog
 		auto timer = frame_timer();
 
 		{
-			auto game_thread = std::thread(play_game, std::ref(app), std::ref(input_events), std::ref(screen_buffer), std::cref(request_quit), std::ref(game_thread_done));
+			auto ts = thread_switch();
+			auto game_thread = std::thread(play_game, std::ref(app), std::ref(ts), std::ref(input_events), std::ref(screen_buffer), std::cref(request_quit), std::ref(game_thread_done));
+			ts.notify_game_thread_and_wait();
 
 			while (true)
 			{
@@ -240,7 +245,7 @@ namespace rog
 
 				}
 
-				// todo: notify and wait
+				ts.notify_game_thread_and_wait();
 				
 				if (game_thread_done)
 					break;
@@ -265,8 +270,6 @@ namespace rog
 				timer.tick();
 			}
 		
-			// todo: notify and wait
-
 			game_thread.join();
 		}
 
