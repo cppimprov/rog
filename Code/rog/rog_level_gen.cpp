@@ -4,10 +4,8 @@
 #include "rog_random.hpp"
 
 #include <bump_die.hpp>
+#include <bump_math.hpp>
 #include <bump_range.hpp>
-
-#include <glm/glm.hpp>
-#include <glm/gtx/std_based_type.hpp>
 
 #include <map>
 

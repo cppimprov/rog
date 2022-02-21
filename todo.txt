@@ -3,9 +3,6 @@ TODO:
 
 Turn logic:
 
-	* Add player entity creation function (move to rog_player.cpp)
-	* Move player movement functions to rog_player.cpp.
-	
 	* Add energy to the player to enable movement.
 	* Add AI (that also accumulate energy).
 
