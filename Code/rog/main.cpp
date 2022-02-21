@@ -36,6 +36,22 @@
 namespace rog
 {
 
+	constexpr auto ACTOR_ENERGY_PER_CYCLE = std::int32_t{ 10 };
+	constexpr auto ACTOR_ENERGY_PER_TURN = std::int32_t{ 100 };
+
+	void actors_add_energy(entt::registry& registry)
+	{
+		auto view = registry.view<comp_actor>();
+
+		for (auto& actor : view)
+			view.get<comp_actor>(actor).m_energy += ACTOR_ENERGY_PER_CYCLE;
+	}
+
+	bool actor_can_take_turn(entt::handle actor_handle)
+	{
+		return actor_handle.get<comp_actor>().m_energy >= ACTOR_ENERGY_PER_TURN;
+	}
+
 	bump::gamestate play_level(
 		bump::app& app, 
 		thread_switch& ts,
@@ -51,59 +67,78 @@ namespace rog
 		
 		while (true)
 		{
-			ts.notify_main_thread_and_wait();
-
-			if (request_quit)
-				return { }; // todo: save game.
-
-			auto change_level = std::optional<stairs_direction>();
-			while (!input_events.empty())
-			{
-				auto event = std::move(input_events.front());
-				input_events.pop();
-
-				if (std::holds_alternative<input::input_events::keyboard_key>(event))
-				{
-					auto const& key = std::get<input::input_events::keyboard_key>(event);
-
-					     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) player_move({ level.m_registry, player }, level, direction::LEFT_UP);
-					else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) player_move({ level.m_registry, player }, level, direction::UP);
-					else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) player_move({ level.m_registry, player }, level, direction::RIGHT_UP);
-					else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) player_move({ level.m_registry, player }, level, direction::LEFT);
-					else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) player_move({ level.m_registry, player }, level, direction::RIGHT);
-					else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) player_move({ level.m_registry, player }, level, direction::LEFT_DOWN);
-					else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) player_move({ level.m_registry, player }, level, direction::DOWN);
-					else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) player_move({ level.m_registry, player }, level, direction::RIGHT_DOWN);
-
-					else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
-							app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-							player_use_stairs({ level.m_registry, player }, level, stairs_direction::DOWN))
-						change_level = stairs_direction::DOWN;
-					else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
-							app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-							player_use_stairs({ level.m_registry, player }, level, stairs_direction::UP))
-						change_level = stairs_direction::UP;
-					
-					else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
-						return { };
-
-					continue;
-				}
-			}
-			
-			if (change_level)
-			{
-				auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
-				return { [&, next_depth] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, next_depth); } };
-			}
-
-			// drawing!
+			// drawing:
 			{
 				auto const& player_pos = level.m_registry.get<comp_position>(player);
 				auto const& player_vis = level.m_registry.get<comp_visual>(player);
 
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
 				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
+			}
+
+			// update:
+			{
+				actors_add_energy(level.m_registry);
+
+				auto player_turn_complete = false;
+
+				while (!player_turn_complete)
+				{
+					ts.notify_main_thread_and_wait();
+
+					if (request_quit)
+						return { }; // todo: save game.
+
+					auto change_level = std::optional<stairs_direction>();
+					while (!input_events.empty())
+					{
+						auto event = std::move(input_events.front());
+						input_events.pop();
+
+						if (std::holds_alternative<input::input_events::keyboard_key>(event))
+						{
+							auto const& key = std::get<input::input_events::keyboard_key>(event);
+
+							     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) { player_move({ level.m_registry, player }, level, direction::LEFT_UP); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) { player_move({ level.m_registry, player }, level, direction::UP); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) { player_move({ level.m_registry, player }, level, direction::RIGHT_UP); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) { player_move({ level.m_registry, player }, level, direction::LEFT); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) { player_move({ level.m_registry, player }, level, direction::RIGHT); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) { player_move({ level.m_registry, player }, level, direction::LEFT_DOWN); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) { player_move({ level.m_registry, player }, level, direction::DOWN); player_turn_complete = true; break; }
+							else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) { player_move({ level.m_registry, player }, level, direction::RIGHT_DOWN); player_turn_complete = true; break; }
+
+							else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
+							         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
+							         player_use_stairs({ level.m_registry, player }, level, stairs_direction::DOWN))
+							{
+								change_level = stairs_direction::DOWN;
+								player_turn_complete = true;
+								break;
+							}
+							else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
+							         app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
+							         player_use_stairs({ level.m_registry, player }, level, stairs_direction::UP))
+							{
+								change_level = stairs_direction::UP;
+								player_turn_complete = true;
+								break;
+							}
+							else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
+								return { };
+
+							continue;
+						}
+					}
+					
+					if (change_level)
+					{
+						auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
+						return { [&, next_depth] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, next_depth); } };
+					}
+				}
+
+				// todo: other actor turns!
 			}
 		}
 

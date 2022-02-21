@@ -19,7 +19,7 @@ namespace rog
 
 		return player;
 	}
-	
+
 	void player_move(entt::handle player_handle, level const& level, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);

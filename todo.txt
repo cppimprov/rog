@@ -1,6 +1,8 @@
 
 TODO:
 
+ * Registry shouldn't be part of the level class???
+
 Turn logic:
 
 	* Add energy to the player to enable movement.
