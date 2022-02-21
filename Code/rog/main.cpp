@@ -1,6 +1,7 @@
 
 #include "rog_colors.hpp"
 #include "rog_direction.hpp"
+#include "rog_entity.hpp"
 #include "rog_feature.hpp"
 #include "rog_level_gen.hpp"
 #include "rog_player.hpp"
@@ -35,37 +36,50 @@
 namespace rog
 {
 
-	void move_player(player& player, bump::grid2<feature> const& level, direction dir)
+	entt::entity create_player_entity(entt::registry& registry)
+	{
+		auto player = registry.create();
+		registry.emplace<comp_position>(player, glm::size2(0));
+		registry.emplace<comp_visual>(player, screen::cell{ '@', colors::yellow, colors::black });
+		registry.emplace<comp_actor>(player, 100); // start with enough energy to move
+
+		return player;
+	}
+	void move_player(entt::handle player_handle, bump::grid2<feature> const& level, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);
 		auto const level_size = level.extents();
 
+		auto& pos = player_handle.get<comp_position>();
+
 		bump::die_if(level_size.x == 0 || level_size.y == 0);
-		bump::die_if(player.m_position.x >= level_size.x || player.m_position.y >= level_size.y);
+		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
 
-		if (player.m_position.x == 0 && vec.x < 0) return;
-		if (player.m_position.x == level_size.x - 1 && vec.x > 0) return;
-		if (player.m_position.y == 0 && vec.y < 0) return;
-		if (player.m_position.y == level_size.y - 1 && vec.y > 0) return;
+		if (pos.m_pos.x == 0 && vec.x < 0) return;
+		if (pos.m_pos.x == level_size.x - 1 && vec.x > 0) return;
+		if (pos.m_pos.y == 0 && vec.y < 0) return;
+		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return;
 
-		auto const target = player.m_position + glm::size2(vec);
+		auto const target = pos.m_pos + glm::size2(vec);
 
 		if (level.at(target).m_flags & feature::flags::NO_WALK)
 			return;
 		
-		player.m_position = target;
+		pos.m_pos = target;
 	}
 
-	bool use_stairs(player& player, bump::grid2<feature> const& level, stairs_direction dir)
+	bool use_stairs(entt::handle player_handle, bump::grid2<feature> const& level, stairs_direction dir)
 	{
 		auto const level_size = level.extents();
 
+		auto const& pos = player_handle.get<comp_position>();
+
 		bump::die_if(level_size.x == 0 || level_size.y == 0);
-		bump::die_if(player.m_position.x >= level_size.x || player.m_position.y >= level_size.y);
+		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
 
 		if (dir == stairs_direction::UP)
 		{
-			if (!(level.at(player.m_position).m_flags & feature::flags::STAIRS_UP))
+			if (!(level.at(pos.m_pos).m_flags & feature::flags::STAIRS_UP))
 			{
 				bump::log_info("There are no upward stairs here.");
 				return false;
@@ -75,7 +89,7 @@ namespace rog
 		}
 		else
 		{
-			if (!(level.at(player.m_position).m_flags & feature::flags::STAIRS_DOWN))
+			if (!(level.at(pos.m_pos).m_flags & feature::flags::STAIRS_DOWN))
 			{
 				bump::log_info("There are no downward stairs here.");
 				return false;
@@ -91,12 +105,12 @@ namespace rog
 		std::queue<bump::input::input_event>& input_events, 
 		bump::grid2<screen::cell>& screen_buffer, 
 		bool const& request_quit,
-		rog::player& player,
 		std::int32_t level_depth)
 	{
 		using namespace bump;
 
 		auto level = level_gen::generate_level(level_depth);
+		auto player = create_player_entity(level.m_registry);
 		
 		while (true)
 		{
@@ -115,22 +129,22 @@ namespace rog
 				{
 					auto const& key = std::get<input::input_events::keyboard_key>(event);
 
-					     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) move_player(player, level.m_grid, direction::LEFT_UP);
-					else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) move_player(player, level.m_grid, direction::UP);
-					else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_UP);
-					else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) move_player(player, level.m_grid, direction::LEFT);
-					else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) move_player(player, level.m_grid, direction::RIGHT);
-					else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) move_player(player, level.m_grid, direction::LEFT_DOWN);
-					else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) move_player(player, level.m_grid, direction::DOWN);
-					else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) move_player(player, level.m_grid, direction::RIGHT_DOWN);
+					     if (key.m_key == input::keyboard_key::NUM7 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::LEFT_UP);
+					else if (key.m_key == input::keyboard_key::NUM8 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::UP);
+					else if (key.m_key == input::keyboard_key::NUM9 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::RIGHT_UP);
+					else if (key.m_key == input::keyboard_key::NUM4 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::LEFT);
+					else if (key.m_key == input::keyboard_key::NUM6 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::RIGHT);
+					else if (key.m_key == input::keyboard_key::NUM1 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::LEFT_DOWN);
+					else if (key.m_key == input::keyboard_key::NUM2 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::DOWN);
+					else if (key.m_key == input::keyboard_key::NUM3 && key.m_value) move_player({ level.m_registry, player }, level.m_grid, direction::RIGHT_DOWN);
 
 					else if (key.m_key == input::keyboard_key::DOT && key.m_value && 
 							app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-							use_stairs(player, level.m_grid, stairs_direction::DOWN))
+							use_stairs({ level.m_registry, player }, level.m_grid, stairs_direction::DOWN))
 						change_level = stairs_direction::DOWN;
 					else if (key.m_key == input::keyboard_key::COMMA && key.m_value && 
 							app.m_input_handler.is_keyboard_key_pressed(bump::input::keyboard_key::LEFTSHIFT) && 
-							use_stairs(player, level.m_grid, stairs_direction::UP))
+							use_stairs({ level.m_registry, player }, level.m_grid, stairs_direction::UP))
 						change_level = stairs_direction::UP;
 					
 					else if (key.m_key == input::keyboard_key::ESCAPE && key.m_value)
@@ -143,13 +157,16 @@ namespace rog
 			if (change_level)
 			{
 				auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
-				return { [&, next_depth] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, player, next_depth); } };
+				return { [&, next_depth] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, next_depth); } };
 			}
 
 			// drawing!
 			{
+				auto const& player_pos = level.m_registry.get<comp_position>(player);
+				auto const& player_vis = level.m_registry.get<comp_visual>(player);
+
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level.m_grid, player);
+				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
 			}
 		}
 
@@ -166,9 +183,7 @@ namespace rog
 	{
 		using namespace bump;
 
-		auto player = rog::player(glm::size2(0), { '@', colors::yellow, colors::black });
-
-		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, player, 1); } };
+		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, ts, input_events, screen_buffer, request_quit, 1); } };
 		bump::run_state(state_wrapper, app);
 
 		game_thread_done = true;
@@ -245,6 +260,7 @@ namespace rog
 
 				}
 
+				// update
 				ts.notify_game_thread_and_wait();
 				
 				if (game_thread_done)

@@ -90,13 +90,13 @@ namespace rog
 			};
 		}
 
-		void draw(bump::grid2<cell>& buffer, bump::grid2<feature> const& grid, player const& player)
+		void draw(bump::grid2<cell>& buffer, bump::grid2<feature> const& grid, glm::size2 player_pos, cell const& player_cell)
 		{
 			auto const level_size = grid.extents();
 			auto const panel_size = glm::size2(buffer.extents()); // todo: no! pass it in!
 			
 			// calculate origin of screen buffer area in level coords
-			auto const panel_origin = get_panel_origin(level_size, panel_size, player.m_position);
+			auto const panel_origin = get_panel_origin(level_size, panel_size, player_pos);
 
 			auto const panel_max = glm::min(panel_origin + panel_size, level_size);
 			auto const panel_max_size = (panel_max - panel_origin);
@@ -112,8 +112,8 @@ namespace rog
 			}
 			
 			// draw player
-			auto const panel_player = (player.m_position - panel_origin);
-			buffer.at(panel_player) = player.m_cell;
+			auto const panel_player = (player_pos - panel_origin);
+			buffer.at(panel_player) = player_cell;
 		}
 		
 	} // screen

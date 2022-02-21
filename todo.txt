@@ -1,15 +1,16 @@
 
 TODO:
 
-Input:
-	* Add some kind of switch between game logic and frames.
-
 Turn logic:
 
+	* Add player entity creation function (move to rog_player.cpp)
+	* Move player movement functions to rog_player.cpp.
+	
 	* Add energy to the player to enable movement.
 	* Add AI (that also accumulate energy).
 
 Mouse input:
+
 	* Do pathfinding to locations, and move there... once per turn
 	* Clamp the tick rate to a real-time value.
 

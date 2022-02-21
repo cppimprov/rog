@@ -79,9 +79,9 @@ namespace rog
 			bump::die_if(depth < 1);
 			bump::die_if(depth > 5);
 
-			if (depth == 1) return { depth, level_1 };
-			if (depth == 2) return { depth, level_2 };
-			if (depth == 3) return { depth, level_3 };
+			if (depth == 1) return { depth, level_1, {} };
+			if (depth == 2) return { depth, level_2, {} };
+			if (depth == 3) return { depth, level_3, {} };
 
 			bump::die(); // unreachable
 		}
