@@ -290,7 +290,7 @@ namespace bump
 			return pos;
 		}
 		
-		void input_handler::poll(std::queue<input::input_event>& input_events, std::queue<input::app_event>& app_events)
+		void input_handler::poll(std::queue<input::app_event>& app_events, std::queue<input::input_event>& input_events)
 		{
 			SDL_Event e;
 			while (SDL_PollEvent(&e))

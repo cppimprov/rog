@@ -5,7 +5,15 @@ TODO:
 
 Turn logic:
 
-	* Rethink!
+	* Change order of input_events and app_events in poll().
+	* Intepret input events when they happen, and queue an "action" to happen
+	  in the update phase.
+
+	* Process the action in the update phase.
+	* Do we wnat to check that actions are possible immediately?
+	* What to do if an action becomes impossible by the player turn?
+
+	* Move actor stuff to a separate file.
 	* Add an ai that moves randomly in bounds (for now).
 
 Mouse input:

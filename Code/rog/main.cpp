@@ -6,7 +6,6 @@
 #include "rog_level_gen.hpp"
 #include "rog_player.hpp"
 #include "rog_screen_drawing.hpp"
-#include "rog_thread_context.hpp"
 #include "rog_tile_renderer.hpp"
 
 #include <bump_app.hpp>
@@ -57,159 +56,83 @@ namespace rog
 		actor_handle.get<comp_actor>().m_energy -= ACTOR_ENERGY_PER_TURN;
 	}
 
-	void player_update(entt::handle player_handle, thread_context& tc, level const& level, bool& quit, std::optional<stairs_direction>& change_level)
-	{
-		tc.m_switch.notify_main_thread_and_wait();
+	// void player_update(entt::handle player_handle, level const& level, bool& quit, std::optional<stairs_direction>& change_level)
+	// {
+	// 	while (!tc.m_events.empty())
+	// 	{
+	// 		auto event = std::move(tc.m_events.front());
+	// 		tc.m_events.pop();
 
-		if (tc.m_main_thread_request_quit)
-			return;
+	// 		namespace ie = bump::input::input_events;
+	// 		using kt = bump::input::keyboard_key;
 
-		while (!tc.m_events.empty())
-		{
-			auto event = std::move(tc.m_events.front());
-			tc.m_events.pop();
+	// 		if (std::holds_alternative<ie::keyboard_key>(event))
+	// 		{
+	// 			auto const& key = std::get<ie::keyboard_key>(event);
 
-			namespace ie = bump::input::input_events;
-			using kt = bump::input::keyboard_key;
+	// 			     if (key.m_key == kt::NUM7 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_UP)) return; }
+	// 			else if (key.m_key == kt::NUM8 && key.m_value) { if (player_move(player_handle, level, direction::UP)) return; }
+	// 			else if (key.m_key == kt::NUM9 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_UP)) return; }
+	// 			else if (key.m_key == kt::NUM4 && key.m_value) { if (player_move(player_handle, level, direction::LEFT)) return; }
+	// 			else if (key.m_key == kt::NUM6 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT)) return; }
+	// 			else if (key.m_key == kt::NUM1 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_DOWN)) return; }
+	// 			else if (key.m_key == kt::NUM2 && key.m_value) { if (player_move(player_handle, level, direction::DOWN)) return; }
+	// 			else if (key.m_key == kt::NUM3 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_DOWN)) return; }
 
-			if (std::holds_alternative<ie::keyboard_key>(event))
-			{
-				auto const& key = std::get<ie::keyboard_key>(event);
+	// 			else if (key.m_key == kt::DOT && key.m_value && key.m_mods.shift() &&
+	// 			         player_use_stairs(player_handle, level, stairs_direction::DOWN))
+	// 			{
+	// 				change_level = stairs_direction::DOWN;
+	// 				return;
+	// 			}
+	// 			else if (key.m_key == kt::COMMA && key.m_value && key.m_mods.shift() &&
+	// 			         player_use_stairs(player_handle, level, stairs_direction::UP))
+	// 			{
+	// 				change_level = stairs_direction::UP;
+	// 				return;
+	// 			}
+	// 			else if (key.m_key == kt::ESCAPE && key.m_value)
+	// 			{
+	// 				quit = true;
+	// 				return;
+	// 			}
 
-				     if (key.m_key == kt::NUM7 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_UP)) return; }
-				else if (key.m_key == kt::NUM8 && key.m_value) { if (player_move(player_handle, level, direction::UP)) return; }
-				else if (key.m_key == kt::NUM9 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_UP)) return; }
-				else if (key.m_key == kt::NUM4 && key.m_value) { if (player_move(player_handle, level, direction::LEFT)) return; }
-				else if (key.m_key == kt::NUM6 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT)) return; }
-				else if (key.m_key == kt::NUM1 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_DOWN)) return; }
-				else if (key.m_key == kt::NUM2 && key.m_value) { if (player_move(player_handle, level, direction::DOWN)) return; }
-				else if (key.m_key == kt::NUM3 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_DOWN)) return; }
-
-				else if (key.m_key == kt::DOT && key.m_value && key.m_mods.shift() &&
-				         player_use_stairs(player_handle, level, stairs_direction::DOWN))
-				{
-					change_level = stairs_direction::DOWN;
-					return;
-				}
-				else if (key.m_key == kt::COMMA && key.m_value && key.m_mods.shift() &&
-				         player_use_stairs(player_handle, level, stairs_direction::UP))
-				{
-					change_level = stairs_direction::UP;
-					return;
-				}
-				else if (key.m_key == kt::ESCAPE && key.m_value)
-				{
-					quit = true;
-					return;
-				}
-
-				continue;
-			}
-		}
-	}
+	// 			continue;
+	// 		}
+	// 	}
+	// }
 
 	auto constexpr TIME_PER_CYCLE = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::duration<float>(0.05f));
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
 
-	bump::gamestate play_level(
-		bump::app& , 
-		thread_context& tc,
-		bump::grid2<screen::cell>& screen_buffer, 
-		std::int32_t level_depth)
+	bump::gamestate main_loop(bump::app& app, std::int32_t level_depth)
 	{
-		auto level = level_gen::generate_level(level_depth);
-		auto player = player_create_entity(level.m_registry);
-
-		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
-		auto time_accumulator = bump::high_res_duration_t{ 0 };
-		
-		while (true)
-		{
-			// drawing:
-			{
-				auto const& player_pos = level.m_registry.get<comp_position>(player);
-				auto const& player_vis = level.m_registry.get<comp_visual>(player);
-
-				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
-			}
-
-			time_accumulator += timer.get_last_frame_time();
-
-			// update:
-			if (time_accumulator >= TIME_PER_CYCLE)
-			{
-				time_accumulator -= TIME_PER_CYCLE;
-
-				actors_add_energy(level.m_registry);
-
-				if (actor_has_turn_energy({ level.m_registry, player }))
-				{
-					bool quit = false;
-					auto change_level = std::optional<stairs_direction>();
-
-					player_update({ level.m_registry, player }, tc, level, quit, change_level);
-
-					if (tc.m_main_thread_request_quit || quit)
-						return { }; // todo: save game etc.
-					
-					if (change_level)
-					{
-						auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
-						return { [&, next_depth] (bump::app& app) { return play_level(app, tc, screen_buffer, next_depth); } };
-					}
-
-					actor_take_turn_energy({ level.m_registry, player });
-				}
-
-				// todo: other actor turns!
-			}
-
-			timer.tick();
-		}
-
-		return { };
-	}
-
-	void play_game(bump::app& app, thread_context& tc, bump::grid2<screen::cell>& screen_buffer)
-	{
-		using namespace bump;
-
-		auto state_wrapper = bump::gamestate{ [&] (bump::app& app) { return play_level(app, tc, screen_buffer, 1); } };
-		bump::run_state(state_wrapper, app);
-
-		tc.m_game_thread_done = true;
-		tc.m_switch.notify_main_thread();
-	}
-
-	void main_loop(bump::app& app)
-	{
-		using namespace bump;
-
-		log_info("main loop - start");
+		bump::log_info("main loop - start");
 
 		// setup
 		auto const tile_size = glm::ivec2{ 24, 36 };
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
-		auto screen_buffer = grid2<screen::cell>();
+		auto screen_buffer = bump::grid2<screen::cell>();
 		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
 
-		// start game thread
-		auto tc = thread_context();
-		auto app_events = std::queue<input::app_event>();
-		auto game_thread = std::thread(play_game, std::ref(app), std::ref(tc), std::ref(screen_buffer));
-		tc.m_switch.notify_game_thread_and_wait();
+		auto app_events   = std::queue<bump::input::app_event>();
+		auto input_events = std::queue<bump::input::input_event>();
 
 		// main loop
 		auto paused = false;
-		auto timer = frame_timer();
+		
+		auto level = level_gen::generate_level(level_depth);
+		auto player = player_create_entity(level.m_registry);
+
+		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
+		auto time_accumulator = bump::high_res_duration_t{ 0 };
 
 		while (true)
 		{
 			// input
 			{
-				app.m_input_handler.poll(tc.m_events, app_events);
+				app.m_input_handler.poll(app_events, input_events);
 
 				// process app events:
 				while (!app_events.empty())
@@ -217,16 +140,14 @@ namespace rog
 					auto event = std::move(app_events.front());
 					app_events.pop();
 
-					if (std::holds_alternative<input::app_events::quit>(event))
-					{
-						tc.m_main_thread_request_quit = true;
+					namespace ae = bump::input::app_events;
 
-						break;
-					}
+					if (std::holds_alternative<ae::quit>(event))
+						return { }; // todo: save!
 
-					if (std::holds_alternative<input::app_events::pause>(event))
+					if (std::holds_alternative<ae::pause>(event))
 					{
-						auto const& p = std::get<input::app_events::pause>(event);
+						auto const& p = std::get<ae::pause>(event);
 
 						// todo: we probably want to recognise the actual event and do
 						// some things (mute audio, not send input to game thread, not 
@@ -236,9 +157,9 @@ namespace rog
 						continue;
 					}
 
-					if (std::holds_alternative<input::app_events::resize>(event))
+					if (std::holds_alternative<ae::resize>(event))
 					{
-						auto const& r = std::get<input::app_events::resize>(event);
+						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
 
 						screen::resize(screen_buffer, window_size, tile_size, 
@@ -247,14 +168,74 @@ namespace rog
 						continue;
 					}
 				}
+
+				// process input events:
+				while (!input_events.empty())
+				{
+					auto event = std::move(input_events.front());
+					input_events.pop();
+
+					namespace ie = bump::input::input_events;
+
+					if (std::holds_alternative<ie::keyboard_key>(event))
+					{
+						auto const& k = std::get<ie::keyboard_key>(event);
+
+						using kt = bump::input::keyboard_key;
+
+						if (k.m_key == kt::ESCAPE && k.m_value)
+							return { }; // todo: save!
+
+						// ...
+						
+						continue;
+					}
+				}
 			}
 
 			// update
 			{
-				tc.m_switch.notify_game_thread_and_wait();
-				
-				if (tc.m_game_thread_done)
-					break;
+				time_accumulator += timer.get_last_frame_time();
+
+				// update:
+				if (time_accumulator >= TIME_PER_CYCLE)
+				{
+					time_accumulator -= TIME_PER_CYCLE;
+
+					actors_add_energy(level.m_registry);
+
+					if (actor_has_turn_energy({ level.m_registry, player }))
+					{
+						bool quit = false;
+						auto change_level = std::optional<stairs_direction>();
+
+						bump::log_info("player turn!");
+
+						//player_update({ level.m_registry, player }, level, quit, change_level);
+
+						if (quit)
+							return { }; // todo: save game etc.
+						
+						if (change_level)
+						{
+							auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
+							return { [&, next_depth] (bump::app& app) { return main_loop(app, next_depth); } };
+						}
+
+						actor_take_turn_energy({ level.m_registry, player });
+					}
+
+					// todo: other actor turns!
+				}
+			}
+			
+			// drawing - todo: not every frame?
+			{
+				auto const& player_pos = level.m_registry.get<comp_position>(player);
+				auto const& player_vis = level.m_registry.get<comp_visual>(player);
+
+				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
+				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
 			}
 
 			// render
@@ -277,9 +258,7 @@ namespace rog
 			timer.tick();
 		}
 	
-		game_thread.join();
-
-		log_info("main loop - exit");
+		bump::log_info("main loop - exit");
 	}
 
 } // rog
@@ -321,7 +300,7 @@ int main(int , char* [])
 		};
 
 		auto app = bump::app(metadata, { 1024, 768 }, "rog", bump::sdl::window::display_mode::WINDOWED);
-		rog::main_loop(app);
+		bump::run_state({ [] (bump::app& app) { return rog::main_loop(app, 1); } }, app);
 	}
 
 	bump::log_info("done!");
