@@ -15,7 +15,7 @@ namespace rog
 	struct level;
 	
 	entt::entity player_create_entity(entt::registry& registry);
-	void player_move(entt::handle player_handle, level const& level, direction dir);
+	bool player_move(entt::handle player_handle, level const& level, direction dir);
 	bool player_use_stairs(entt::handle player_handle, level const& level, stairs_direction dir);
 
 } // rog

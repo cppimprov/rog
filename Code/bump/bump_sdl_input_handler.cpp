@@ -242,6 +242,26 @@ namespace bump
 			{
 				return (value < 0 ? static_cast<float>(value) / 32768 : static_cast<float>(value) / 32767);
 			}
+
+			input::key_modifiers sdl_keymod_to_key_modifiers(SDL_Keymod mod)
+			{
+				using flags = input::key_modifiers::flags;
+
+				auto value = std::uint32_t{ 0 };
+				value |= (mod & KMOD_LSHIFT) ? flags::LSHIFT : 0;
+				value |= (mod & KMOD_RSHIFT) ? flags::RSHIFT : 0;
+				value |= (mod & KMOD_LCTRL)  ? flags::LCTRL  : 0;
+				value |= (mod & KMOD_RCTRL)  ? flags::RCTRL  : 0;
+				value |= (mod & KMOD_LALT)   ? flags::LALT   : 0;
+				value |= (mod & KMOD_RALT)   ? flags::RALT   : 0;
+				value |= (mod & KMOD_MODE)   ? flags::ALTGR  : 0;
+				value |= (mod & KMOD_LGUI)   ? flags::LGUI   : 0;
+				value |= (mod & KMOD_RGUI)   ? flags::RGUI   : 0;
+				value |= (mod & KMOD_CAPS)   ? flags::CAPS   : 0;
+				value |= (mod & KMOD_NUM)    ? flags::NUM    : 0;
+
+				return input::key_modifiers{ value };
+			}
 			
 		} // unnamed
 
@@ -341,9 +361,10 @@ namespace bump
 				if (e.type == SDL_MOUSEMOTION)
 				{
 					auto const motion = glm::ivec2{ e.motion.xrel, -e.motion.yrel };
+					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
 
 					if (motion.x != 0 || motion.y != 0)
-						input_events.emplace(input::input_events::mouse_motion{ motion });
+						input_events.emplace(input::input_events::mouse_motion{ motion, mods });
 
 					continue;
 				}
@@ -351,8 +372,9 @@ namespace bump
 				{
 					auto const id = sdl_mousebutton_to_mouse_button(e.button.button);
 					auto const value = (e.button.state == SDL_PRESSED);
+					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
 
-					input_events.emplace(input::input_events::mouse_button{ id, value });
+					input_events.emplace(input::input_events::mouse_button{ id, value, mods });
 					
 					continue;
 				}
@@ -363,8 +385,10 @@ namespace bump
 							glm::ivec2{  e.wheel.x,  e.wheel.y } :
 							glm::ivec2{ -e.wheel.x, -e.wheel.y };
 					
+					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
+
 					if (motion.x != 0 || motion.y != 0)
-						input_events.emplace(input::input_events::mouse_wheel{ motion });
+						input_events.emplace(input::input_events::mouse_wheel{ motion, mods });
 					
 					continue;
 				}
@@ -374,8 +398,9 @@ namespace bump
 				{
 					auto const id = sdl_scancode_to_keyboard_key(e.key.keysym.scancode);
 					auto const value = (e.key.state == SDL_PRESSED);
+					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
 
-					input_events.emplace(input::input_events::keyboard_key{ id, value });
+					input_events.emplace(input::input_events::keyboard_key{ id, value, mods });
 					
 					continue;
 				}

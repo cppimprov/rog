@@ -78,16 +78,57 @@ namespace bump
 
 			TRIGGER_LEFT, TRIGGER_RIGHT,
 		};
-		
+
 		std::string gamepad_axis_to_string(gamepad_axis key);
 		gamepad_axis gamepad_axis_from_string(std::string const& str);
 
+		struct key_modifiers
+		{
+			enum flags : std::uint32_t
+			{
+				LSHIFT = 1u << 1,
+				RSHIFT = 1u << 2,
+				LCTRL  = 1u << 3,
+				RCTRL  = 1u << 4,
+				LALT   = 1u << 5,
+				RALT   = 1u << 6,
+				ALTGR  = 1u << 7,
+				LGUI   = 1u << 8,
+				RGUI   = 1u << 9,
+				CAPS   = 1u << 10,
+				NUM    = 1u << 11,
+			};
+
+			bool left_shift() const  { return (m_value & flags::LSHIFT) != 0; }
+			bool right_shift() const { return (m_value & flags::RSHIFT) != 0; }
+			bool shift() const       { return left_shift() || right_shift(); }
+
+			bool left_ctrl() const   { return (m_value & flags::LCTRL) != 0; }
+			bool right_ctrl() const  { return (m_value & flags::RCTRL) != 0; }
+			bool ctrl() const        { return left_ctrl() || right_ctrl(); }
+
+			bool left_alt() const    { return (m_value & flags::LALT) != 0; }
+			bool right_alt() const   { return (m_value & flags::RALT) != 0; }
+			bool alt() const         { return left_alt() || right_alt(); }
+
+			bool alt_gr() const      { return (m_value & flags::ALTGR) != 0; }
+
+			bool left_gui() const    { return (m_value & flags::LGUI) != 0; }
+			bool right_gui() const   { return (m_value & flags::RGUI) != 0; }
+			bool gui() const         { return left_gui() || right_gui(); }
+
+			bool caps_lock() const   { return (m_value & flags::CAPS) != 0; }
+			bool num_lock() const    { return (m_value & flags::NUM) != 0; }
+
+			std::uint32_t m_value;
+		};
+
 		namespace input_events
 		{
-			struct keyboard_key   { input::keyboard_key m_key; bool m_value; };
-			struct mouse_button   { input::mouse_button m_button; bool m_value; };
-			struct mouse_wheel    { glm::ivec2 m_motion; };
-			struct mouse_motion   { glm::ivec2 m_motion; };
+			struct keyboard_key   { input::keyboard_key m_key; bool m_value; key_modifiers m_mods; };
+			struct mouse_button   { input::mouse_button m_button; bool m_value; key_modifiers m_mods; };
+			struct mouse_wheel    { glm::ivec2 m_motion; key_modifiers m_mods; };
+			struct mouse_motion   { glm::ivec2 m_motion; key_modifiers m_mods; };
 			struct gamepad_button { input::gamepad_button m_button; bool m_value; };
 			struct gamepad_axis   { input::gamepad_axis m_axis; float m_value; };
 		}

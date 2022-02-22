@@ -20,7 +20,7 @@ namespace rog
 		return player;
 	}
 
-	void player_move(entt::handle player_handle, level const& level, direction dir)
+	bool player_move(entt::handle player_handle, level const& level, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);
 		auto const& grid = level.m_grid;
@@ -31,17 +31,19 @@ namespace rog
 		bump::die_if(level_size.x == 0 || level_size.y == 0);
 		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
 
-		if (pos.m_pos.x == 0 && vec.x < 0) return;
-		if (pos.m_pos.x == level_size.x - 1 && vec.x > 0) return;
-		if (pos.m_pos.y == 0 && vec.y < 0) return;
-		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return;
+		if (pos.m_pos.x == 0 && vec.x < 0) return false;
+		if (pos.m_pos.x == level_size.x - 1 && vec.x > 0) return false;
+		if (pos.m_pos.y == 0 && vec.y < 0) return false;
+		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return false;
 
 		auto const target = pos.m_pos + glm::size2(vec);
 
 		if (grid.at(target).m_flags & feature::flags::NO_WALK)
-			return;
+			return false;
 		
 		pos.m_pos = target;
+
+		return true;
 	}
 
 	bool player_use_stairs(entt::handle player_handle, level const& level, stairs_direction dir)

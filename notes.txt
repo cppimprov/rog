@@ -1,21 +1,15 @@
 
+INPUT STUFF:
 
+we want a ui, which we can interact with at any time...
+we want to show the player their queued action(s).
 
+and we want to show the player a "turn timer" widget (a progress bar that fills
+up per player turn), so we want the timer to be visible in the main-thread too.
 
+:(
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+I think maybe we actually need to re-integrate the game / frame logic???
 
 
 

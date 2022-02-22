@@ -5,6 +5,7 @@ TODO:
 
 Turn logic:
 
+	* Rethink!
 	* Add an ai that moves randomly in bounds (for now).
 
 Mouse input:

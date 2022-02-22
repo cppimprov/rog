@@ -6,7 +6,7 @@
 #include "rog_level_gen.hpp"
 #include "rog_player.hpp"
 #include "rog_screen_drawing.hpp"
-#include "rog_thread_switch.hpp"
+#include "rog_thread_context.hpp"
 #include "rog_tile_renderer.hpp"
 
 #include <bump_app.hpp>
@@ -57,80 +57,71 @@ namespace rog
 		actor_handle.get<comp_actor>().m_energy -= ACTOR_ENERGY_PER_TURN;
 	}
 
-	struct thread_context
+	void player_update(entt::handle player_handle, thread_context& tc, level const& level, bool& quit, std::optional<stairs_direction>& change_level)
 	{
-		thread_switch m_switch;
-		std::queue<bump::input::input_event> m_events;
-		bool m_main_thread_request_quit = false;
-		bool m_game_thread_done = false;
-	};
+		tc.m_switch.notify_main_thread_and_wait();
 
-	void player_update(entt::handle player_handle, bump::app& app, thread_context& tc, level const& level, bool& quit, std::optional<stairs_direction>& change_level)
-	{
-		while (true)
+		if (tc.m_main_thread_request_quit)
+			return;
+
+		while (!tc.m_events.empty())
 		{
-			tc.m_switch.notify_main_thread_and_wait();
+			auto event = std::move(tc.m_events.front());
+			tc.m_events.pop();
 
-			if (tc.m_main_thread_request_quit)
-				return;
+			namespace ie = bump::input::input_events;
+			using kt = bump::input::keyboard_key;
 
-			while (!tc.m_events.empty())
+			if (std::holds_alternative<ie::keyboard_key>(event))
 			{
-				auto event = std::move(tc.m_events.front());
-				tc.m_events.pop();
+				auto const& key = std::get<ie::keyboard_key>(event);
 
-				namespace ie = bump::input::input_events;
-				using kt = bump::input::keyboard_key;
+				     if (key.m_key == kt::NUM7 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_UP)) return; }
+				else if (key.m_key == kt::NUM8 && key.m_value) { if (player_move(player_handle, level, direction::UP)) return; }
+				else if (key.m_key == kt::NUM9 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_UP)) return; }
+				else if (key.m_key == kt::NUM4 && key.m_value) { if (player_move(player_handle, level, direction::LEFT)) return; }
+				else if (key.m_key == kt::NUM6 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT)) return; }
+				else if (key.m_key == kt::NUM1 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_DOWN)) return; }
+				else if (key.m_key == kt::NUM2 && key.m_value) { if (player_move(player_handle, level, direction::DOWN)) return; }
+				else if (key.m_key == kt::NUM3 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_DOWN)) return; }
 
-				if (std::holds_alternative<ie::keyboard_key>(event))
+				else if (key.m_key == kt::DOT && key.m_value && key.m_mods.shift() &&
+				         player_use_stairs(player_handle, level, stairs_direction::DOWN))
 				{
-					auto const& key = std::get<ie::keyboard_key>(event);
-
-					     if (key.m_key == kt::NUM7 && key.m_value) { player_move(player_handle, level, direction::LEFT_UP); return; }
-					else if (key.m_key == kt::NUM8 && key.m_value) { player_move(player_handle, level, direction::UP); return; }
-					else if (key.m_key == kt::NUM9 && key.m_value) { player_move(player_handle, level, direction::RIGHT_UP); return; }
-					else if (key.m_key == kt::NUM4 && key.m_value) { player_move(player_handle, level, direction::LEFT); return; }
-					else if (key.m_key == kt::NUM6 && key.m_value) { player_move(player_handle, level, direction::RIGHT); return; }
-					else if (key.m_key == kt::NUM1 && key.m_value) { player_move(player_handle, level, direction::LEFT_DOWN); return; }
-					else if (key.m_key == kt::NUM2 && key.m_value) { player_move(player_handle, level, direction::DOWN); return; }
-					else if (key.m_key == kt::NUM3 && key.m_value) { player_move(player_handle, level, direction::RIGHT_DOWN); return; }
-
-					else if (key.m_key == kt::DOT && key.m_value && 
-					         app.m_input_handler.is_keyboard_key_pressed(kt::LEFTSHIFT) && 
-					         player_use_stairs(player_handle, level, stairs_direction::DOWN))
-					{
-						change_level = stairs_direction::DOWN;
-						return;
-					}
-					else if (key.m_key == kt::COMMA && key.m_value && 
-					         app.m_input_handler.is_keyboard_key_pressed(kt::LEFTSHIFT) && 
-					         player_use_stairs(player_handle, level, stairs_direction::UP))
-					{
-						change_level = stairs_direction::UP;
-						return;
-					}
-					else if (key.m_key == kt::ESCAPE && key.m_value)
-					{
-						quit = true;
-						return;
-					}
-
-					continue;
+					change_level = stairs_direction::DOWN;
+					return;
 				}
+				else if (key.m_key == kt::COMMA && key.m_value && key.m_mods.shift() &&
+				         player_use_stairs(player_handle, level, stairs_direction::UP))
+				{
+					change_level = stairs_direction::UP;
+					return;
+				}
+				else if (key.m_key == kt::ESCAPE && key.m_value)
+				{
+					quit = true;
+					return;
+				}
+
+				continue;
 			}
 		}
 	}
 
+	auto constexpr TIME_PER_CYCLE = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::duration<float>(0.05f));
+	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
+
 	bump::gamestate play_level(
-		bump::app& app, 
+		bump::app& , 
 		thread_context& tc,
 		bump::grid2<screen::cell>& screen_buffer, 
 		std::int32_t level_depth)
 	{
-		using namespace bump;
-
 		auto level = level_gen::generate_level(level_depth);
 		auto player = player_create_entity(level.m_registry);
+
+		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
+		auto time_accumulator = bump::high_res_duration_t{ 0 };
 		
 		while (true)
 		{
@@ -143,8 +134,13 @@ namespace rog
 				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
 			}
 
+			time_accumulator += timer.get_last_frame_time();
+
 			// update:
+			if (time_accumulator >= TIME_PER_CYCLE)
 			{
+				time_accumulator -= TIME_PER_CYCLE;
+
 				actors_add_energy(level.m_registry);
 
 				if (actor_has_turn_energy({ level.m_registry, player }))
@@ -152,7 +148,7 @@ namespace rog
 					bool quit = false;
 					auto change_level = std::optional<stairs_direction>();
 
-					player_update({ level.m_registry, player }, app, tc, level, quit, change_level);
+					player_update({ level.m_registry, player }, tc, level, quit, change_level);
 
 					if (tc.m_main_thread_request_quit || quit)
 						return { }; // todo: save game etc.
@@ -168,6 +164,8 @@ namespace rog
 
 				// todo: other actor turns!
 			}
+
+			timer.tick();
 		}
 
 		return { };
@@ -249,7 +247,6 @@ namespace rog
 						continue;
 					}
 				}
-
 			}
 
 			// update
