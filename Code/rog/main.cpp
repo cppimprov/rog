@@ -56,51 +56,21 @@ namespace rog
 		actor_handle.get<comp_actor>().m_energy -= ACTOR_ENERGY_PER_TURN;
 	}
 
-	// void player_update(entt::handle player_handle, level const& level, bool& quit, std::optional<stairs_direction>& change_level)
-	// {
-	// 	while (!tc.m_events.empty())
-	// 	{
-	// 		auto event = std::move(tc.m_events.front());
-	// 		tc.m_events.pop();
+	namespace actions
+	{
 
-	// 		namespace ie = bump::input::input_events;
-	// 		using kt = bump::input::keyboard_key;
+		struct move { direction m_dir; };
+		struct use_stairs { stairs_direction m_dir; };
 
-	// 		if (std::holds_alternative<ie::keyboard_key>(event))
-	// 		{
-	// 			auto const& key = std::get<ie::keyboard_key>(event);
+	} // actions
 
-	// 			     if (key.m_key == kt::NUM7 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_UP)) return; }
-	// 			else if (key.m_key == kt::NUM8 && key.m_value) { if (player_move(player_handle, level, direction::UP)) return; }
-	// 			else if (key.m_key == kt::NUM9 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_UP)) return; }
-	// 			else if (key.m_key == kt::NUM4 && key.m_value) { if (player_move(player_handle, level, direction::LEFT)) return; }
-	// 			else if (key.m_key == kt::NUM6 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT)) return; }
-	// 			else if (key.m_key == kt::NUM1 && key.m_value) { if (player_move(player_handle, level, direction::LEFT_DOWN)) return; }
-	// 			else if (key.m_key == kt::NUM2 && key.m_value) { if (player_move(player_handle, level, direction::DOWN)) return; }
-	// 			else if (key.m_key == kt::NUM3 && key.m_value) { if (player_move(player_handle, level, direction::RIGHT_DOWN)) return; }
+	using action = std::variant
+	<
+		actions::move,
+		actions::use_stairs
+	>;
 
-	// 			else if (key.m_key == kt::DOT && key.m_value && key.m_mods.shift() &&
-	// 			         player_use_stairs(player_handle, level, stairs_direction::DOWN))
-	// 			{
-	// 				change_level = stairs_direction::DOWN;
-	// 				return;
-	// 			}
-	// 			else if (key.m_key == kt::COMMA && key.m_value && key.m_mods.shift() &&
-	// 			         player_use_stairs(player_handle, level, stairs_direction::UP))
-	// 			{
-	// 				change_level = stairs_direction::UP;
-	// 				return;
-	// 			}
-	// 			else if (key.m_key == kt::ESCAPE && key.m_value)
-	// 			{
-	// 				quit = true;
-	// 				return;
-	// 			}
-
-	// 			continue;
-	// 		}
-	// 	}
-	// }
+	auto constexpr MAX_QUEUED_ACTIONS = std::size_t{ 5 };
 
 	auto constexpr TIME_PER_CYCLE = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::duration<float>(0.05f));
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
@@ -124,6 +94,9 @@ namespace rog
 		
 		auto level = level_gen::generate_level(level_depth);
 		auto player = player_create_entity(level.m_registry);
+		auto player_handle = entt::handle{ level.m_registry, player };
+
+		auto action_queue = std::deque<action>();
 
 		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
 		auto time_accumulator = bump::high_res_duration_t{ 0 };
@@ -183,10 +156,33 @@ namespace rog
 
 						using kt = bump::input::keyboard_key;
 
+						// app inputs
 						if (k.m_key == kt::ESCAPE && k.m_value)
 							return { }; // todo: save!
 
-						// ...
+						// action inputs
+						if (action_queue.size() < MAX_QUEUED_ACTIONS)
+						{
+							     if (k.m_key == kt::NUM7 && k.m_value) { if (player_can_move(player_handle, level, direction::LEFT_UP)) action_queue.push_back(actions::move{ direction::LEFT_UP }); }
+							else if (k.m_key == kt::NUM8 && k.m_value) { if (player_can_move(player_handle, level, direction::UP)) action_queue.push_back(actions::move{ direction::UP }); }
+							else if (k.m_key == kt::NUM9 && k.m_value) { if (player_can_move(player_handle, level, direction::RIGHT_UP)) action_queue.push_back(actions::move{ direction::RIGHT_UP }); }
+							else if (k.m_key == kt::NUM4 && k.m_value) { if (player_can_move(player_handle, level, direction::LEFT)) action_queue.push_back(actions::move{ direction::LEFT }); }
+							else if (k.m_key == kt::NUM6 && k.m_value) { if (player_can_move(player_handle, level, direction::RIGHT)) action_queue.push_back(actions::move{ direction::RIGHT }); }
+							else if (k.m_key == kt::NUM1 && k.m_value) { if (player_can_move(player_handle, level, direction::LEFT_DOWN)) action_queue.push_back(actions::move{ direction::LEFT_DOWN }); }
+							else if (k.m_key == kt::NUM2 && k.m_value) { if (player_can_move(player_handle, level, direction::DOWN)) action_queue.push_back(actions::move{ direction::DOWN }); }
+							else if (k.m_key == kt::NUM3 && k.m_value) { if (player_can_move(player_handle, level, direction::RIGHT_DOWN)) action_queue.push_back(actions::move{ direction::RIGHT_DOWN }); }
+
+							else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift() &&
+							         player_can_use_stairs(player_handle, level, stairs_direction::DOWN))
+							{
+								action_queue.push_back(actions::use_stairs{ stairs_direction::DOWN });
+							}
+							else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift() &&
+							         player_can_use_stairs(player_handle, level, stairs_direction::UP))
+							{
+								action_queue.push_back(actions::use_stairs{ stairs_direction::UP });
+							}
+						}
 						
 						continue;
 					}
@@ -206,26 +202,62 @@ namespace rog
 
 					if (actor_has_turn_energy({ level.m_registry, player }))
 					{
-						bool quit = false;
-						auto change_level = std::optional<stairs_direction>();
-
 						bump::log_info("player turn!");
 
-						//player_update({ level.m_registry, player }, level, quit, change_level);
-
-						if (quit)
-							return { }; // todo: save game etc.
-						
-						if (change_level)
+						// do player action!
+						if (!action_queue.empty())
 						{
-							auto const next_depth = level_depth + (change_level == stairs_direction::UP ? 1 : -1);
-							return { [&, next_depth] (bump::app& app) { return main_loop(app, next_depth); } };
+							auto action = std::move(action_queue.front());
+							action_queue.pop_front();
+
+							if (std::holds_alternative<actions::move>(action))
+							{
+								auto const& move = std::get<actions::move>(action);
+								player_move(player_handle, level, move.m_dir);
+							}
+							else if (std::holds_alternative<actions::use_stairs>(action))
+							{
+								auto const& use_stairs = std::get<actions::use_stairs>(action);
+								auto const delta_depth = (use_stairs.m_dir == stairs_direction::UP ? +1 : -1);
+								auto const next_depth = level_depth + delta_depth;
+								return { [&, next_depth] (bump::app& app) { return main_loop(app, next_depth); } };
+							}
 						}
 
 						actor_take_turn_energy({ level.m_registry, player });
 					}
 
 					// todo: other actor turns!
+
+					// validate action queue
+					{
+						auto a = action_queue.begin();
+
+						for ( ; a != action_queue.end(); ++a)
+						{
+							if (std::holds_alternative<actions::move>(*a))
+							{
+								auto const& move = std::get<actions::move>(*a);
+								if (!player_can_move(player_handle, level, move.m_dir))
+									break;
+								
+								continue;
+							}
+
+							if (std::holds_alternative<actions::use_stairs>(*a))
+							{
+								auto const& use_stairs = std::get<actions::use_stairs>(*a);
+								if (player_can_use_stairs(player_handle, level, use_stairs.m_dir))
+									break;
+								
+								continue;
+							}
+
+							bump::die(); // should be unreachable
+						}
+
+						action_queue.erase(a, action_queue.end());
+					}
 				}
 			}
 			

@@ -145,7 +145,6 @@ namespace bump
 
 		namespace app_events
 		{
-			// app events
 			struct resize { glm::ivec2 m_size; };
 			struct pause  { bool m_pause; };
 			struct quit   { };
