@@ -4,9 +4,7 @@ TODO:
 
 Turn logic:
 
-	* Make the user able to pause / resume the game.
-
-
+	* Move action stuff to a separate file.
 	* Move actor stuff to a separate file.
 	* Add an ai that moves randomly in bounds (for now).
 
@@ -15,13 +13,13 @@ Mouse input:
 	* Do pathfinding to locations, and move there... once per turn
 	* Clamp the tick rate to a real-time value.
 
+UI:
 
-
+	* Widget to show cycle / turn progress.
+	* Show player queued action (highlight the relevant square background?).
 
 
 
 SOMETIME:
 
  * Registry shouldn't be part of the level class???
- * Check if action queue is full after getting the input, not before, 
-   so we can make an appropriate "nope" noise.

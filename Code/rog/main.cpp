@@ -70,9 +70,7 @@ namespace rog
 		actions::use_stairs
 	>;
 
-	auto constexpr MAX_QUEUED_ACTIONS = std::size_t{ 5 };
-
-	auto constexpr TIME_PER_CYCLE = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::duration<float>(0.05f));
+	auto constexpr TIME_PER_CYCLE = bump::high_res_duration_from_seconds(0.05f);
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
 
 	bump::gamestate main_loop(bump::app& app, std::int32_t level_depth)
@@ -90,13 +88,14 @@ namespace rog
 		auto input_events = std::queue<bump::input::input_event>();
 
 		// main loop
-		auto paused = false;
+		auto app_paused = false;
+		auto player_paused = false;
 		
 		auto level = level_gen::generate_level(level_depth);
 		auto player = player_create_entity(level.m_registry);
 		auto player_handle = entt::handle{ level.m_registry, player };
 
-		auto action_queue = std::deque<action>();
+		auto queued_action = std::optional<action>();
 
 		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
 		auto time_accumulator = bump::high_res_duration_t{ 0 };
@@ -121,11 +120,7 @@ namespace rog
 					if (std::holds_alternative<ae::pause>(event))
 					{
 						auto const& p = std::get<ae::pause>(event);
-
-						// todo: we probably want to recognise the actual event and do
-						// some things (mute audio, not send input to game thread, not 
-						// do rendering, etc.)
-						paused = p.m_pause;
+						app_paused = p.m_pause; // todo: mute audio, etc.
 
 						continue;
 					}
@@ -159,30 +154,31 @@ namespace rog
 						// app inputs
 						if (k.m_key == kt::ESCAPE && k.m_value)
 							return { }; // todo: save!
+						
+						if (k.m_key == kt::SPACE && k.m_value)
+							player_paused = !player_paused;
 
 						// action inputs
-						if (action_queue.size() < MAX_QUEUED_ACTIONS)
-						{
-							     if (k.m_key == kt::NUM7 && k.m_value) { if (player_can_move(player_handle, level, direction::LEFT_UP)) action_queue.push_back(actions::move{ direction::LEFT_UP }); }
-							else if (k.m_key == kt::NUM8 && k.m_value) { if (player_can_move(player_handle, level, direction::UP)) action_queue.push_back(actions::move{ direction::UP }); }
-							else if (k.m_key == kt::NUM9 && k.m_value) { if (player_can_move(player_handle, level, direction::RIGHT_UP)) action_queue.push_back(actions::move{ direction::RIGHT_UP }); }
-							else if (k.m_key == kt::NUM4 && k.m_value) { if (player_can_move(player_handle, level, direction::LEFT)) action_queue.push_back(actions::move{ direction::LEFT }); }
-							else if (k.m_key == kt::NUM6 && k.m_value) { if (player_can_move(player_handle, level, direction::RIGHT)) action_queue.push_back(actions::move{ direction::RIGHT }); }
-							else if (k.m_key == kt::NUM1 && k.m_value) { if (player_can_move(player_handle, level, direction::LEFT_DOWN)) action_queue.push_back(actions::move{ direction::LEFT_DOWN }); }
-							else if (k.m_key == kt::NUM2 && k.m_value) { if (player_can_move(player_handle, level, direction::DOWN)) action_queue.push_back(actions::move{ direction::DOWN }); }
-							else if (k.m_key == kt::NUM3 && k.m_value) { if (player_can_move(player_handle, level, direction::RIGHT_DOWN)) action_queue.push_back(actions::move{ direction::RIGHT_DOWN }); }
+						else if (k.m_key == kt::NUM7 && k.m_value && player_can_move(player_handle, level, direction::LEFT_UP)) queued_action = actions::move{ direction::LEFT_UP };
+						else if (k.m_key == kt::NUM8 && k.m_value && player_can_move(player_handle, level, direction::UP)) queued_action = actions::move{ direction::UP };
+						else if (k.m_key == kt::NUM9 && k.m_value && player_can_move(player_handle, level, direction::RIGHT_UP)) queued_action = actions::move{ direction::RIGHT_UP };
+						else if (k.m_key == kt::NUM4 && k.m_value && player_can_move(player_handle, level, direction::LEFT)) queued_action = actions::move{ direction::LEFT };
+						else if (k.m_key == kt::NUM6 && k.m_value && player_can_move(player_handle, level, direction::RIGHT)) queued_action = actions::move{ direction::RIGHT };
+						else if (k.m_key == kt::NUM1 && k.m_value && player_can_move(player_handle, level, direction::LEFT_DOWN)) queued_action = actions::move{ direction::LEFT_DOWN };
+						else if (k.m_key == kt::NUM2 && k.m_value && player_can_move(player_handle, level, direction::DOWN)) queued_action = actions::move{ direction::DOWN };
+						else if (k.m_key == kt::NUM3 && k.m_value && player_can_move(player_handle, level, direction::RIGHT_DOWN)) queued_action = actions::move{ direction::RIGHT_DOWN };
 
-							else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift() &&
-							         player_can_use_stairs(player_handle, level, stairs_direction::DOWN))
-							{
-								action_queue.push_back(actions::use_stairs{ stairs_direction::DOWN });
-							}
-							else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift() &&
-							         player_can_use_stairs(player_handle, level, stairs_direction::UP))
-							{
-								action_queue.push_back(actions::use_stairs{ stairs_direction::UP });
-							}
+						else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift() &&
+						         player_can_use_stairs(player_handle, level, stairs_direction::DOWN))
+						{
+							queued_action = actions::use_stairs{ stairs_direction::DOWN };
 						}
+						else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift() &&
+						         player_can_use_stairs(player_handle, level, stairs_direction::UP))
+						{
+							queued_action = actions::use_stairs{ stairs_direction::UP };
+						}
+
 						
 						continue;
 					}
@@ -191,12 +187,17 @@ namespace rog
 
 			// update
 			{
-				time_accumulator += timer.get_last_frame_time();
+				if (app_paused || player_paused)
+					time_accumulator = bump::high_res_duration_t{ 0 };
+				else
+					time_accumulator += timer.get_last_frame_time();
 
-				// update:
+				// do cycle
 				if (time_accumulator >= TIME_PER_CYCLE)
 				{
 					time_accumulator -= TIME_PER_CYCLE;
+
+					bump::log_info("cycle");
 
 					actors_add_energy(level.m_registry);
 
@@ -205,10 +206,10 @@ namespace rog
 						bump::log_info("player turn!");
 
 						// do player action!
-						if (!action_queue.empty())
+						if (queued_action.has_value())
 						{
-							auto action = std::move(action_queue.front());
-							action_queue.pop_front();
+							auto action = std::move(queued_action.value());
+							queued_action.reset();
 
 							if (std::holds_alternative<actions::move>(action))
 							{
@@ -228,36 +229,6 @@ namespace rog
 					}
 
 					// todo: other actor turns!
-
-					// validate action queue
-					{
-						auto a = action_queue.begin();
-
-						for ( ; a != action_queue.end(); ++a)
-						{
-							if (std::holds_alternative<actions::move>(*a))
-							{
-								auto const& move = std::get<actions::move>(*a);
-								if (!player_can_move(player_handle, level, move.m_dir))
-									break;
-								
-								continue;
-							}
-
-							if (std::holds_alternative<actions::use_stairs>(*a))
-							{
-								auto const& use_stairs = std::get<actions::use_stairs>(*a);
-								if (player_can_use_stairs(player_handle, level, use_stairs.m_dir))
-									break;
-								
-								continue;
-							}
-
-							bump::die(); // should be unreachable
-						}
-
-						action_queue.erase(a, action_queue.end());
-					}
 				}
 			}
 			

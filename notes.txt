@@ -1,27 +1,7 @@
 
 INPUT STUFF:
 
-we want a ui, which we can interact with at any time...
-we want to show the player their queued action(s).
-
-and we want to show the player a "turn timer" widget (a progress bar that fills
-up per player turn), so we want the timer to be visible in the main-thread too.
-
-
-
-
-move validation isn't correct atm.
-we'd need to simulate player movement as we go...
-and stuff like "use stairs" can't have stuff queued after it.
-
-hmmmmmmmmm...
-
-maybe we should stick to a single queued action, but allow pathfinding to
-automatically add to the queue if there's nothing else queued.
-
-
-
-
+we want to show the player their queued action.
 
 
 TODO SOMETIME:
