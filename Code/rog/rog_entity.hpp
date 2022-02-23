@@ -14,5 +14,5 @@ namespace rog
 	struct comp_player_tag { };
 	struct comp_monster_tag { };
 	struct comp_object_tag { };
-		
+	
 } // rog

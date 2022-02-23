@@ -5,8 +5,10 @@
 #include "rog_entity.hpp"
 #include "rog_feature.hpp"
 #include "rog_level_gen.hpp"
+#include "rog_monster.hpp"
 #include "rog_player.hpp"
 #include "rog_player_action.hpp"
+#include "rog_random.hpp"
 #include "rog_screen_drawing.hpp"
 #include "rog_tile_renderer.hpp"
 
@@ -37,6 +39,67 @@
 namespace rog
 {
 
+	bool is_walkable(feature const& f)
+	{
+		return !(f.m_flags & feature::flags::NO_WALK);
+	}
+
+	bool is_occupied(entt::entity const& e)
+	{
+		return (e != entt::null);
+	}
+
+	bool place_player(level const& level, entt::handle player_handle)
+	{
+		auto const level_size = level.m_grid.extents();
+
+		auto const pos = [&] ()
+		{
+			// find the top-leftmost empty square
+			for (auto y : bump::range(0, level_size.y))
+				for (auto x : bump::range(0, level_size.x))
+					if (is_walkable(level.m_grid.at({ x, y })) && !is_occupied(level.m_actors.at({ x, y })))
+						return std::optional<glm::size2>({ x, y });
+
+			return std::optional<glm::size2>();
+		}();
+
+		if (!pos)
+			return false;
+
+		player_handle.get<comp_position>().m_pos = pos.value();
+
+		return true;
+	}
+
+	bool place_monster(level const& level, entt::handle monster_handle, random::rng_t& rng)
+	{
+		auto const level_size = level.m_grid.extents();
+		bump::die_if(level_size == glm::size2(0));
+
+		auto const pos = [&] ()
+		{
+			// find a random empty square
+			auto constexpr MAX_TRIES = 1000;
+			for (auto t = 0; t != MAX_TRIES; ++t)
+			{
+				auto const pos = random::rand_range(rng, glm::size2{ 0, 0 }, level_size - glm::size2(1));
+
+				if (is_walkable(level.m_grid.at(pos)) && !is_occupied(level.m_actors.at(pos)))
+					return std::optional<glm::size2>(pos);
+			}
+
+			return std::optional<glm::size2>();
+		}();
+
+		if (!pos)
+			return false;
+
+		monster_handle.get<comp_position>().m_pos = pos.value();
+
+		return true;
+	}
+
 	auto constexpr TIME_PER_CYCLE = bump::high_res_duration_from_seconds(0.05f);
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
 
@@ -45,6 +108,8 @@ namespace rog
 		bump::log_info("main loop - start");
 
 		// setup
+		auto rng = random::seed_rng();
+
 		auto const tile_size = glm::ivec2{ 24, 36 };
 		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
 
@@ -61,6 +126,19 @@ namespace rog
 		auto level = level_gen::generate_level(level_depth);
 		auto player = player_create_entity(level.m_registry);
 		auto player_handle = entt::handle{ level.m_registry, player };
+
+		if (!place_player(level, player_handle))
+		{
+			bump::log_info("Failed to place player!");
+		}
+
+		auto monster = monster_create_entity(level.m_registry);
+		auto monster_handle = entt::handle{ level.m_registry, monster };
+
+		if (!place_monster(level, monster_handle, rng))
+		{
+			bump::log_info("Failed to place monster!");
+		}
 
 		auto queued_action = std::optional<player_action>();
 
@@ -205,6 +283,8 @@ namespace rog
 
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
 				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
+				
+				// todo: separate functions to draw player and monsters.
 			}
 
 			// render

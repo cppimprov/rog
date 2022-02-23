@@ -13,6 +13,8 @@ namespace rog
 	entt::entity player_create_entity(entt::registry& registry)
 	{
 		auto player = registry.create();
+		
+		registry.emplace<comp_player_tag>(player);
 		registry.emplace<comp_position>(player, glm::size2(0));
 		registry.emplace<comp_visual>(player, screen::cell{ '@', colors::yellow, colors::black });
 		registry.emplace<comp_actor>(player, 100); // start with enough energy to move
