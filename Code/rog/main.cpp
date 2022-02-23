@@ -1,10 +1,12 @@
 
+#include "rog_actor.hpp"
 #include "rog_colors.hpp"
 #include "rog_direction.hpp"
 #include "rog_entity.hpp"
 #include "rog_feature.hpp"
 #include "rog_level_gen.hpp"
 #include "rog_player.hpp"
+#include "rog_player_action.hpp"
 #include "rog_screen_drawing.hpp"
 #include "rog_tile_renderer.hpp"
 
@@ -35,41 +37,6 @@
 namespace rog
 {
 
-	constexpr auto ACTOR_ENERGY_PER_CYCLE = std::int32_t{ 10 };
-	constexpr auto ACTOR_ENERGY_PER_TURN = std::int32_t{ 100 };
-
-	void actors_add_energy(entt::registry& registry)
-	{
-		auto view = registry.view<comp_actor>();
-
-		for (auto& actor : view)
-			view.get<comp_actor>(actor).m_energy += ACTOR_ENERGY_PER_CYCLE;
-	}
-
-	bool actor_has_turn_energy(entt::handle actor_handle)
-	{
-		return actor_handle.get<comp_actor>().m_energy >= ACTOR_ENERGY_PER_TURN;
-	}
-
-	void actor_take_turn_energy(entt::handle actor_handle)
-	{
-		actor_handle.get<comp_actor>().m_energy -= ACTOR_ENERGY_PER_TURN;
-	}
-
-	namespace actions
-	{
-
-		struct move { direction m_dir; };
-		struct use_stairs { stairs_direction m_dir; };
-
-	} // actions
-
-	using action = std::variant
-	<
-		actions::move,
-		actions::use_stairs
-	>;
-
 	auto constexpr TIME_PER_CYCLE = bump::high_res_duration_from_seconds(0.05f);
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
 
@@ -95,7 +62,7 @@ namespace rog
 		auto player = player_create_entity(level.m_registry);
 		auto player_handle = entt::handle{ level.m_registry, player };
 
-		auto queued_action = std::optional<action>();
+		auto queued_action = std::optional<player_action>();
 
 		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
 		auto time_accumulator = bump::high_res_duration_t{ 0 };
@@ -159,27 +126,17 @@ namespace rog
 							player_paused = !player_paused;
 
 						// action inputs
-						else if (k.m_key == kt::NUM7 && k.m_value && player_can_move(player_handle, level, direction::LEFT_UP)) queued_action = actions::move{ direction::LEFT_UP };
-						else if (k.m_key == kt::NUM8 && k.m_value && player_can_move(player_handle, level, direction::UP)) queued_action = actions::move{ direction::UP };
-						else if (k.m_key == kt::NUM9 && k.m_value && player_can_move(player_handle, level, direction::RIGHT_UP)) queued_action = actions::move{ direction::RIGHT_UP };
-						else if (k.m_key == kt::NUM4 && k.m_value && player_can_move(player_handle, level, direction::LEFT)) queued_action = actions::move{ direction::LEFT };
-						else if (k.m_key == kt::NUM6 && k.m_value && player_can_move(player_handle, level, direction::RIGHT)) queued_action = actions::move{ direction::RIGHT };
-						else if (k.m_key == kt::NUM1 && k.m_value && player_can_move(player_handle, level, direction::LEFT_DOWN)) queued_action = actions::move{ direction::LEFT_DOWN };
-						else if (k.m_key == kt::NUM2 && k.m_value && player_can_move(player_handle, level, direction::DOWN)) queued_action = actions::move{ direction::DOWN };
-						else if (k.m_key == kt::NUM3 && k.m_value && player_can_move(player_handle, level, direction::RIGHT_DOWN)) queued_action = actions::move{ direction::RIGHT_DOWN };
+						else if (k.m_key == kt::NUM7 && k.m_value) queued_action = player_actions::move{ direction::LEFT_UP };
+						else if (k.m_key == kt::NUM8 && k.m_value) queued_action = player_actions::move{ direction::UP };
+						else if (k.m_key == kt::NUM9 && k.m_value) queued_action = player_actions::move{ direction::RIGHT_UP };
+						else if (k.m_key == kt::NUM4 && k.m_value) queued_action = player_actions::move{ direction::LEFT };
+						else if (k.m_key == kt::NUM6 && k.m_value) queued_action = player_actions::move{ direction::RIGHT };
+						else if (k.m_key == kt::NUM1 && k.m_value) queued_action = player_actions::move{ direction::LEFT_DOWN };
+						else if (k.m_key == kt::NUM2 && k.m_value) queued_action = player_actions::move{ direction::DOWN };
+						else if (k.m_key == kt::NUM3 && k.m_value) queued_action = player_actions::move{ direction::RIGHT_DOWN };
+						else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift())   queued_action = player_actions::use_stairs{ stairs_direction::DOWN };
+						else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift()) queued_action = player_actions::use_stairs{ stairs_direction::UP };
 
-						else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift() &&
-						         player_can_use_stairs(player_handle, level, stairs_direction::DOWN))
-						{
-							queued_action = actions::use_stairs{ stairs_direction::DOWN };
-						}
-						else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift() &&
-						         player_can_use_stairs(player_handle, level, stairs_direction::UP))
-						{
-							queued_action = actions::use_stairs{ stairs_direction::UP };
-						}
-
-						
 						continue;
 					}
 				}
@@ -211,17 +168,26 @@ namespace rog
 							auto action = std::move(queued_action.value());
 							queued_action.reset();
 
-							if (std::holds_alternative<actions::move>(action))
+							namespace pa = player_actions;
+
+							if (std::holds_alternative<pa::move>(action))
 							{
-								auto const& move = std::get<actions::move>(action);
-								player_move(player_handle, level, move.m_dir);
+								auto const& move = std::get<pa::move>(action);
+								if (!player_move(player_handle, level, move.m_dir))
+								{
+									bump::log_info("There is something in the way."); // todo: put in player_move?
+								}
 							}
-							else if (std::holds_alternative<actions::use_stairs>(action))
+							else if (std::holds_alternative<pa::use_stairs>(action))
 							{
-								auto const& use_stairs = std::get<actions::use_stairs>(action);
-								auto const delta_depth = (use_stairs.m_dir == stairs_direction::UP ? +1 : -1);
-								auto const next_depth = level_depth + delta_depth;
-								return { [&, next_depth] (bump::app& app) { return main_loop(app, next_depth); } };
+								auto const& use_stairs = std::get<pa::use_stairs>(action);
+
+								if (player_can_use_stairs(player_handle, level, use_stairs.m_dir))
+								{
+									auto const delta_depth = (use_stairs.m_dir == stairs_direction::UP ? +1 : -1);
+									auto const next_depth = level_depth + delta_depth;
+									return { [&, next_depth] (bump::app& app) { return main_loop(app, next_depth); } };
+								}
 							}
 						}
 

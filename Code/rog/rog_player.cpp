@@ -20,7 +20,7 @@ namespace rog
 		return player;
 	}
 
-	bool player_can_move(entt::handle player_handle, level const& level, direction dir)
+	bool player_move(entt::handle player_handle, level const& level, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);
 		auto const& grid = level.m_grid;
@@ -41,17 +41,9 @@ namespace rog
 		if (grid.at(target).m_flags & feature::flags::NO_WALK)
 			return false;
 		
-		//pos.m_pos = target;
+		pos.m_pos = target;
 
 		return true;
-	}
-
-	void player_move(entt::handle player_handle, level const& level, direction dir)
-	{
-		bump::die_if(!player_can_move(player_handle, level, dir));
-
-		auto& pos = player_handle.get<comp_position>();
-		pos.m_pos += glm::size2(get_direction_vector(dir));
 	}
 
 	bool player_can_use_stairs(entt::handle player_handle, level const& level, stairs_direction dir)

@@ -4,8 +4,6 @@ TODO:
 
 Turn logic:
 
-	* Move action stuff to a separate file.
-	* Move actor stuff to a separate file.
 	* Add an ai that moves randomly in bounds (for now).
 
 Mouse input:
