@@ -22,7 +22,7 @@ namespace rog
 		return player;
 	}
 
-	bool player_move(entt::handle player_handle, level const& level, direction dir)
+	bool player_move(entt::handle player_handle, level& level, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);
 		auto const& grid = level.m_grid;
@@ -40,10 +40,14 @@ namespace rog
 
 		auto const target = pos.m_pos + glm::size2(vec);
 
-		if (grid.at(target).m_flags & feature::flags::NO_WALK)
+		if (!is_walkable(level, target) || is_occupied(level, target))
 			return false;
 		
+		level.m_actors.at(pos.m_pos) = entt::null;
+
 		pos.m_pos = target;
+		
+		level.m_actors.at(pos.m_pos) = player_handle.entity();
 
 		return true;
 	}

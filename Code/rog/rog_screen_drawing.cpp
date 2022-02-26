@@ -1,7 +1,9 @@
 #include "rog_screen_drawing.hpp"
 
 #include "rog_colors.hpp"
+#include "rog_entity.hpp"
 #include "rog_feature.hpp"
+#include "rog_level.hpp"
 #include "rog_player.hpp"
 
 #include <algorithm>
@@ -90,11 +92,14 @@ namespace rog
 			};
 		}
 
-		void draw(bump::grid2<cell>& buffer, bump::grid2<feature> const& grid, glm::size2 player_pos, cell const& player_cell)
+		void draw(bump::grid2<cell>& buffer, level& level)
 		{
-			auto const level_size = grid.extents();
+			auto const level_size = level.m_grid.extents();
 			auto const panel_size = glm::size2(buffer.extents()); // todo: no! pass it in!
-			
+
+			auto const& player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
+			auto const& player_cell = level.m_registry.get<comp_visual>(level.m_player).m_cell;
+
 			// calculate origin of screen buffer area in level coords
 			auto const panel_origin = get_panel_origin(level_size, panel_size, player_pos);
 
@@ -107,13 +112,23 @@ namespace rog
 				for (auto x : bump::range(0, panel_max_size.x))
 				{
 					auto const screen_pos = glm::size2{ x, y };
-					buffer.at(screen_pos) = grid.at(panel_origin + screen_pos).m_cell;
+					buffer.at(screen_pos) = level.m_grid.at(panel_origin + screen_pos).m_cell;
 				}
 			}
 			
 			// draw player
 			auto const panel_player = (player_pos - panel_origin);
 			buffer.at(panel_player) = player_cell;
+
+			// draw monsters
+			auto view = level.m_registry.view<comp_position, comp_visual, comp_monster_tag>();
+
+			for (auto const m : view)
+			{
+				auto [pos, vis] = view.get<comp_position, comp_visual>(m);
+				
+				buffer.at(pos.m_pos) = vis.m_cell;
+			}
 		}
 		
 	} // screen

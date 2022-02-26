@@ -4,8 +4,6 @@ TODO:
 
 Monster:
 
-	* Update level actor list when moving entities.
-	* Check squares aren't occupied when moving!
 	* Render monster.
 	* Add an ai that moves randomly in bounds (for now).
 

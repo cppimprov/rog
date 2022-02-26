@@ -39,17 +39,7 @@
 namespace rog
 {
 
-	bool is_walkable(feature const& f)
-	{
-		return !(f.m_flags & feature::flags::NO_WALK);
-	}
-
-	bool is_occupied(entt::entity const& e)
-	{
-		return (e != entt::null);
-	}
-
-	bool place_player(level const& level, entt::handle player_handle)
+	bool place_player(level& level, entt::handle player_handle)
 	{
 		auto const level_size = level.m_grid.extents();
 
@@ -58,7 +48,7 @@ namespace rog
 			// find the top-leftmost empty square
 			for (auto y : bump::range(0, level_size.y))
 				for (auto x : bump::range(0, level_size.x))
-					if (is_walkable(level.m_grid.at({ x, y })) && !is_occupied(level.m_actors.at({ x, y })))
+					if (is_walkable(level, { x, y }) && !is_occupied(level, { x, y }))
 						return std::optional<glm::size2>({ x, y });
 
 			return std::optional<glm::size2>();
@@ -69,10 +59,12 @@ namespace rog
 
 		player_handle.get<comp_position>().m_pos = pos.value();
 
+		level.m_actors.at(pos.value()) = player_handle.entity();
+
 		return true;
 	}
 
-	bool place_monster(level const& level, entt::handle monster_handle, random::rng_t& rng)
+	bool place_monster(level& level, entt::handle monster_handle, random::rng_t& rng)
 	{
 		auto const level_size = level.m_grid.extents();
 		bump::die_if(level_size == glm::size2(0));
@@ -85,7 +77,7 @@ namespace rog
 			{
 				auto const pos = random::rand_range(rng, glm::size2{ 0, 0 }, level_size - glm::size2(1));
 
-				if (is_walkable(level.m_grid.at(pos)) && !is_occupied(level.m_actors.at(pos)))
+				if (is_walkable(level, pos) && !is_occupied(level, pos))
 					return std::optional<glm::size2>(pos);
 			}
 
@@ -96,6 +88,8 @@ namespace rog
 			return false;
 
 		monster_handle.get<comp_position>().m_pos = pos.value();
+
+		level.m_actors.at(pos.value()) = monster_handle.entity();
 
 		return true;
 	}
@@ -124,8 +118,8 @@ namespace rog
 		auto player_paused = false;
 		
 		auto level = level_gen::generate_level(level_depth);
-		auto player = player_create_entity(level.m_registry);
-		auto player_handle = entt::handle{ level.m_registry, player };
+		level.m_player = player_create_entity(level.m_registry);
+		auto player_handle = entt::handle{ level.m_registry, level.m_player };
 
 		if (!place_player(level, player_handle))
 		{
@@ -236,7 +230,7 @@ namespace rog
 
 					actors_add_energy(level.m_registry);
 
-					if (actor_has_turn_energy({ level.m_registry, player }))
+					if (actor_has_turn_energy(player_handle))
 					{
 						bump::log_info("player turn!");
 
@@ -269,7 +263,7 @@ namespace rog
 							}
 						}
 
-						actor_take_turn_energy({ level.m_registry, player });
+						actor_take_turn_energy(player_handle);
 					}
 
 					// todo: other actor turns!
@@ -278,13 +272,8 @@ namespace rog
 			
 			// drawing - todo: not every frame?
 			{
-				auto const& player_pos = level.m_registry.get<comp_position>(player);
-				auto const& player_vis = level.m_registry.get<comp_visual>(player);
-
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level.m_grid, player_pos.m_pos, player_vis.m_cell);
-				
-				// todo: separate functions to draw player and monsters.
+				screen::draw(screen_buffer, level);
 			}
 
 			// render

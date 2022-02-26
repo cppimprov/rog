@@ -77,9 +77,9 @@ namespace rog
 			bump::die_if(depth < 1);
 			bump::die_if(depth > 5);
 
-			if (depth == 1) return { depth, level_1, bump::grid2<entt::entity>(level_1.extents(), entt::null), {} };
-			if (depth == 2) return { depth, level_2, bump::grid2<entt::entity>(level_2.extents(), entt::null), {} };
-			if (depth == 3) return { depth, level_3, bump::grid2<entt::entity>(level_3.extents(), entt::null), {} };
+			if (depth == 1) return { depth, level_1, entt::null, bump::grid2<entt::entity>(level_1.extents(), entt::null), {} };
+			if (depth == 2) return { depth, level_2, entt::null, bump::grid2<entt::entity>(level_2.extents(), entt::null), {} };
+			if (depth == 3) return { depth, level_3, entt::null, bump::grid2<entt::entity>(level_3.extents(), entt::null), {} };
 
 			bump::die(); // unreachable
 		}

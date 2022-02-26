@@ -11,6 +11,7 @@ namespace rog
 {
 
 	struct feature;
+	struct level;
 	struct player;
 	
 	namespace screen
@@ -23,7 +24,7 @@ namespace rog
 		
 		glm::size2 get_panel_origin(glm::size2 level_size, glm::size2 panel_size, glm::size2 focus);
 
-		void draw(bump::grid2<cell>& buffer, bump::grid2<feature> const& grid, glm::size2 player_pos, cell const& cell);
+		void draw(bump::grid2<cell>& buffer, level& level);
 
 	} // screen
 
