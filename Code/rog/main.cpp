@@ -94,6 +94,36 @@ namespace rog
 		return true;
 	}
 
+	void monster_move(level& level, entt::entity monster, comp_position& pos, random::rng_t& rng)
+	{
+		// todo: random direction function? (and ignore 5?)
+		auto const dir_idx = random::rand_range(rng, 0, 8);
+		auto const dir = static_cast<direction>(dir_idx);
+		auto const vec = get_direction_vector(dir);
+
+		auto const level_size = level.m_grid.extents();
+		
+		bump::die_if(level_size.x == 0 || level_size.y == 0);
+		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
+
+		if (pos.m_pos.x == 0 && vec.x < 0) return;
+		if (pos.m_pos.x == level_size.x - 1 && vec.x > 0) return;
+		if (pos.m_pos.y == 0 && vec.y < 0) return;
+		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return;
+
+		auto const target = pos.m_pos + glm::size2(vec);
+
+		// todo: abstract moving monster / player into a single function!
+		if (!is_walkable(level, target) || is_occupied(level, target))
+			return;
+		
+		level.m_actors.at(pos.m_pos) = entt::null;
+
+		pos.m_pos = target;
+		
+		level.m_actors.at(pos.m_pos) = monster;
+	}
+
 	auto constexpr TIME_PER_CYCLE = bump::high_res_duration_from_seconds(0.05f);
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
 
@@ -230,6 +260,7 @@ namespace rog
 
 					actors_add_energy(level.m_registry);
 
+					// player turn
 					if (actor_has_turn_energy(player_handle))
 					{
 						bump::log_info("player turn!");
@@ -266,7 +297,26 @@ namespace rog
 						actor_take_turn_energy(player_handle);
 					}
 
-					// todo: other actor turns!
+					// monster turn
+					{
+						auto view = level.m_registry.view<comp_actor, comp_monster_tag, comp_position>();
+
+						for (auto m : view)
+						{
+							// todo: should use view, not handle for this... pass component instead of handle :(
+							if (!actor_has_turn_energy({ level.m_registry, m }))
+								continue;
+							
+							bump::log_info("monster turn!");
+							
+							auto& p = view.get<comp_position>(m);
+
+							monster_move(level, m, p, rng);
+
+							// todo: use component...
+							actor_take_turn_energy({ level.m_registry, m });
+						}
+					}
 				}
 			}
 			

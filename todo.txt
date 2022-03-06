@@ -1,11 +1,9 @@
 
 TODO:
 
-
 Monster:
 
-	* Render monster.
-	* Add an ai that moves randomly in bounds (for now).
+	* Pass components instead of handles for movement functions etc. (should get components from view not registry).
 
 Mouse input:
 
