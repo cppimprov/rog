@@ -126,9 +126,9 @@ namespace bump
 		namespace input_events
 		{
 			struct keyboard_key   { input::keyboard_key m_key; bool m_value; key_modifiers m_mods; };
-			struct mouse_button   { input::mouse_button m_button; bool m_value; key_modifiers m_mods; };
+			struct mouse_button   { glm::ivec2 m_position; input::mouse_button m_button; bool m_value; key_modifiers m_mods; };
 			struct mouse_wheel    { glm::ivec2 m_motion; key_modifiers m_mods; };
-			struct mouse_motion   { glm::ivec2 m_motion; key_modifiers m_mods; };
+			struct mouse_motion   { glm::ivec2 m_position; glm::ivec2 m_motion; key_modifiers m_mods; };
 			struct gamepad_button { input::gamepad_button m_button; bool m_value; };
 			struct gamepad_axis   { input::gamepad_axis m_axis; float m_value; };
 		}

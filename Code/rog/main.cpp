@@ -141,6 +141,15 @@ namespace rog
 
 						continue;
 					}
+
+					if (std::holds_alternative<ie::mouse_motion>(event))
+					{
+						auto const& m = std::get<ie::mouse_motion>(event);
+
+						bump::log_info("pos: " + glm::to_string(m.m_position));
+
+						continue;
+					}
 				}
 			}
 

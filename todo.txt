@@ -1,10 +1,16 @@
 
 TODO:
 
+
 Mouse input:
 
-	* Do pathfinding to locations, and move there... once per turn
-	* Clamp the tick rate to a real-time value.
+	* Translate mouse coords to tiles.
+	* Color background of hovered tile.
+	* Get coords of clicked tile.
+	* Pathfinding to clicked tile (ignore monsters).
+	* Set background of path tiles.
+	* Move along path (once per turn).
+	* Cancel path if user enters direction manually (or sets a different path).
 
 UI:
 
