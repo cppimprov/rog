@@ -1,10 +1,6 @@
 
 TODO:
 
-Monster:
-
-	* Pass components instead of handles for movement functions etc. (should get components from view not registry).
-
 Mouse input:
 
 	* Do pathfinding to locations, and move there... once per turn
@@ -14,9 +10,3 @@ UI:
 
 	* Widget to show cycle / turn progress.
 	* Show player queued action (highlight the relevant square background?).
-
-
-
-SOMETIME:
-
- * Registry shouldn't be part of the level class???

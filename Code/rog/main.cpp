@@ -39,91 +39,6 @@
 namespace rog
 {
 
-	bool place_player(level& level, entt::handle player_handle)
-	{
-		auto const level_size = level.m_grid.extents();
-
-		auto const pos = [&] ()
-		{
-			// find the top-leftmost empty square
-			for (auto y : bump::range(0, level_size.y))
-				for (auto x : bump::range(0, level_size.x))
-					if (is_walkable(level, { x, y }) && !is_occupied(level, { x, y }))
-						return std::optional<glm::size2>({ x, y });
-
-			return std::optional<glm::size2>();
-		}();
-
-		if (!pos)
-			return false;
-
-		player_handle.get<comp_position>().m_pos = pos.value();
-
-		level.m_actors.at(pos.value()) = player_handle.entity();
-
-		return true;
-	}
-
-	bool place_monster(level& level, entt::handle monster_handle, random::rng_t& rng)
-	{
-		auto const level_size = level.m_grid.extents();
-		bump::die_if(level_size == glm::size2(0));
-
-		auto const pos = [&] ()
-		{
-			// find a random empty square
-			auto constexpr MAX_TRIES = 1000;
-			for (auto t = 0; t != MAX_TRIES; ++t)
-			{
-				auto const pos = random::rand_range(rng, glm::size2{ 0, 0 }, level_size - glm::size2(1));
-
-				if (is_walkable(level, pos) && !is_occupied(level, pos))
-					return std::optional<glm::size2>(pos);
-			}
-
-			return std::optional<glm::size2>();
-		}();
-
-		if (!pos)
-			return false;
-
-		monster_handle.get<comp_position>().m_pos = pos.value();
-
-		level.m_actors.at(pos.value()) = monster_handle.entity();
-
-		return true;
-	}
-
-	void monster_move(level& level, entt::entity monster, comp_position& pos, random::rng_t& rng)
-	{
-		// todo: random direction function? (and ignore 5?)
-		auto const dir_idx = random::rand_range(rng, 0, 8);
-		auto const dir = static_cast<direction>(dir_idx);
-		auto const vec = get_direction_vector(dir);
-
-		auto const level_size = level.m_grid.extents();
-		
-		bump::die_if(level_size.x == 0 || level_size.y == 0);
-		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
-
-		if (pos.m_pos.x == 0 && vec.x < 0) return;
-		if (pos.m_pos.x == level_size.x - 1 && vec.x > 0) return;
-		if (pos.m_pos.y == 0 && vec.y < 0) return;
-		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return;
-
-		auto const target = pos.m_pos + glm::size2(vec);
-
-		// todo: abstract moving monster / player into a single function!
-		if (!is_walkable(level, target) || is_occupied(level, target))
-			return;
-		
-		level.m_actors.at(pos.m_pos) = entt::null;
-
-		pos.m_pos = target;
-		
-		level.m_actors.at(pos.m_pos) = monster;
-	}
-
 	auto constexpr TIME_PER_CYCLE = bump::high_res_duration_from_seconds(0.05f);
 	auto constexpr TIME_PER_TURN = TIME_PER_CYCLE * 10;
 
@@ -147,22 +62,7 @@ namespace rog
 		auto app_paused = false;
 		auto player_paused = false;
 		
-		auto level = level_gen::generate_level(level_depth);
-		level.m_player = player_create_entity(level.m_registry);
-		auto player_handle = entt::handle{ level.m_registry, level.m_player };
-
-		if (!place_player(level, player_handle))
-		{
-			bump::log_info("Failed to place player!");
-		}
-
-		auto monster = monster_create_entity(level.m_registry);
-		auto monster_handle = entt::handle{ level.m_registry, monster };
-
-		if (!place_monster(level, monster_handle, rng))
-		{
-			bump::log_info("Failed to place monster!");
-		}
+		auto level = level_gen::generate_level(level_depth, rng);
 
 		auto queued_action = std::optional<player_action>();
 
@@ -258,10 +158,16 @@ namespace rog
 
 					bump::log_info("cycle");
 
-					actors_add_energy(level.m_registry);
+					// add cycle energy
+					{
+						auto view = level.m_registry.view<comp_actor>();
+
+						for (auto a : view)
+							actor_add_energy(view.get<comp_actor>(a));
+					}
 
 					// player turn
-					if (actor_has_turn_energy(player_handle))
+					if (actor_has_turn_energy(level.m_registry.get<comp_actor>(level.m_player)))
 					{
 						bump::log_info("player turn!");
 
@@ -276,7 +182,9 @@ namespace rog
 							if (std::holds_alternative<pa::move>(action))
 							{
 								auto const& move = std::get<pa::move>(action);
-								if (!player_move(player_handle, level, move.m_dir))
+
+								auto& pos = level.m_registry.get<comp_position>(level.m_player);
+								if (!move_actor(level, level.m_player, pos, move.m_dir))
 								{
 									bump::log_info("There is something in the way."); // todo: put in player_move?
 								}
@@ -285,7 +193,7 @@ namespace rog
 							{
 								auto const& use_stairs = std::get<pa::use_stairs>(action);
 
-								if (player_can_use_stairs(player_handle, level, use_stairs.m_dir))
+								if (player_can_use_stairs(level, use_stairs.m_dir))
 								{
 									auto const delta_depth = (use_stairs.m_dir == stairs_direction::UP ? +1 : -1);
 									auto const next_depth = level_depth + delta_depth;
@@ -294,7 +202,7 @@ namespace rog
 							}
 						}
 
-						actor_take_turn_energy(player_handle);
+						actor_take_turn_energy(level.m_registry.get<comp_actor>(level.m_player));
 					}
 
 					// monster turn
@@ -303,18 +211,16 @@ namespace rog
 
 						for (auto m : view)
 						{
-							// todo: should use view, not handle for this... pass component instead of handle :(
-							if (!actor_has_turn_energy({ level.m_registry, m }))
+							auto [p, a] = view.get<comp_position, comp_actor>(m);
+
+							if (!actor_has_turn_energy(a))
 								continue;
 							
 							bump::log_info("monster turn!");
 							
-							auto& p = view.get<comp_position>(m);
-
 							monster_move(level, m, p, rng);
 
-							// todo: use component...
-							actor_take_turn_energy({ level.m_registry, m });
+							actor_take_turn_energy(a);
 						}
 					}
 				}

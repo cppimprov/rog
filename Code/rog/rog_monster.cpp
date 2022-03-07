@@ -2,6 +2,7 @@
 
 #include "rog_colors.hpp"
 #include "rog_entity.hpp"
+#include "rog_level.hpp"
 #include "rog_screen_cell.hpp"
 
 namespace rog
@@ -19,4 +20,13 @@ namespace rog
 		return monster;
 	}
 	
+	void monster_move(level& level, entt::entity monster, comp_position& pos, random::rng_t& rng)
+	{
+		// todo: random direction function? (and ignore 5?)
+		auto const dir_idx = random::rand_range(rng, 0, 8);
+		auto const dir = static_cast<direction>(dir_idx);
+
+		(void)move_actor(level, monster, pos, dir); // todo: try a different direction?
+	}
+
 } // rog

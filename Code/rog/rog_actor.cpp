@@ -5,22 +5,19 @@
 namespace rog
 {
 	
-	void actors_add_energy(entt::registry& registry)
+	void actor_add_energy(comp_actor& actor)
 	{
-		auto view = registry.view<comp_actor>();
-
-		for (auto& actor : view)
-			view.get<comp_actor>(actor).m_energy += ACTOR_ENERGY_PER_CYCLE;
+		actor.m_energy += ACTOR_ENERGY_PER_CYCLE;
 	}
 
-	bool actor_has_turn_energy(entt::handle actor_handle)
+	bool actor_has_turn_energy(comp_actor& actor)
 	{
-		return actor_handle.get<comp_actor>().m_energy >= ACTOR_ENERGY_PER_TURN;
+		return (actor.m_energy >= ACTOR_ENERGY_PER_TURN);
 	}
 
-	void actor_take_turn_energy(entt::handle actor_handle)
+	void actor_take_turn_energy(comp_actor& actor)
 	{
-		actor_handle.get<comp_actor>().m_energy -= ACTOR_ENERGY_PER_TURN;
+		actor.m_energy -= ACTOR_ENERGY_PER_TURN;
 	}
 	
 } // rog
