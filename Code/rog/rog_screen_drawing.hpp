@@ -5,6 +5,7 @@
 #include <bump_grid.hpp>
 #include <bump_math.hpp>
 
+#include <optional>
 #include <string>
 
 namespace rog
@@ -24,7 +25,7 @@ namespace rog
 		
 		glm::size2 get_panel_origin(glm::size2 level_size, glm::size2 panel_size, glm::size2 focus);
 
-		void draw(bump::grid2<cell>& buffer, level& level);
+		void draw(bump::grid2<cell>& buffer, level& level, std::optional<glm::size2> hovered_tile);
 
 	} // screen
 

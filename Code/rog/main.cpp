@@ -69,6 +69,8 @@ namespace rog
 		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
 		auto time_accumulator = bump::high_res_duration_t{ 0 };
 
+		auto hovered_tile = std::optional<glm::size2>();
+
 		while (true)
 		{
 			// input
@@ -146,7 +148,16 @@ namespace rog
 					{
 						auto const& m = std::get<ie::mouse_motion>(event);
 
-						bump::log_info("pos: " + glm::to_string(m.m_position));
+						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
+						auto const origin = screen::get_panel_origin(level.m_grid.extents(), screen_buffer.extents(), player_pos);
+
+						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
+						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
+
+						auto const level_size = level.m_grid.extents();
+						auto const tile = origin + glm::size2(mouse_pos_tiles);
+
+						hovered_tile = (tile.x < level_size.x && tile.y < level_size.y) ? std::optional<glm::size2>(tile) : std::optional<glm::size2>(std::nullopt);
 
 						continue;
 					}
@@ -238,7 +249,8 @@ namespace rog
 			// drawing - todo: not every frame?
 			{
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level);
+				screen::draw(screen_buffer, level, hovered_tile);
+
 			}
 
 			// render

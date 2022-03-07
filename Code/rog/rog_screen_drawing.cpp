@@ -92,7 +92,7 @@ namespace rog
 			};
 		}
 
-		void draw(bump::grid2<cell>& buffer, level& level)
+		void draw(bump::grid2<cell>& buffer, level& level, std::optional<glm::size2> hovered_tile)
 		{
 			auto const level_size = level.m_grid.extents();
 			auto const panel_size = glm::size2(buffer.extents()); // todo: no! pass it in!
@@ -126,8 +126,12 @@ namespace rog
 			for (auto const m : view)
 			{
 				auto [pos, vis] = view.get<comp_position, comp_visual>(m);
-				
-				buffer.at(pos.m_pos) = vis.m_cell;
+				buffer.at(pos.m_pos - panel_origin) = vis.m_cell;
+			}
+
+			if (hovered_tile.has_value())
+			{
+				buffer.at(hovered_tile.value() - panel_origin).m_bg = colors::orange;
 			}
 		}
 		
