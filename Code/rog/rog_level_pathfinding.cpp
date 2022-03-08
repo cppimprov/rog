@@ -31,15 +31,14 @@ namespace rog
 		auto path = std::vector<glm::size2>();
 
 		auto current = dst;
-		path.push_back(current);
 
 		while (current != src)
 		{
-			current = parents.at(glm::ivec2(current));
 			path.push_back(current);
+			current = parents.at(glm::ivec2(current));
 		}
 
-		std::reverse(path.begin(), path.end());
+		//std::reverse(path.begin(), path.end());
 
 		return path;
 	}

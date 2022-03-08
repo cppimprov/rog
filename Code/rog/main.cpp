@@ -70,7 +70,7 @@ namespace rog
 		auto time_accumulator = bump::high_res_duration_t{ 0 };
 
 		auto hovered_tile = std::optional<glm::size2>();
-		auto path = std::vector<glm::size2>();
+		auto queued_path = std::vector<glm::size2>();
 
 		while (true)
 		{
@@ -142,6 +142,9 @@ namespace rog
 						else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift())   queued_action = player_actions::use_stairs{ stairs_direction::DOWN };
 						else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift()) queued_action = player_actions::use_stairs{ stairs_direction::UP };
 
+						if (queued_action.has_value())
+							queued_path.clear();
+
 						continue;
 					}
 
@@ -183,7 +186,8 @@ namespace rog
 
 						if (tile.x < level_size.x && tile.y < level_size.y)
 						{
-							path = find_path(level.m_grid, player_pos, tile);
+							queued_path = find_path(level.m_grid, player_pos, tile);
+							queued_action.reset();
 						}
 
 						continue;
@@ -233,7 +237,7 @@ namespace rog
 								auto& pos = level.m_registry.get<comp_position>(level.m_player);
 								if (!move_actor(level, level.m_player, pos, move.m_dir))
 								{
-									bump::log_info("There is something in the way."); // todo: put in player_move?
+									bump::log_info("There is something in the way.");
 								}
 							}
 							else if (std::holds_alternative<pa::use_stairs>(action))
@@ -246,6 +250,19 @@ namespace rog
 									auto const next_depth = level_depth + delta_depth;
 									return { [&, next_depth] (bump::app& app) { return main_loop(app, next_depth); } };
 								}
+							}
+						}
+						else if (!queued_path.empty())
+						{
+							auto& pos = level.m_registry.get<comp_position>(level.m_player);
+
+							auto target = queued_path.back();
+							queued_path.pop_back();
+
+							if (!move_actor(level, level.m_player, pos, target))
+							{
+								bump::log_info("There is something in the way.");
+								queued_path.clear();
 							}
 						}
 
@@ -276,8 +293,7 @@ namespace rog
 			// drawing - todo: not every frame?
 			{
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level, path, hovered_tile);
-
+				screen::draw(screen_buffer, level, queued_path, hovered_tile);
 			}
 
 			// render
