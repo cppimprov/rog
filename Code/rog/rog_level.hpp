@@ -29,4 +29,6 @@ namespace rog
 
 	bool move_actor(level& level, entt::entity entity, comp_position& pos, direction dir);
 
+	std::vector<glm::size2> find_path(bump::grid2<feature> const& grid, glm::size2 src, glm::size2 dst);
+
 } // rog

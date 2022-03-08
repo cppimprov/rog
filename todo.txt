@@ -4,9 +4,6 @@ TODO:
 
 Mouse input:
 
-	* Translate mouse coords to tiles.
-	* Color background of hovered tile.
-	* Get coords of clicked tile.
 	* Pathfinding to clicked tile (ignore monsters).
 	* Set background of path tiles.
 	* Move along path (once per turn).

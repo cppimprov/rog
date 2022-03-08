@@ -62,6 +62,15 @@ namespace glm
 	/// @see GLM_GTX_std_based_type
 	typedef vec<4, std::size_t, defaultp>		size4_t;
 
+	typedef vec<1, std::ptrdiff_t, defaultp> ssize1;
+	typedef vec<2, std::ptrdiff_t, defaultp> ssize2;
+	typedef vec<3, std::ptrdiff_t, defaultp> ssize3;
+	typedef vec<4, std::ptrdiff_t, defaultp> ssize4;
+	typedef vec<1, std::ptrdiff_t, defaultp> ssize1_t;
+	typedef vec<2, std::ptrdiff_t, defaultp> ssize2_t;
+	typedef vec<3, std::ptrdiff_t, defaultp> ssize3_t;
+	typedef vec<4, std::ptrdiff_t, defaultp> ssize4_t;
+
 	/// @}
 }//namespace glm
 

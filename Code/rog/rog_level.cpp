@@ -42,5 +42,5 @@ namespace rog
 
 		return true;
 	}
-	
+
 } // rog

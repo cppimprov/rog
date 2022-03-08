@@ -25,7 +25,7 @@ namespace rog
 		
 		glm::size2 get_panel_origin(glm::size2 level_size, glm::size2 panel_size, glm::size2 focus);
 
-		void draw(bump::grid2<cell>& buffer, level& level, std::optional<glm::size2> hovered_tile);
+		void draw(bump::grid2<cell>& buffer, level& level, std::vector<glm::size2> const& path, std::optional<glm::size2> hovered_tile);
 
 	} // screen
 
