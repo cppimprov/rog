@@ -196,7 +196,7 @@ namespace rog
 			}
 
 			// update
-			{
+			{	
 				if (app_paused || player_paused)
 					time_accumulator = bump::high_res_duration_t{ 0 };
 				else
@@ -290,7 +290,7 @@ namespace rog
 				}
 			}
 			
-			// drawing - todo: not every frame?
+			// drawing - todo: only if something changes?
 			{
 				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
 				screen::draw(screen_buffer, level, queued_path, hovered_tile);

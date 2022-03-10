@@ -1,7 +1,7 @@
 
 INPUT STUFF:
 
-we want to show the player their queued action.
+we want to show the player their queued action (use the path?)
 
 
 TODO SOMETIME:
@@ -12,3 +12,9 @@ use_stairs
 
 next_depth
 	-> check to make sure that we don't go outside dungeon depth.
+
+
+
+
+bigger level for pathfinding tests.
+max path length?

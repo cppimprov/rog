@@ -52,7 +52,7 @@ namespace rog
 
 		if (src == dst) return { };
 
-		using cost_t = int;
+		using cost_t = float;
 		using coords_t = glm::ivec2;
 		struct cost_coords { cost_t m_cost; coords_t m_coords; };
 		auto constexpr frontier_order = [] (cost_coords const& a, cost_coords const& b) { return a.m_cost > b.m_cost; };
@@ -65,9 +65,9 @@ namespace rog
 		auto parents = parents_t();
 		auto costs = costs_t();
 		
-		frontier.push({ 0, coords_t(src) });
+		frontier.push({ 0.f, coords_t(src) });
 		parents.emplace(coords_t(src), coords_t(src));
-		costs.emplace(coords_t(src), 0);
+		costs.emplace(coords_t(src), 0.f);
 
 		auto constexpr offsets =
 		{ 
@@ -78,9 +78,9 @@ namespace rog
 
 		auto constexpr heuristic_fn = [] (coords_t const& a, coords_t const& b)
 		{
-			// "radial distance" metric (use diagonals to minimize distance)
-			auto const d = glm::abs(a - b);
-			return glm::max(d.x, d.y);
+			// "radial distance" metric (uses diagonals to minimize distance)
+			auto const d = glm::vec2(glm::abs(a - b));
+			return glm::length(d);
 		};
 
 		while (!frontier.empty())
