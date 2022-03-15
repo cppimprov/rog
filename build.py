@@ -476,6 +476,9 @@ class PlatformMSVC:
 		]
 		self.write_static_lib(n, build_type, sdlmixer, '3')
 
+		bump_dirs = [ 'debug', 'engine', 'font', 'gl', 'math', 'net', 'sdl', 'util' ]
+		bump_core_dirs = [ 'debug', 'math', 'net', 'util' ]
+
 		bump = ProjectStaticLib.from_name('bump', self, build_type)
 		bump.defines = freetype.defines + harfbuzz.defines + glew.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]
 		bump.inc_dirs = [
@@ -489,6 +492,7 @@ class PlatformMSVC:
 			join_dir(sdl.code_dir, 'include'),
 			sdlmixer.code_dir,
 		]
+		bump.inc_dirs = bump.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		self.write_static_lib(n, build_type, bump)
 
 		rc_file = join_file(get_code_dir('rog'), 'rog.rc')
@@ -508,8 +512,8 @@ class PlatformMSVC:
 			glm.code_dir,
 			join_dir(sdl.code_dir, 'include'),
 			sdlmixer.code_dir,
-			bump.code_dir,
 		]
+		rog.inc_dirs = rog.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		rog.libs = [
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
@@ -530,8 +534,8 @@ class PlatformMSVC:
 			join_dir(harfbuzz.code_dir, 'src'),
 			stb.code_dir,
 			glm.code_dir,
-			bump.code_dir,
 		]
+		rog_ascii_gen.inc_dirs = rog_ascii_gen.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		rog_ascii_gen.libs = [
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
@@ -539,6 +543,21 @@ class PlatformMSVC:
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
 		self.write_exe(n, build_type, rog_ascii_gen)
+
+		rog_server = ProjectExe.from_name('rog_server', self, build_type)
+		rog_server.defines = bump.defines
+		rog_server.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		rog_server.inc_dirs = rog_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		rog_server.libs = [
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+		]
+		self.write_exe(n, build_type, rog_server)
+
+
 
 class PlatformGCC:
 
@@ -611,7 +630,7 @@ class PlatformGCC:
 		return ' '.join('-L' + p for p in paths)
 
 	def get_link_in_libs(self, paths):
-		return ' '.join('-l:' + p for p in paths)
+		return ' '.join(p for p in paths)
 
 	def get_link_in_standard_libs(self, paths):
 		return ' '.join('-l' + p for p in paths)
@@ -626,7 +645,7 @@ class PlatformGCC:
 				('ld_out_exe', self.get_link_out_exe(out_exe)),
 				('ld_in_lib_dirs', self.get_link_in_lib_dirs(in_lib_dirs)),
 				('ld_in_files', ' '.join(in_objs)),
-				('ld_in_libs', self.get_link_in_libs(in_libs) + ' ' + self.get_link_in_standard_libs(in_standard_libs)),
+				('ld_in_libs', self.get_link_in_standard_libs(in_standard_libs) + ' ' + self.get_link_in_libs(in_libs)),
 			])
 
 	def write_static_lib(self, n, build_type, lib):
@@ -657,7 +676,42 @@ class PlatformGCC:
 		
 		self.write_rules(n)
 
-		# ...
+		entt = ProjectStaticLib.from_name('entt', self, build_type)
+		# header only - don't write
+
+		json = ProjectStaticLib.from_name('json', self, build_type)
+		# header only - don't write
+		
+		glm = ProjectStaticLib.from_name('glm', self, build_type)
+		glm.defines = [ 'GLM_FORCE_SILENT_WARNINGS', 'GLM_FORCE_EXPLICIT_CTOR', 'GLM_FORCE_XYZW_ONLY', 'GLM_FORCE_SIZE_T_LENGTH', 'GLM_FORCE_SILENT_WARNINGS', 'GLM_FORCE_CTOR_INIT=2' ]
+		glm.inc_dirs = [ glm.code_dir ]
+		self.write_static_lib(n, build_type, glm)
+
+		bump_core_dirs = [ 'debug', 'math', 'net', 'util' ]
+
+		bump_core = ProjectStaticLib.from_name('bump', self, build_type)
+		bump_core.defines = glm.defines
+		bump_core.src_files = [f for files in [get_cpp_files(join_dir(bump_core.code_dir, d)) for d in bump_core_dirs] for f in files]
+		bump_core.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		bump_core.inc_dirs = bump_core.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
+		self.write_static_lib(n, build_type, bump_core)
+
+		rog_server = ProjectExe.from_name('rog_server', self, build_type)
+		rog_server.defines = bump_core.defines
+		rog_server.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		rog_server.inc_dirs = rog_server.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
+		rog_server.libs = [
+			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
+		]
+		self.write_exe(n, build_type, rog_server)
 
 def write(platform, build_type, build_file_name):
 	try:

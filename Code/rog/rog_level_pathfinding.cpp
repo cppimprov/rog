@@ -78,7 +78,6 @@ namespace rog
 
 		auto constexpr heuristic_fn = [] (coords_t const& a, coords_t const& b)
 		{
-			// "radial distance" metric (uses diagonals to minimize distance)
 			auto const d = glm::vec2(glm::abs(a - b));
 			return glm::length(d);
 		};

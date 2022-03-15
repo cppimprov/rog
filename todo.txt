@@ -1,6 +1,9 @@
 
 TODO:
 
+ORGANISING:
+	* split "bump" project into lots of smaller projects with minimal dependencies.
+
 UI:
 
 	* Widget to show cycle / turn progress.
@@ -9,3 +12,9 @@ UI:
 PATHFINDING:
 
 	* Bigger level with more obstacles.
+
+DRAWING:
+
+	* Define screenbuffer region for drawing the level instead of using the whole screen.
+
+
