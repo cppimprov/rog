@@ -1,9 +1,9 @@
 #pragma once
 
-#include "bump_net_error.hpp"
 #include "bump_result.hpp"
 
 #include <cstdint>
+#include <system_error>
 
 namespace bump
 {
@@ -23,17 +23,17 @@ namespace bump
 			~context();
 
 			bool is_active() const;
-			result<void, error> shutdown();
+			result<void, std::system_error> shutdown();
 
 		private:
 
 			explicit context(bool active);
-			friend result<context, error> init_context();
+			friend result<context, std::system_error> init_context();
 
 			bool m_active;
 		};
 		
-		result<context, error> init_context();
+		result<context, std::system_error> init_context();
 		
 	} // net
 	

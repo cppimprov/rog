@@ -38,6 +38,8 @@ namespace bump
 		value_type& value() { die_if(!has_value()); return std::get<0>(m_value); }
 		value_type const& value() const { die_if(!has_value()); return std::get<0>(m_value); }
 
+		value_type unwrap() { die_if(!has_value()); return std::move(value()); }
+
 		error_type& error() { die_if(has_value()); return std::get<1>(m_value); }
 		error_type const& error() const { die_if(has_value()); return std::get<1>(m_value); }
 
@@ -72,6 +74,8 @@ namespace bump
 		explicit operator bool() const { return has_value(); }
 
 		void value() { die_if(!has_value()); }
+
+		void unwrap() { die_if(!has_value()); }
 
 		error_type& error() { die_if(has_value()); return std::get<1>(m_value); }
 		error_type const& error() const { die_if(has_value()); return std::get<1>(m_value); }

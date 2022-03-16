@@ -1,5 +1,7 @@
 #include "bump_net_context.hpp"
 
+#include "bump_net_platform.hpp"
+
 #include <utility>
 
 namespace bump
@@ -8,23 +10,6 @@ namespace bump
 	namespace net
 	{
 
-		namespace platform
-		{
-
-			// todo: move these to "bump_net_platform.cpp"
-			
-			result<void, error> init_socket_library()
-			{
-				return make_ok(); // todo: implement me!
-			}
-
-			result<void, error> shutdown_socket_library()
-			{
-				return make_ok(); // todo: implement me!
-			}
-			
-		} // platform
-		
 		context::context(bool active):
 			m_active(active)
 		{
@@ -57,7 +42,7 @@ namespace bump
 			return m_active;
 		}
 
-		result<void, error> context::shutdown()
+		result<void, std::system_error> context::shutdown()
 		{
 			if (m_active)
 			{
@@ -68,7 +53,7 @@ namespace bump
 			return make_ok();
 		}
 
-		result<context, error> init_context()
+		result<context, std::system_error> init_context()
 		{
 			auto res = platform::init_socket_library();
 

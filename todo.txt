@@ -1,8 +1,9 @@
 
 TODO:
 
-ORGANISING:
-	* split "bump" project into lots of smaller projects with minimal dependencies.
+NET:
+	* Bring over basic networking code.
+	* Create test server / client that run on both Windows and WSL.
 
 UI:
 

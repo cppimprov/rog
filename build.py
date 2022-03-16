@@ -283,7 +283,7 @@ class PlatformMSVC:
 		self.write_static_lib(n, build_type, freetype, '0')
 
 		harfbuzz = ProjectStaticLib.from_name('harfbuzz', self, build_type)
-		harfbuzz.defines = [ 'WIN32', '_WINDOWS', 'UNICODE', '_UNICODE', 'WIN32_LEAN_AND_MEAN', 'NOMINMAX', 'NDEBUG', 'HAVE_FREETYPE', 'HAVE_ATEXIT', 'HAVE_ISATTY', 'HAVE_ROUNDF', 'HAVE_STDBOOL_H', '_CRT_SECURE_NO_WARNINGS', '_CRT_NONSTDC_NO_WARNINGS', ] + freetype.defines
+		harfbuzz.defines = [ 'WIN32', '_WINDOWS', 'UNICODE', '_UNICODE', 'NDEBUG', 'HAVE_FREETYPE', 'HAVE_ATEXIT', 'HAVE_ISATTY', 'HAVE_ROUNDF', 'HAVE_STDBOOL_H', '_CRT_SECURE_NO_WARNINGS', '_CRT_NONSTDC_NO_WARNINGS', ] + freetype.defines
 		harfbuzz.inc_dirs = [ join_dir(harfbuzz.code_dir, 'src') ] + freetype.inc_dirs
 		harfbuzz.src_files = [ join_file(harfbuzz.code_dir, "src/harfbuzz.cc") ]
 		self.write_static_lib(n, build_type, harfbuzz, '0')
@@ -480,7 +480,7 @@ class PlatformMSVC:
 		bump_core_dirs = [ 'debug', 'math', 'net', 'util' ]
 
 		bump = ProjectStaticLib.from_name('bump', self, build_type)
-		bump.defines = freetype.defines + harfbuzz.defines + glew.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]
+		bump.defines = freetype.defines + harfbuzz.defines + glew.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
 		bump.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
@@ -524,7 +524,7 @@ class PlatformMSVC:
 			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
-		rog.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib' ]
+		rog.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, rog, '4', res_file)
 
 		rog_ascii_gen = ProjectExe.from_name('rog_ascii_gen', self, build_type)
@@ -555,6 +555,7 @@ class PlatformMSVC:
 		rog_server.libs = [
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
+		rog_server.standard_libs = [ 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, rog_server)
 
 
@@ -690,7 +691,7 @@ class PlatformGCC:
 		bump_core_dirs = [ 'debug', 'math', 'net', 'util' ]
 
 		bump_core = ProjectStaticLib.from_name('bump', self, build_type)
-		bump_core.defines = glm.defines
+		bump_core.defines = glm.defines + [ 'BUMP_NET_BSD' ]
 		bump_core.src_files = [f for files in [get_cpp_files(join_dir(bump_core.code_dir, d)) for d in bump_core_dirs] for f in files]
 		bump_core.inc_dirs = [
 			entt.code_dir,
