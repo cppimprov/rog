@@ -18,4 +18,3 @@ DRAWING:
 
 	* Define screenbuffer region for drawing the level instead of using the whole screen.
 
-

@@ -2,6 +2,9 @@
 
 #include "bump_net_platform.hpp"
 
+#include <bit>
+#include <cstdlib>
+
 namespace bump
 {
 	
@@ -51,13 +54,37 @@ namespace bump
 					die();
 				}
 
+#if defined(BUMP_NET_WS2)
+
+				std::uint8_t  byte_swap(std::uint8_t value)  { return value; }
+				std::uint16_t byte_swap(std::uint16_t value) { return _byteswap_ushort(value); }
+				std::uint32_t byte_swap(std::uint32_t value) { return _byteswap_ulong(value); }
+				std::uint64_t byte_swap(std::uint64_t value) { return _byteswap_uint64(value); };
+
+#else
+
+				std::uint8_t  byte_swap(std::uint8_t value)  { return value; }
+				std::uint16_t byte_swap(std::uint16_t value) { return __builtin_bswap16(value); }
+				std::uint32_t byte_swap(std::uint32_t value) { return __builtin_bswap32(value); }
+				std::uint64_t byte_swap(std::uint64_t value) { return __builtin_bswap64(value); };
+
+#endif
+
 			} // unnamed
+
+			result<std::string, std::system_error> to_string(address const& a)
+			{
+				if (a.get_address_family() == address_family::V4) return platform::address_to_string(a.data_v4());
+				if (a.get_address_family() == address_family::V6) return platform::address_to_string(a.data_v6());
+				die(); // invalid address family
+			}
 
 			endpoint::endpoint(::addrinfo const& info):
 				m_length(info.ai_addrlen),
 				m_address()
 			{
-				die_if(info.ai_addrlen > sizeof(m_address));
+				die_if(m_length < sizeof(::sockaddr_storage::ss_family));
+				die_if(m_length > sizeof(m_address));
 				std::memcpy(&m_address, info.ai_addr, m_length);
 			}
 
@@ -66,9 +93,47 @@ namespace bump
 				return get_ip_address_family(m_address.ss_family);
 			}
 
-			result<std::vector<endpoint>, std::system_error> get_wildcard_address(address_family address_family, protocol protocol)
+			address endpoint::get_address() const
 			{
-				auto info = platform::get_wildcard_address(address_family, protocol);
+				auto const family = get_address_family();
+
+				if (family == address_family::V4)
+				{
+					auto const sai = reinterpret_cast<::sockaddr_in const*>(&m_address);
+					return address(sai->sin_addr);
+				}
+
+				if (family == address_family::V6)
+				{
+					auto const sai = reinterpret_cast<::sockaddr_in6 const*>(&m_address);
+					return address(sai->sin6_addr);
+				}
+
+				die(); // invalid address family
+			}
+
+			std::uint16_t endpoint::get_port() const
+			{
+				auto const family = get_address_family();
+
+				if (family == address_family::V4)
+				{
+					auto const sai = reinterpret_cast<::sockaddr_in const*>(&m_address);
+					return (std::endian::native == std::endian::big) ? sai->sin_port : byte_swap(sai->sin_port);
+				}
+
+				if (family == address_family::V6)
+				{
+					auto const sai = reinterpret_cast<::sockaddr_in6 const*>(&m_address);
+					return (std::endian::native == std::endian::big) ? sai->sin6_port : byte_swap(sai->sin6_port);
+				}
+
+				die(); // invalid address family
+			}
+
+			result<std::vector<endpoint>, std::system_error> get_address_info_any(address_family address_family, protocol protocol, std::uint16_t port)
+			{
+				auto info = platform::get_address_info_any(address_family, protocol, port);
 
 				if (!info.has_value())
 					return make_err(info.error());
@@ -76,49 +141,9 @@ namespace bump
 				return make_ok(get_endpoints(info.value()));
 			}
 
-			result<std::vector<endpoint>, std::system_error> get_wildcard_address(std::string const& service_name, name_type service_name_type, address_family address_family, protocol protocol)
+			result<std::vector<endpoint>, std::system_error> get_address_info_loopback(address_family address_family, protocol protocol, std::uint16_t port)
 			{
-				auto info = platform::get_wildcard_address(service_name, service_name_type, address_family, protocol);
-
-				if (!info.has_value())
-					return make_err(info.error());
-
-				return make_ok(get_endpoints(info.value()));
-			}
-
-			result<std::vector<endpoint>, std::system_error> get_loopback_address(address_family address_family, protocol protocol)
-			{
-				auto info = platform::get_loopback_address(address_family, protocol);
-
-				if (!info.has_value())
-					return make_err(info.error());
-
-				return make_ok(get_endpoints(info.value()));
-			}
-
-			result<std::vector<endpoint>, std::system_error> get_loopback_address(std::string const& service_name, name_type service_name_type, address_family address_family, protocol protocol)
-			{
-				auto info = platform::get_loopback_address(service_name, service_name_type, address_family, protocol);
-
-				if (!info.has_value())
-					return make_err(info.error());
-
-				return make_ok(get_endpoints(info.value()));
-			}
-
-			result<std::vector<endpoint>, std::system_error> get_address(std::string const& node_name, name_type node_name_type, address_family address_family, protocol protocol)
-			{
-				auto info = platform::get_address(node_name, node_name_type, address_family, protocol);
-
-				if (!info.has_value())
-					return make_err(info.error());
-				
-				return make_ok(get_endpoints(info.value()));
-			}
-
-			result<std::vector<endpoint>, std::system_error> get_address(std::string const& node_name, name_type node_name_type, std::string const& service_name, name_type service_name_type, address_family address_family, protocol protocol)
-			{
-				auto info = platform::get_address(node_name, node_name_type, service_name, service_name_type, address_family, protocol);
+				auto info = platform::get_address_info_loopback(address_family, protocol, port);
 
 				if (!info.has_value())
 					return make_err(info.error());
@@ -126,46 +151,21 @@ namespace bump
 				return make_ok(get_endpoints(info.value()));
 			}
 			
-			result<std::tuple<std::vector<endpoint>, std::string>, std::system_error> get_address_and_canonical_name(std::string const& node_name, name_type node_name_type, address_family address_family, protocol protocol)
+			result<std::vector<endpoint>, std::system_error> get_address_info(address_family address_family, protocol protocol, std::string const& node_name, std::uint16_t port, bool lookup_cname)
 			{
-				auto info = platform::get_address_and_canonical_name(node_name, node_name_type, address_family, protocol);
-
-				if (!info.has_value())
-					return make_err(info.error());
-
-				return make_ok(std::make_tuple(get_endpoints(info.value()), get_canonical_name(info.value())));
-			}
-
-			result<std::tuple<std::vector<endpoint>, std::string>, std::system_error> get_address_and_canonical_name(std::string const& node_name, name_type node_name_type, std::string const& service_name, name_type service_name_type, address_family address_family, protocol protocol)
-			{
-				auto info = platform::get_address_and_canonical_name(node_name, node_name_type, service_name, service_name_type, address_family, protocol);
+				auto info = platform::get_address_info(address_family, protocol, node_name, port, lookup_cname);
 
 				if (!info.has_value())
 					return make_err(info.error());
 				
-				return make_ok(std::make_tuple(get_endpoints(info.value()), get_canonical_name(info.value())));
+				return make_ok(get_endpoints(info.value()));
 			}
 
-			result<std::string, std::system_error> get_node_name(endpoint const& endpoint, qualify_local_host qualify)
+			result<std::string, std::system_error> get_name_info(endpoint const& endpoint, bool qualify_hostname)
 			{
-				return platform::get_node_name(endpoint, qualify);
+				return platform::get_name_info(endpoint, qualify_hostname);
 			}
 
-			result<std::string, std::system_error> get_node_name(endpoint const& endpoint)
-			{
-				return platform::get_node_name(endpoint);
-			}
-
-			result<std::string, std::system_error> get_node_ip(endpoint const& endpoint)
-			{
-				return platform::get_node_ip(endpoint);
-			}
-
-			result<std::string, std::system_error> get_port(endpoint const& endpoint)
-			{
-				return platform::get_port(endpoint);
-			}
-			
 		} // ip
 		
 	} // net

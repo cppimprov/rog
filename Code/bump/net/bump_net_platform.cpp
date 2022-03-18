@@ -3,6 +3,9 @@
 #include "bump_die.hpp"
 #include "bump_net_platform_includes.hpp"
 
+#include <array>
+#include <charconv>
+
 namespace bump
 {
 	
@@ -12,42 +15,21 @@ namespace bump
 		namespace platform
 		{
 
-#if defined(BUMP_NET_WS2)
-
 			namespace
 			{
 
-				std::system_error get_last_error()
+				// PORT_MAX is the max length of string needed to represent a port.
+				// i.e. length of "65535" + a null.
+				auto constexpr PORT_MAX = 5 + 1;
+
+				std::array<char, PORT_MAX> get_port_str(std::uint16_t port)
 				{
-					return std::system_error(std::error_code(::WSAGetLastError(), std::system_category()));
+					auto str = std::array<char, PORT_MAX>{ 0 };
+					auto const tcr = std::to_chars(str.data(), str.data() + PORT_MAX, port);
+					die_if(tcr.ec != std::errc());
+					return str;
 				}
-
-			} // unnamed
-
-			result<void, std::system_error> init_socket_library()
-			{
-				auto data = WSADATA();
-				auto const result = ::WSAStartup(MAKEWORD(2, 2), &data);
-
-				if (result != 0)
-					return make_err(std::system_error(std::error_code(result, std::system_category())));
-
-				return make_ok();
-			}
-
-			result<void, std::system_error> shutdown_socket_library()
-			{
-				auto const result = ::WSACleanup();
-
-				if (result != 0)
-					return make_err(get_last_error());
-
-				return make_ok();
-			}
-
-			namespace
-			{
-
+				
 				int get_ai_family(ip::address_family version)
 				{
 					switch (version)
@@ -84,6 +66,39 @@ namespace bump
 
 			} // unnamed
 
+#if defined(BUMP_NET_WS2)
+
+			namespace
+			{
+
+				std::system_error get_last_error()
+				{
+					return std::system_error(std::error_code(::WSAGetLastError(), std::system_category()));
+				}
+
+			} // unnamed
+
+			result<void, std::system_error> init_socket_library()
+			{
+				auto data = WSADATA();
+				auto const result = ::WSAStartup(MAKEWORD(2, 2), &data);
+
+				if (result != 0)
+					return make_err(std::system_error(std::error_code(result, std::system_category())));
+
+				return make_ok();
+			}
+
+			result<void, std::system_error> shutdown_socket_library()
+			{
+				auto const result = ::WSACleanup();
+
+				if (result != 0)
+					return make_err(get_last_error());
+
+				return make_ok();
+			}
+
 			result<addrinfo_ptr, std::system_error> lookup_address(char const* node, char const* service, ip::address_family address_family, ip::protocol protocol, int flags)
 			{
 				die_if(!node && !service);
@@ -117,6 +132,28 @@ namespace bump
 				
 				return make_ok();
 			}
+
+			result<std::string, std::system_error> addr_to_string(::in_addr const& address)
+			{
+				char str[INET_ADDRSTRLEN + 1] = { 0 };
+				auto const result = ::inet_ntop(AF_INET, &address, str, INET_ADDRSTRLEN);
+
+				if (!result)
+					return make_err(get_last_error());
+
+				return make_ok(std::string(str));
+			}
+			
+			result<std::string, std::system_error> addr_to_string(::in6_addr const& address)
+			{
+				char str[INET6_ADDRSTRLEN + 1] = { 0 };
+				auto const result = ::inet_ntop(AF_INET6, &address, str, INET6_ADDRSTRLEN);
+
+				if (!result)
+					return make_err(get_last_error());
+				
+				return make_ok(std::string(str));
+			}
 			
 #else
 
@@ -132,57 +169,30 @@ namespace bump
 
 #endif
 
-			result<addrinfo_ptr, std::system_error> get_wildcard_address(ip::address_family address_family, ip::protocol protocol)
+			result<addrinfo_ptr, std::system_error> get_address_info_any(ip::address_family address_family, ip::protocol protocol, std::uint16_t port)
 			{
-				return lookup_address(nullptr, "0", address_family, protocol, AI_PASSIVE);
+				auto const port_str = get_port_str(port);
+				return lookup_address(nullptr, port_str.data(), address_family, protocol, AI_PASSIVE | AI_NUMERICSERV);
 			}
 
-			result<addrinfo_ptr, std::system_error> get_wildcard_address(std::string const& service_name, ip::name_type service_name_type, ip::address_family address_family, ip::protocol protocol)
+			result<addrinfo_ptr, std::system_error> get_address_info_loopback(ip::address_family address_family, ip::protocol protocol, std::uint16_t port)
 			{
-				return lookup_address(nullptr, service_name.c_str(), address_family, protocol, 
-					AI_PASSIVE | (service_name_type == ip::name_type::NUMERIC ? AI_NUMERICSERV : 0));
+				auto const port_str = get_port_str(port);
+				return lookup_address(nullptr, port_str.data(), address_family, protocol, AI_NUMERICSERV);
 			}
 
-			result<addrinfo_ptr, std::system_error> get_loopback_address(ip::address_family address_family, ip::protocol protocol)
+			result<addrinfo_ptr, std::system_error> get_address_info(ip::address_family address_family, ip::protocol protocol, std::string const& node_name, std::uint16_t port, bool lookup_cname)
 			{
-				return lookup_address(nullptr, "0", address_family, protocol, 0);
+				auto const port_str = get_port_str(port);
+				int flags = AI_NUMERICSERV | (lookup_cname ? AI_CANONNAME : 0);
+				return lookup_address(node_name.c_str(), port_str.data(), address_family, protocol, flags);
 			}
 
-			result<addrinfo_ptr, std::system_error> get_loopback_address(std::string const& service_name, ip::name_type service_name_type, ip::address_family address_family, ip::protocol protocol)
-			{
-				return lookup_address(nullptr, service_name.c_str(), address_family, protocol,
-					(service_name_type == ip::name_type::NUMERIC ? AI_NUMERICSERV : 0));
-			}
-
-			result<addrinfo_ptr, std::system_error> get_address(std::string const& node_name, ip::name_type node_name_type, ip::address_family address_family, ip::protocol protocol)
-			{
-				return lookup_address(node_name.c_str(), "0", address_family, protocol,
-					(node_name_type == ip::name_type::NUMERIC ? AI_NUMERICHOST : 0));
-			}
-
-			result<addrinfo_ptr, std::system_error> get_address(std::string const& node_name, ip::name_type node_name_type, std::string const& service_name, ip::name_type service_name_type, ip::address_family address_family, ip::protocol protocol)
-			{
-				return lookup_address(node_name.c_str(), service_name.c_str(), address_family, protocol,
-					(node_name_type == ip::name_type::NUMERIC ? AI_NUMERICHOST : 0) | (service_name_type == ip::name_type::NUMERIC ? AI_NUMERICSERV : 0));
-			}
-
-			result<addrinfo_ptr, std::system_error> get_address_and_canonical_name(std::string const& node_name, ip::name_type node_name_type, ip::address_family address_family, ip::protocol protocol)
-			{
-				return lookup_address(node_name.c_str(), "0", address_family, protocol,
-					AI_CANONNAME | (node_name_type == ip::name_type::NUMERIC ? AI_NUMERICHOST : 0));
-			}
-
-			result<addrinfo_ptr, std::system_error> get_address_and_canonical_name(std::string const& node_name, ip::name_type node_name_type, std::string const& service_name, ip::name_type service_name_type, ip::address_family address_family, ip::protocol protocol)
-			{
-				return lookup_address(node_name.c_str(), service_name.c_str(), address_family, protocol,
-					AI_CANONNAME | (node_name_type == ip::name_type::NUMERIC ? AI_NUMERICHOST : 0) | (service_name_type == ip::name_type::NUMERIC ? AI_NUMERICSERV : 0));
-			}
-
-			result<std::string, std::system_error> get_node_name(ip::endpoint const& endpoint, ip::qualify_local_host qualify)
+			result<std::string, std::system_error> get_name_info(ip::endpoint const& endpoint, bool qualify_hostname)
 			{
 				char node[NI_MAXHOST + 1] = { 0 };
-				auto const result = lookup_name(node, NI_MAXHOST, nullptr, 0, endpoint.get_address(), endpoint.get_address_length(),
-					NI_NAMEREQD | (qualify == ip::qualify_local_host::hostname_only ? NI_NOFQDN : 0));
+				auto const result = lookup_name(node, NI_MAXHOST, nullptr, 0, endpoint.get_address_storage(), endpoint.get_address_length(),
+					NI_NAMEREQD | (!qualify_hostname ? NI_NOFQDN : 0));
 				
 				if (!result.has_value())
 					return make_err(result.error());
@@ -190,37 +200,14 @@ namespace bump
 				return make_ok(std::string(node));
 			}
 
-			result<std::string, std::system_error> get_node_name(ip::endpoint const& endpoint)
+			result<std::string, std::system_error> address_to_string(::in_addr const& address)
 			{
-				char node[NI_MAXHOST + 1] = { 0 };
-				auto const result = lookup_name(node, NI_MAXHOST, nullptr, 0, endpoint.get_address(), endpoint.get_address_length(), NI_NAMEREQD);
-				
-				if (!result.has_value())
-					return make_err(result.error());
-				
-				return make_ok(std::string(node));
+				return addr_to_string(address);
 			}
 
-			result<std::string, std::system_error> get_node_ip(ip::endpoint const& endpoint)
+			result<std::string, std::system_error> address_to_string(::in6_addr const& address)
 			{
-				char node[NI_MAXHOST + 1] = { 0 };
-				auto const result = lookup_name(node, NI_MAXHOST, nullptr, 0, endpoint.get_address(), endpoint.get_address_length(), NI_NUMERICHOST);
-				
-				if (!result.has_value())
-					return make_err(result.error());
-				
-				return make_ok(std::string(node));
-			}
-
-			result<std::string, std::system_error> get_port(ip::endpoint const& endpoint)
-			{
-				char service[NI_MAXSERV + 1] = { 0 };
-				auto const result = lookup_name(nullptr, 0, service, NI_MAXSERV, endpoint.get_address(), endpoint.get_address_length(), NI_NAMEREQD);
-				
-				if (!result.has_value())
-					return make_err(result.error());
-				
-				return make_ok(std::string(service));
+				return addr_to_string(address);
 			}
 			
 		} // platform

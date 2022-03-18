@@ -2,18 +2,43 @@
 #include <bump_log.hpp>
 #include <bump_net.hpp>
 
+#include <iostream>
 #include <string>
 
 int main()
 {
-	auto context = bump::net::init_context().unwrap();
+	namespace net = bump::net;
+	namespace ip = bump::net::ip;
 
-	auto loop = bump::net::ip::get_address("www.google.com", bump::net::ip::name_type::ANY, bump::net::ip::address_family::V4, bump::net::ip::protocol::TCP);
+	auto context = net::init_context().unwrap();
 
-	if (!loop.has_value())
+	auto info = ip::get_address_info(
+		ip::address_family::UNSPECIFIED,
+		ip::protocol::TCP,
+		"www.example.com", 80);
+	
+	if (!info.has_value())
 		bump::log_error("nope!");
 	else
-		bump::log_info(bump::net::ip::get_node_ip(loop.value().at(0)).unwrap());
+	{
+		std::cout << "found " << info.value().size() << " addresses:\n";
+
+		auto i = 0;
+
+		for (auto const& endpoint : info.value())
+		{
+			using std::to_string;
+
+			auto const node = ip::get_name_info(endpoint);
+			auto const address = to_string(endpoint.get_address()).unwrap();
+			auto const port = to_string(endpoint.get_port());
+
+			std::cout << i++ << ":\n";
+			if (node.has_value()) std::cout << "name: " << node.value() << "\n";
+			std::cout << "ip: " << address << " port: " << port << "\n";
+			std::cout << "\n";
+		}
+	}
 
 	bump::log_info("done!");
 }

@@ -50,6 +50,7 @@
             "options": [
                 "rog",
                 "rog_ascii_gen",
+                "rog_server",
             ]
         },
         {
