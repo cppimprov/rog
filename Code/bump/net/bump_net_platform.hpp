@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <system_error>
 
 namespace bump
@@ -26,11 +27,13 @@ namespace bump
 			result<addrinfo_ptr, std::system_error> get_address_info_any(ip::address_family address_family, ip::protocol protocol, std::uint16_t port);
 			result<addrinfo_ptr, std::system_error> get_address_info_loopback(ip::address_family address_family, ip::protocol protocol, std::uint16_t port);
 			result<addrinfo_ptr, std::system_error> get_address_info(ip::address_family address_family, ip::protocol protocol, std::string const& node_name, std::uint16_t port, bool lookup_cname);
+			result<addrinfo_ptr, std::system_error> get_address_info(ip::protocol protocol, ip::address const& address, std::uint16_t port);
 
 			result<std::string, std::system_error> get_name_info(ip::endpoint const& endpoint, bool qualify_hostname);
 
-			result<std::string, std::system_error> address_to_string(::in_addr const& address);
-			result<std::string, std::system_error> address_to_string(::in6_addr const& address);
+			std::optional<ip::address> string_to_address(std::string const& str);
+			std::string address_to_string(::in_addr const& address);
+			std::string address_to_string(::in6_addr const& address);
 
 		} // platform
 		
