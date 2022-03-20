@@ -1,10 +1,13 @@
 #include "bump_net_platform.hpp"
 
+#include "bump_bit.hpp"
 #include "bump_die.hpp"
 #include "bump_net_platform_includes.hpp"
+#include "bump_static_string.hpp"
 
 #include <array>
 #include <charconv>
+#include <cstring>
 
 namespace bump
 {
@@ -19,14 +22,15 @@ namespace bump
 			{
 
 				// PORT_MAX is the max length of string needed to represent a port.
-				// i.e. length of "65535" + a null.
-				auto constexpr PORT_MAX = 5 + 1;
+				// i.e. length of "65535"
+				auto constexpr PORT_MAX = 5;
 
-				std::array<char, PORT_MAX> get_port_str(std::uint16_t port)
+				static_string<PORT_MAX> get_port_str(std::uint16_t port)
 				{
-					auto str = std::array<char, PORT_MAX>{ 0 };
+					auto str = static_string<PORT_MAX>(PORT_MAX, '\0');
 					auto const tcr = std::to_chars(str.data(), str.data() + PORT_MAX, port);
 					die_if(tcr.ec != std::errc());
+					str.resize(tcr.ptr - str.data());
 					return str;
 				}
 				
@@ -46,8 +50,8 @@ namespace bump
 				{
 					switch (protocol)
 					{
-					case ip::protocol::TCP: return SOCK_STREAM;
 					case ip::protocol::UDP: return SOCK_DGRAM;
+					case ip::protocol::TCP: return SOCK_STREAM;
 					}
 
 					die();
@@ -57,8 +61,19 @@ namespace bump
 				{
 					switch (protocol)
 					{
-					case ip::protocol::TCP: return IPPROTO_TCP;
 					case ip::protocol::UDP: return IPPROTO_UDP;
+					case ip::protocol::TCP: return IPPROTO_TCP;
+					}
+
+					die();
+				}
+
+				char const* get_protocol_name(ip::protocol protocol)
+				{
+					switch (protocol)
+					{
+					case ip::protocol::UDP: return "udp";
+					case ip::protocol::TCP: return "tcp";
 					}
 
 					die();
@@ -133,52 +148,62 @@ namespace bump
 				return make_ok();
 			}
 
-			// todo: tidy this!!! remove duplication
+#else
 
-			auto constexpr IP_MAX = INET6_ADDRSTRLEN + 1;
-
-			std::array<char, IP_MAX> addr_to_string_static(ip::address const& address)
+			result<void, error> init_socket_library()
 			{
-				auto str = std::array<char, IP_MAX>{ 0 };
-				
-				if (address.get_address_family() == ip::address_family::V4)
-				{
-					auto const result = ::inet_ntop(AF_INET, &address.data_v4(), str.data(), INET_ADDRSTRLEN);
-					die_if(!result);
-
-					return str;
-				}
-
-				if (address.get_address_family() == ip::address_family::V6)
-				{
-					auto const result = ::inet_ntop(AF_INET6, &address.data_v6(), str.data(), INET6_ADDRSTRLEN);
-					die_if(!result);
-
-					return str;
-				}
-
-				die();
+				return make_ok(); // nothing to do!
 			}
 
-			std::string addr_to_string(::in_addr const& address)
+			result<void, error> shutdown_socket_library()
 			{
-				char str[INET_ADDRSTRLEN + 1] = { 0 };
-				auto const result = ::inet_ntop(AF_INET, &address, str, INET_ADDRSTRLEN);
-				die_if(!result);
+				return make_ok(); // nothing to do!
+			}
 
-				return std::string(str);
+#endif
+
+			auto constexpr IP_MAX4 = INET_ADDRSTRLEN;
+
+			static static_string<IP_MAX4> address_to_static_string(::in_addr const& address)
+			{
+				auto str = static_string<IP_MAX4>(IP_MAX4, '\0');
+				auto const result = ::inet_ntop(AF_INET, &address, str.data(), INET_ADDRSTRLEN);
+				die_if(!result);
+				str.resize(::strnlen_s(str.data(), str.size()));
+				return str;
+			}
+
+			auto constexpr IP_MAX6 = INET6_ADDRSTRLEN;
+
+			static static_string<IP_MAX6> address_to_static_string(::in6_addr const& address)
+			{
+				auto str = static_string<IP_MAX6>(IP_MAX6, '\0');
+				auto const result = ::inet_ntop(AF_INET6, &address, str.data(), INET6_ADDRSTRLEN);
+				die_if(!result);
+				str.resize(::strnlen_s(str.data(), str.size()));
+				return str;
+			}
+
+			auto constexpr IP_MAX = std::max(IP_MAX4, IP_MAX6);
+
+			static_string<IP_MAX> address_to_static_string(ip::address const& address)
+			{
+				if (address.get_address_family() == ip::address_family::V4) return address_to_static_string(address.data_v4());
+				if (address.get_address_family() == ip::address_family::V6) return address_to_static_string(address.data_v6());
+				die(); // invalid address family
+			}
+
+			std::string address_to_string(::in_addr const& address)
+			{
+				return address_to_static_string(address).str();
 			}
 			
-			std::string addr_to_string(::in6_addr const& address)
+			std::string address_to_string(::in6_addr const& address)
 			{
-				char str[INET6_ADDRSTRLEN + 1] = { 0 };
-				auto const result = ::inet_ntop(AF_INET6, &address, str, INET6_ADDRSTRLEN);
-				die_if(!result);
-				
-				return std::string(str);
+				return address_to_static_string(address).str();
 			}
 
-			std::optional<ip::address> string_to_addr(std::string const& str)
+			std::optional<ip::address> string_to_address(std::string const& str)
 			{
 				// try to parse ipv4 address
 				{
@@ -200,21 +225,27 @@ namespace bump
 
 				return std::nullopt;
 			}
+
+			result<std::uint16_t, std::system_error> get_port(std::string const& service_name, ip::protocol protocol)
+			{
+				auto const serv = ::getservbyname(service_name.c_str(), get_protocol_name(protocol));
+
+				if (!serv)
+					return make_err(get_last_error());
+				
+				return make_ok(to_system_byte_order(static_cast<std::uint16_t>(serv->s_port)));
+			}
+
+			result<std::string, std::system_error> get_service_name(std::uint16_t port, ip::protocol protocol)
+			{
+				auto const serv = ::getservbyport(to_network_byte_order(port), get_protocol_name(protocol));
+
+				if (!serv)
+					return make_err(get_last_error());
+
+				return make_ok(std::string(serv->s_name));
+			}
 			
-#else
-
-			result<void, error> init_socket_library()
-			{
-				return make_ok(); // nothing to do!
-			}
-
-			result<void, error> shutdown_socket_library()
-			{
-				return make_ok(); // nothing to do!
-			}
-
-#endif
-
 			result<addrinfo_ptr, std::system_error> get_address_info_any(ip::address_family address_family, ip::protocol protocol, std::uint16_t port)
 			{
 				// todo: avoid port string conversion?
@@ -242,7 +273,7 @@ namespace bump
 			result<addrinfo_ptr, std::system_error> get_address_info(ip::protocol protocol, ip::address const& address, std::uint16_t port)
 			{
 				// todo: avoid port and ip string conversions?
-				auto const ip_str = addr_to_string_static(address);
+				auto const ip_str = address_to_static_string(address);
 				auto const port_str = get_port_str(port);
 				int flags = AI_NUMERICHOST | AI_NUMERICSERV;
 				return lookup_address(ip_str.data(), port_str.data(), address.get_address_family(), protocol, flags);
@@ -259,22 +290,7 @@ namespace bump
 				
 				return make_ok(std::string(node));
 			}
-			
-			std::optional<ip::address> string_to_address(std::string const& str)
-			{
-				return string_to_addr(str);
-			}
 
-			std::string address_to_string(::in_addr const& address)
-			{
-				return addr_to_string(address);
-			}
-
-			std::string address_to_string(::in6_addr const& address)
-			{
-				return addr_to_string(address);
-			}
-			
 		} // platform
 		
 	} // net

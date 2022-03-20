@@ -34,6 +34,11 @@ namespace bump
 				explicit address(::in_addr const& data): m_data(data) { }
 				explicit address(::in6_addr const& data): m_data(data) { }
 
+				address(address const&) = default;
+				address& operator=(address const&) = default;
+				address(address&&) = default;
+				address& operator=(address&&) = default;
+
 				address_family get_address_family() const { return (m_data.index() == 0) ? address_family::V4 : address_family::V6; }
 
 				::in_addr& data_v4() { return std::get<0>(m_data); }
@@ -63,14 +68,14 @@ namespace bump
 				endpoint(endpoint&&) = default;
 				endpoint& operator=(endpoint&&) = default;
 
-				// todo: return a pointer instead, call this function data()?
-				// todo: specific versions to return v4 and v6 data?
-				std::size_t get_address_length() const { return m_length; }
-				::sockaddr_storage const& get_address_storage() const { return m_address; }
-
 				address_family get_address_family() const;
 				address get_address() const;
 				std::uint16_t get_port() const;
+
+				std::size_t get_address_length() const { return m_length; }
+				::sockaddr_storage const& get_address_storage() const { return m_address; }
+				::sockaddr_in      const& get_address_v4() const { return reinterpret_cast<::sockaddr_in  const&>(m_address); }
+				::sockaddr_in6     const& get_address_v6() const { return reinterpret_cast<::sockaddr_in6 const&>(m_address); }
 
 				friend bool operator==(endpoint const& a, endpoint const& b);
 				friend bool operator!=(endpoint const& a, endpoint const& b) { return !(a == b); }
@@ -90,16 +95,20 @@ namespace bump
 
 			result<endpoint, std::system_error> get_endpoint(protocol protocol, address const& address, std::uint16_t port = 0);
 
-			// todo: set port directly in endpoints, instead of converting to string
 			result<address_info, std::system_error> get_address_info_any(address_family address_family, protocol protocol, std::uint16_t port = 0);
 			result<address_info, std::system_error> get_address_info_loopback(address_family address_family, protocol protocol, std::uint16_t port = 0);
 			result<address_info, std::system_error> get_address_info(address_family address_family, protocol protocol, std::string const& node_name, std::uint16_t port = 0, bool lookup_cname = false);
 
 			result<std::string, std::system_error> get_name_info(endpoint const& endpoint, bool qualify_hostname = true);
 
-			// todo: service name to port conversion (and vice versa):
-			// std::uint16_t get_port(std::string const& service_name, ip::protocol);
-			// std::string get_service_name(std::uint16_t, ip::protocol); // getservbyname
+			result<std::uint16_t, std::system_error> get_port(std::string const& service_name, protocol protocol);
+			result<std::string, std::system_error> get_service_name(std::uint16_t port, protocol protocol);
+
+			// todo:
+			// setters for endpoint?
+			// set endpoint ports directly in get_address_info, instead of converting to string and back?
+			// set address and port directly in `get_endpoint`?
+			// unit tests...
 
 		} // ip
 		

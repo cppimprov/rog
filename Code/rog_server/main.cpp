@@ -112,5 +112,8 @@ int main()
 		std::cout << (a == b) << " " << (a == c) << std::endl;
 	}
 
+	std::cout << ip::get_port("https", ip::protocol::TCP).unwrap() << std::endl;
+	std::cout << ip::get_service_name(443, ip::protocol::TCP).unwrap() << std::endl;
+
 	bump::log_info("done!");
 }
