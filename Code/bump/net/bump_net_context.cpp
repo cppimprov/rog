@@ -10,6 +10,48 @@ namespace bump
 	namespace net
 	{
 
+		namespace platform
+		{
+
+#if defined(BUMP_NET_WS2)
+
+			result<void, std::system_error> init_socket_library()
+			{
+				auto data = WSADATA();
+				auto const result = ::WSAStartup(MAKEWORD(2, 2), &data);
+
+				if (result != 0)
+					return make_err(std::system_error(std::error_code(result, std::system_category())));
+
+				return make_ok();
+			}
+
+			result<void, std::system_error> shutdown_socket_library()
+			{
+				auto const result = ::WSACleanup();
+
+				if (result != 0)
+					return make_err(get_last_error());
+
+				return make_ok();
+			}
+
+#else
+
+			result<void, std::system_error> init_socket_library()
+			{
+				return make_ok(); // nothing to do!
+			}
+
+			result<void, std::system_error> shutdown_socket_library()
+			{
+				return make_ok(); // nothing to do!
+			}
+
+#endif
+
+		} // platform
+
 		context::context(bool active):
 			m_active(active)
 		{

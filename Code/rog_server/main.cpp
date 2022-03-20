@@ -86,6 +86,15 @@ int main()
 
 		std::cout << (info1.value() == info2.value().m_endpoints.at(0)) << std::endl;
 	}
+	
+	{
+		auto info = ip::get_address_info(
+			ip::address_family::UNSPECIFIED,
+			ip::protocol::TCP,
+			"www.example.com", 80, true);
+			
+		print_address_info(info.value());
+	}
 
 	{
 		auto a = ip::address(192, 168, 1, 1);

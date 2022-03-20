@@ -1,54 +1,129 @@
 #pragma once
 
-#include "bump_bit.hpp"
-#include "bump_net_ip.hpp"
-#include "bump_net_platform_includes.hpp"
-#include "bump_result.hpp"
-
-#include <functional>
-#include <memory>
-#include <optional>
 #include <system_error>
 
-namespace bump
+#if defined(BUMP_NET_WS2)
+
+#define WIN32_LEAN_AND_MEAN
+
+#define NOGDICAPMASKS	 // CC_*, LC_*, PC_*, CP_*, TC_*, RC_
+#define NOVIRTUALKEYCODES // VK_*
+#define NOWINMESSAGES	 // WM_*, EM_*, LB_*, CB_*
+#define NOWINSTYLES		  // WS_*, CS_*, ES_*, LBS_*, SBS_*, CBS_*
+#define NOSYSMETRICS	  // SM_*
+#define NOMENUS			  // MF_*
+#define NOICONS			  // IDI_*
+#define NOKEYSTATES		  // MK_*
+#define NOSYSCOMMANDS	 // SC_*
+#define NORASTEROPS		  // Binary and Tertiary raster ops
+#define NOSHOWWINDOW	  // SW_*
+#define OEMRESOURCE		  // OEM Resource values
+#define NOATOM			  // Atom Manager routines
+#define NOCLIPBOARD		  // Clipboard routines
+#define NOCOLOR			  // Screen colors
+#define NOCTLMGR		  // Control and Dialog routines
+#define NODRAWTEXT		  // DrawText() and DT_*
+#define NOGDI			  // All GDI defines and routines
+#define NOKERNEL		  // All KERNEL defines and routines
+#define NOUSER			  // All USER defines and routines
+#define NONLS			  // All NLS defines and routines
+#define NOMB			  // MB_* and MessageBox()
+#define NOMEMMGR		  // GMEM_*, LMEM_*, GHND, LHND, associated routines
+#define NOMETAFILE		  // typedef METAFILEPICT
+#define NOMINMAX		  // Macros min(a, b) and max(a, b)
+#define NOMSG			  // typedef MSG and associated routines
+#define NOOPENFILE		  // OpenFile(), OemToAnsi, AnsiToOem, and OF_*
+#define NOSCROLL		  // SB_* and scrolling routines
+#define NOSERVICE		  // All Service Controller routines, SERVICE_ equates, etc.
+#define NOSOUND			  // Sound driver routines
+#define NOTEXTMETRIC	  // typedef TEXTMETRIC and associated routines
+#define NOWH			  // SetWindowsHook and WH_*
+#define NOWINOFFSETS	  // GWL_*, GCL_*, associated routines
+#define NOCOMM			  // COMM driver routines
+#define NOKANJI			  // Kanji support stuff.
+#define NOHELP			  // Help engine interface.
+#define NOPROFILER		  // Profiler interface.
+#define NODEFERWINDOWPOS  // DeferWindowPos routines
+#define NOMCX			  // Modem Configuration Extensions
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#undef WIN32_LEAN_AND_MEAN
+
+#undef NOGDICAPMASKS	 // CC_*, LC_*, PC_*, CP_*, TC_*, RC_
+#undef NOVIRTUALKEYCODES // VK_*
+#undef NOWINMESSAGES	 // WM_*, EM_*, LB_*, CB_*
+#undef NOWINSTYLES		 // WS_*, CS_*, ES_*, LBS_*, SBS_*, CBS_*
+#undef NOSYSMETRICS		 // SM_*
+#undef NOMENUS			 // MF_*
+#undef NOICONS			 // IDI_*
+#undef NOKEYSTATES		 // MK_*
+#undef NOSYSCOMMANDS	 // SC_*
+#undef NORASTEROPS		 // Binary and Tertiary raster ops
+#undef NOSHOWWINDOW		 // SW_*
+#undef OEMRESOURCE		 // OEM Resource values
+#undef NOATOM			 // Atom Manager routines
+#undef NOCLIPBOARD		 // Clipboard routines
+#undef NOCOLOR			 // Screen colors
+#undef NOCTLMGR			 // Control and Dialog routines
+#undef NODRAWTEXT		 // DrawText() and DT_*
+#undef NOGDI			 // All GDI defines and routines
+#undef NOKERNEL			 // All KERNEL defines and routines
+#undef NOUSER			 // All USER defines and routines
+#undef NONLS			 // All NLS defines and routines
+#undef NOMB				 // MB_* and MessageBox()
+#undef NOMEMMGR			 // GMEM_*, LMEM_*, GHND, LHND, associated routines
+#undef NOMETAFILE		 // typedef METAFILEPICT
+#undef NOMINMAX			 // Macros min(a, b) and max(a, b)
+#undef NOMSG			 // typedef MSG and associated routines
+#undef NOOPENFILE		 // OpenFile(), OemToAnsi, AnsiToOem, and OF_*
+#undef NOSCROLL			 // SB_* and scrolling routines
+#undef NOSERVICE		 // All Service Controller routines, SERVICE_ equates, etc.
+#undef NOSOUND			 // Sound driver routines
+#undef NOTEXTMETRIC		 // typedef TEXTMETRIC and associated routines
+#undef NOWH				 // SetWindowsHook and WH_*
+#undef NOWINOFFSETS		 // GWL_*, GCL_*, associated routines
+#undef NOCOMM			 // COMM driver routines
+#undef NOKANJI			 // Kanji support stuff.
+#undef NOHELP			 // Help engine interface.
+#undef NOPROFILER		 // Profiler interface.
+#undef NODEFERWINDOWPOS  // DeferWindowPos routines
+#undef NOMCX			 // Modem Configuration Extensions
+
+namespace bump::net::platform
+{
+
+	inline std::system_error get_last_error()
+	{
+		return std::system_error(std::error_code(::WSAGetLastError(), std::system_category()));
+	}
+
+} // bump::net::platform
+
+#elif defined(BUMP_NET_BSD)
+
+#include <arpa/inet.h>
+#include <cerrno>
+#include <netdb.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+namespace bump::net::platform
 {
 	
-	namespace net
+	inline std::system_error get_last_error()
 	{
-		
-		namespace platform
-		{
-			inline std::uint8_t  to_network_byte_order(std::uint8_t  value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-			inline std::uint16_t to_network_byte_order(std::uint16_t value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-			inline std::uint32_t to_network_byte_order(std::uint32_t value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-			inline std::uint64_t to_network_byte_order(std::uint64_t value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-
-			inline std::uint8_t  to_system_byte_order(std::uint8_t  value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-			inline std::uint16_t to_system_byte_order(std::uint16_t value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-			inline std::uint32_t to_system_byte_order(std::uint32_t value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-			inline std::uint64_t to_system_byte_order(std::uint64_t value) { return (std::endian::native == std::endian::big ? value : byte_swap(value)); }
-
-			result<void, std::system_error> init_socket_library();
-			result<void, std::system_error> shutdown_socket_library();
-			
-			using addrinfo_ptr = std::unique_ptr<::addrinfo, void(*)(::addrinfo*)>;
-			
-			std::optional<ip::address> string_to_address(std::string const& str);
-			std::string address_to_string(::in_addr const& address);
-			std::string address_to_string(::in6_addr const& address);
-			
-			result<addrinfo_ptr, std::system_error> get_address_info_any(ip::address_family address_family, ip::protocol protocol, std::uint16_t port);
-			result<addrinfo_ptr, std::system_error> get_address_info_loopback(ip::address_family address_family, ip::protocol protocol, std::uint16_t port);
-			result<addrinfo_ptr, std::system_error> get_address_info(ip::address_family address_family, ip::protocol protocol, std::string const& node_name, std::uint16_t port, bool lookup_cname);
-			result<addrinfo_ptr, std::system_error> get_address_info(ip::protocol protocol, ip::address const& address, std::uint16_t port);
-
-			result<std::string, std::system_error> get_name_info(ip::endpoint const& endpoint, bool qualify_hostname);
-
-			result<std::uint16_t, std::system_error> get_port(std::string const& service_name, ip::protocol protocol);
-			result<std::string, std::system_error> get_service_name(std::uint16_t port, ip::protocol protocol);
-
-		} // platform
-		
-	} // net
+		return std::system_error(std::error_code(errno, std::generic_category()));
+	}
 	
-} // bump
+} // bump::net::platform
+
+#else
+
+#error "Network platform not defined! Define either BUMP_NET_WS2 or BUMP_NET_BSD"
+
+#endif
