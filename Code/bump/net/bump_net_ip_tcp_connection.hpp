@@ -3,6 +3,7 @@
 #include "bump_net_socket.hpp"
 #include "bump_result.hpp"
 
+#include <span>
 #include <system_error>
 
 namespace bump
@@ -27,8 +28,8 @@ namespace bump
 				tcp_connection(tcp_connection&&) = default;
 				tcp_connection& operator=(tcp_connection&&) = default;
 
-				result<std::size_t, std::system_error> send(std::uint8_t const* data, std::size_t data_size);
-				result<std::size_t, std::system_error> receive(std::uint8_t* data, std::size_t data_size);
+				result<std::size_t, std::system_error> send(std::span<const std::uint8_t> data);
+				result<std::size_t, std::system_error> receive(std::span<std::uint8_t> buffer);
 
 				bool is_open() const;
 				result<void, std::system_error> close();

@@ -140,9 +140,9 @@ namespace bump
 				die(); // unreachable (hopefully)
 			}
 
-			result<std::size_t, std::system_error> send(socket const& socket, std::uint8_t const* data, std::size_t data_size)
+			result<std::size_t, std::system_error> send(socket const& socket, std::span<const std::uint8_t> data)
 			{
-				auto const result = ::send(socket.get_handle(), reinterpret_cast<char const*>(data), static_cast<int>(data_size), 0);
+				auto const result = ::send(socket.get_handle(), reinterpret_cast<char const*>(data.data()), static_cast<int>(data.size()), 0);
 
 				if (result == SOCKET_ERROR)
 				{
@@ -163,11 +163,11 @@ namespace bump
 				return make_ok(narrow_cast<std::size_t>(result));
 			}
 
-			result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::uint8_t* data, std::size_t data_size)
+			result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::span<std::uint8_t> buffer)
 			{
-				auto const result = ::recv(socket.get_handle(), reinterpret_cast<char*>(data), static_cast<int>(data_size), 0);
+				auto const result = ::recv(socket.get_handle(), reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), 0);
 
-				if (result == 0 && data_size != 0)
+				if (result == 0 && buffer.size() != 0)
 					return make_ok(std::optional<std::size_t>(std::nullopt)); // connection closed!
 
 				if (result == SOCKET_ERROR)
@@ -284,14 +284,14 @@ namespace bump
 			return platform::check(socket);
 		}
 
-		result<std::size_t, std::system_error> send(socket const& socket, std::uint8_t const* data, std::size_t data_size)
+		result<std::size_t, std::system_error> send(socket const& socket, std::span<const std::uint8_t> data)
 		{
-			return platform::send(socket, data, data_size);
+			return platform::send(socket, data);
 		}
 
-		result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::uint8_t* data, std::size_t data_size)
+		result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::span<std::uint8_t> buffer)
 		{
-			return platform::receive(socket, data, data_size);
+			return platform::receive(socket, buffer);
 		}
 
 	} // net

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <system_error>
 
 namespace bump
@@ -74,8 +75,8 @@ namespace bump
 		result<void, std::system_error> listen(socket const& socket);
 		result<socket, std::system_error> accept(socket const& socket);
 		result<std::optional<bool>, std::system_error> check(socket const& socket);
-		result<std::size_t, std::system_error> send(socket const& socket, std::uint8_t const* data, std::size_t data_size);
-		result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::uint8_t* data, std::size_t data_size);
+		result<std::size_t, std::system_error> send(socket const& socket, std::span<const std::uint8_t> data);
+		result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::span<std::uint8_t> buffer);
 		
 	} // net
 	

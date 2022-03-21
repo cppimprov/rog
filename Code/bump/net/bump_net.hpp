@@ -8,9 +8,7 @@
 
 // todo:
 
-	// implement send_buffer class
 	// test tcp_listener code
-	// use span (or similar?) for send / receive?
 	// make socket functions members!
 	// remove the ip namespace!
 	// udp_connection

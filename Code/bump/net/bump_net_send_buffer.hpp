@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <span>
 #include <vector>
 
 namespace bump
@@ -47,7 +48,7 @@ namespace bump
 			m_buffer.resize(size);
 			std::copy_n(m_stream.begin(), size, m_buffer.begin());
 
-			auto bytes_sent = connection.send(m_buffer.data(), size);
+			auto bytes_sent = connection.send(std::span<const std::uint8_t>(m_buffer.data(), size));
 
 			if (!bytes_sent.has_value())
 				return make_err(bytes_sent.error());

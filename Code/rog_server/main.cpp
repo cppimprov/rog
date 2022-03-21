@@ -3,6 +3,7 @@
 #include <bump_net.hpp>
 
 #include <iostream>
+#include <span>
 #include <string>
 
 // static void print_endpoint(bump::net::ip::endpoint const& endpoint)
@@ -168,7 +169,7 @@ int main()
 		buffer.push_back(request.begin(), request.end());
 
 		auto bytes_sent = std::size_t{ 0 };
-		
+
 		while (!buffer.empty())
 			bytes_sent += buffer.send(connection).unwrap();
 
@@ -181,7 +182,7 @@ int main()
 
 		while (connection.is_open())
 		{
-			auto const received = connection.receive(reinterpret_cast<std::uint8_t*>(answer.data()), answer.size()).unwrap();
+			auto const received = connection.receive(std::span<std::uint8_t>(reinterpret_cast<std::uint8_t*>(answer.data()), answer.size())).unwrap();
 			answer_length += received;
 
 			if (received != 0)

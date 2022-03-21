@@ -12,9 +12,9 @@ namespace bump
 			tcp_connection::tcp_connection(socket&& socket):
 				m_socket(std::move(socket)) { }
 
-			result<std::size_t, std::system_error> tcp_connection::send(std::uint8_t const* data, std::size_t data_size)
+			result<std::size_t, std::system_error> tcp_connection::send(std::span<const std::uint8_t> data)
 			{
-				auto const result = net::send(m_socket, data, data_size);
+				auto const result = net::send(m_socket, data);
 
 				if (!result.has_value())
 					close();
@@ -22,9 +22,9 @@ namespace bump
 				return result;
 			}
 
-			result<std::size_t, std::system_error> tcp_connection::receive(std::uint8_t* data, std::size_t data_size)
+			result<std::size_t, std::system_error> tcp_connection::receive(std::span<std::uint8_t> buffer)
 			{
-				auto const result = net::receive(m_socket, data, data_size);
+				auto const result = net::receive(m_socket, buffer);
 
 				if (!result.has_value()) // error
 				{
