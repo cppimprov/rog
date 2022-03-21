@@ -33,40 +33,6 @@ namespace bump
 				return str;
 			}
 			
-			static int get_ai_family(ip::address_family version)
-			{
-				switch (version)
-				{
-				case ip::address_family::V4: return AF_INET;
-				case ip::address_family::V6: return AF_INET6;
-				case ip::address_family::UNSPECIFIED: return AF_UNSPEC;
-				}
-
-				die();
-			}
-
-			static int get_ai_socktype(ip::protocol protocol)
-			{
-				switch (protocol)
-				{
-				case ip::protocol::UDP: return SOCK_DGRAM;
-				case ip::protocol::TCP: return SOCK_STREAM;
-				}
-
-				die();
-			}
-
-			static int get_ai_protocol(ip::protocol protocol)
-			{
-				switch (protocol)
-				{
-				case ip::protocol::UDP: return IPPROTO_UDP;
-				case ip::protocol::TCP: return IPPROTO_TCP;
-				}
-
-				die();
-			}
-
 			static char const* get_protocol_name(ip::protocol protocol)
 			{
 				switch (protocol)
