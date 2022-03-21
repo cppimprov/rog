@@ -219,6 +219,46 @@ namespace bump
 			close();
 		}
 
+		result<void, std::system_error> socket::set_blocking_mode(blocking_mode mode) const
+		{
+			return platform::set_blocking_mode(*this, mode);
+		}
+
+		result<void, std::system_error> socket::bind(ip::endpoint const& endpoint) const
+		{
+			return platform::bind(*this, endpoint);
+		}
+
+		result<void, std::system_error> socket::connect(ip::endpoint const& endpoint) const
+		{
+			return platform::connect(*this, endpoint);
+		}
+
+		result<void, std::system_error> socket::listen() const
+		{
+			return platform::listen(*this);
+		}
+
+		result<socket, std::system_error> socket::accept() const
+		{
+			return platform::accept(*this);
+		}
+
+		result<std::optional<bool>, std::system_error> socket::check() const
+		{
+			return platform::check(*this);
+		}
+
+		result<std::size_t, std::system_error> socket::send(std::span<const std::uint8_t> data) const
+		{
+			return platform::send(*this, data);
+		}
+
+		result<std::optional<std::size_t>, std::system_error> socket::receive(std::span<std::uint8_t> buffer) const
+		{
+			return platform::receive(*this, buffer);
+		}
+
 		bool socket::is_open() const
 		{
 			return (m_handle != platform::invalid_socket_handle);
@@ -252,46 +292,6 @@ namespace bump
 				return make_err(result.error());
 			
 			return make_ok(socket(result.value()));
-		}
-		
-		result<void, std::system_error> set_blocking_mode(socket const& socket, blocking_mode mode)
-		{
-			return platform::set_blocking_mode(socket, mode);
-		}
-
-		result<void, std::system_error> bind(socket const& socket, ip::endpoint const& endpoint)
-		{
-			return platform::bind(socket, endpoint);
-		}
-
-		result<void, std::system_error> connect(socket const& socket, ip::endpoint const& endpoint)
-		{
-			return platform::connect(socket, endpoint);
-		}
-
-		result<void, std::system_error> listen(socket const& socket)
-		{
-			return platform::listen(socket);
-		}
-
-		result<socket, std::system_error> accept(socket const& socket)
-		{
-			return platform::accept(socket);
-		}
-
-		result<std::optional<bool>, std::system_error> check(socket const& socket)
-		{
-			return platform::check(socket);
-		}
-
-		result<std::size_t, std::system_error> send(socket const& socket, std::span<const std::uint8_t> data)
-		{
-			return platform::send(socket, data);
-		}
-
-		result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::span<std::uint8_t> buffer)
-		{
-			return platform::receive(socket, buffer);
 		}
 
 	} // net

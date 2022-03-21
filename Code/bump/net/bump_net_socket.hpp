@@ -55,6 +55,15 @@ namespace bump
 
 			~socket();
 
+			result<void, std::system_error> set_blocking_mode(blocking_mode mode) const;
+			result<void, std::system_error> bind(ip::endpoint const& endpoint) const;
+			result<void, std::system_error> connect(ip::endpoint const& endpoint) const;
+			result<void, std::system_error> listen() const;
+			result<socket, std::system_error> accept() const;
+			result<std::optional<bool>, std::system_error> check() const;
+			result<std::size_t, std::system_error> send(std::span<const std::uint8_t> data) const;
+			result<std::optional<std::size_t>, std::system_error> receive(std::span<std::uint8_t> buffer) const;
+
 			bool is_open() const;
 			result<void, std::system_error> close();
 
@@ -68,16 +77,6 @@ namespace bump
 
 		result<socket, std::system_error> open_socket(ip::address_family address_family, ip::protocol protocol);
 
-		// todo: should these be member functions???
-		result<void, std::system_error> set_blocking_mode(socket const& socket, blocking_mode mode);
-		result<void, std::system_error> bind(socket const& socket, ip::endpoint const& endpoint);
-		result<void, std::system_error> connect(socket const& socket, ip::endpoint const& endpoint);
-		result<void, std::system_error> listen(socket const& socket);
-		result<socket, std::system_error> accept(socket const& socket);
-		result<std::optional<bool>, std::system_error> check(socket const& socket);
-		result<std::size_t, std::system_error> send(socket const& socket, std::span<const std::uint8_t> data);
-		result<std::optional<std::size_t>, std::system_error> receive(socket const& socket, std::span<std::uint8_t> buffer);
-		
 	} // net
 	
 } // bump

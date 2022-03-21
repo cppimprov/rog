@@ -16,7 +16,7 @@ namespace bump
 			
 			result<tcp_connection, std::system_error> tcp_requester::check()
 			{
-				auto const result = net::check(m_socket);
+				auto const result = m_socket.check();
 
 				if (!result.has_value())
 					return make_err(result.error()); // error while checking!
@@ -62,12 +62,12 @@ namespace bump
 				
 				auto socket = socket_result.unwrap();
 
-				auto blocking_mode_result = set_blocking_mode(socket, mode);
+				auto blocking_mode_result = socket.set_blocking_mode(mode);
 
 				if (!blocking_mode_result)
 					return make_err(blocking_mode_result.error());
 
-				auto connect_result = connect(socket, endpoint);
+				auto connect_result = socket.connect(endpoint);
 
 				if (!connect_result.has_value())
 					return make_err(connect_result.error());

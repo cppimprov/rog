@@ -16,7 +16,7 @@ namespace bump
 
 			result<tcp_connection, std::system_error> tcp_listener::accept() const
 			{
-				auto result = net::accept(m_socket);
+				auto result = m_socket.accept();
 
 				if (!result.has_value())
 					return make_err(result.error());
@@ -53,12 +53,12 @@ namespace bump
 
 				auto socket = socket_result.unwrap();
 			
-				auto bind_result = bind(socket, endpoint);
+				auto bind_result = socket.bind(endpoint);
 
 				if (!bind_result.has_value())
 					return make_err(bind_result.error());
 				
-				auto listen_result = listen(socket);
+				auto listen_result = socket.listen();
 
 				if (!listen_result.has_value())
 					return make_err(listen_result.error());

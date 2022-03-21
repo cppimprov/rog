@@ -14,7 +14,7 @@ namespace bump
 
 			result<std::size_t, std::system_error> tcp_connection::send(std::span<const std::uint8_t> data)
 			{
-				auto const result = net::send(m_socket, data);
+				auto const result = m_socket.send(data);
 
 				if (!result.has_value())
 					close();
@@ -24,7 +24,7 @@ namespace bump
 
 			result<std::size_t, std::system_error> tcp_connection::receive(std::span<std::uint8_t> buffer)
 			{
-				auto const result = net::receive(m_socket, buffer);
+				auto const result = m_socket.receive(buffer);
 
 				if (!result.has_value()) // error
 				{
