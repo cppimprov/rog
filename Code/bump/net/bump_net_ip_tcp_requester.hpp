@@ -19,7 +19,7 @@ namespace bump
 			{
 			public:
 
-				tcp_requester();
+				tcp_requester() = default;
 				explicit tcp_requester(socket&& socket);
 
 				tcp_requester(tcp_requester const&) = delete;

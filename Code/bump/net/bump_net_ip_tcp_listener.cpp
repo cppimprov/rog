@@ -11,8 +11,6 @@ namespace bump
 		namespace ip
 		{
 		
-			tcp_listener::tcp_listener() { }
-
 			tcp_listener::tcp_listener(socket&& socket):
 				m_socket(std::move(socket)) { }
 

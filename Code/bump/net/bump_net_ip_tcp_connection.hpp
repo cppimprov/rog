@@ -18,7 +18,7 @@ namespace bump
 			{
 			public:
 
-				tcp_connection();
+				tcp_connection() = default;
 				explicit tcp_connection(socket&& socket);
 
 				tcp_connection(tcp_connection const&) = delete;

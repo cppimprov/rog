@@ -9,8 +9,6 @@ namespace bump
 		namespace ip
 		{
 			
-			tcp_connection::tcp_connection() { }
-
 			tcp_connection::tcp_connection(socket&& socket):
 				m_socket(std::move(socket)) { }
 

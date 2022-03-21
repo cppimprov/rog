@@ -21,7 +21,7 @@ namespace bump
 			{
 			public:
 
-				tcp_listener();
+				tcp_listener() = default;
 				explicit tcp_listener(socket&& socket);
 
 				tcp_listener(tcp_listener const&) = delete;

@@ -3,14 +3,17 @@
 #include "bump_net_context.hpp"
 #include "bump_net_ip.hpp"
 #include "bump_net_platform.hpp"
+#include "bump_net_send_buffer.hpp"
+
 
 // todo:
 
-	// shutdown???
+	// implement send_buffer class
+	// test tcp_listener code
 	// use span (or similar?) for send / receive?
 	// make socket functions members!
-	// reorganize... do we actually want the ip namespace?
-	// connection classes (requester, connection, packet_connection)
+	// remove the ip namespace!
+	// udp_connection
 
 // todo (sometime):
 

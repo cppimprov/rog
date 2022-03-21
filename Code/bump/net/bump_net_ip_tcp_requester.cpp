@@ -11,8 +11,6 @@ namespace bump
 		namespace ip
 		{
 			
-			tcp_requester::tcp_requester() { }
-
 			tcp_requester::tcp_requester(socket&& socket):
 				m_socket(std::move(socket)) { }
 			
