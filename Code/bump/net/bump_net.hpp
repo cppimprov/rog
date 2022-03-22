@@ -1,14 +1,20 @@
 #pragma once
 
 #include "bump_net_context.hpp"
-#include "bump_net_ip.hpp"
+#include "bump_net_address_lookup.hpp"
+#include "bump_net_endpoint.hpp"
+#include "bump_net_ip_address.hpp"
+#include "bump_net_ip_enums.hpp"
+#include "bump_net_tcp_connection.hpp"
+#include "bump_net_tcp_listener.hpp"
+#include "bump_net_tcp_requester.hpp"
+#include "bump_net_udp_connection.hpp"
 #include "bump_net_platform.hpp"
 #include "bump_net_send_buffer.hpp"
 
 
 // todo:
 
-	// remove the ip namespace!
 	// test tcp_listener code
 	// test udp stuff
 

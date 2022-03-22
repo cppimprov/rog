@@ -15,7 +15,7 @@ namespace bump
 	namespace net
 	{
 
-		namespace ip { class endpoint; }
+		class endpoint;
 
 		namespace platform
 		{
@@ -56,8 +56,8 @@ namespace bump
 			~socket();
 
 			result<void, std::system_error> set_blocking_mode(blocking_mode mode) const;
-			result<void, std::system_error> bind(ip::endpoint const& endpoint) const;
-			result<void, std::system_error> connect(ip::endpoint const& endpoint) const;
+			result<void, std::system_error> bind(endpoint const& endpoint) const;
+			result<void, std::system_error> connect(endpoint const& endpoint) const;
 			result<void, std::system_error> listen() const;
 			result<socket, std::system_error> accept() const;
 			result<std::optional<bool>, std::system_error> check() const;
@@ -75,7 +75,7 @@ namespace bump
 			platform::socket_handle m_handle;
 		};
 
-		result<socket, std::system_error> open_socket(ip::address_family address_family, ip::protocol protocol);
+		result<socket, std::system_error> open_socket(ip_address_family address_family, ip_protocol protocol);
 
 	} // net
 	

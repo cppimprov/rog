@@ -1,7 +1,7 @@
 #include "bump_net_socket.hpp"
 
 #include "bump_narrow_cast.hpp"
-#include "bump_net_ip_endpoint.hpp"
+#include "bump_net_endpoint.hpp"
 
 #include <utility>
 
@@ -14,7 +14,7 @@ namespace bump
 		namespace platform
 		{
 			
-			result<socket_handle, std::system_error> open_socket(ip::address_family address_family, ip::protocol protocol)
+			result<socket_handle, std::system_error> open_socket(ip_address_family address_family, ip_protocol protocol)
 			{
 				auto const result = ::socket(get_ai_family(address_family), get_ai_socktype(protocol), get_ai_protocol(protocol));
 
@@ -45,7 +45,7 @@ namespace bump
 				return make_ok();
 			}
 
-			result<void, std::system_error> bind(socket const& socket, ip::endpoint const& endpoint)
+			result<void, std::system_error> bind(socket const& socket, endpoint const& endpoint)
 			{
 				auto const result = ::bind(socket.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), static_cast<int>(endpoint.get_address_length()));
 
@@ -55,7 +55,7 @@ namespace bump
 				return make_ok();
 			}
 
-			result<void, std::system_error> connect(socket const& socket, ip::endpoint const& endpoint)
+			result<void, std::system_error> connect(socket const& socket, endpoint const& endpoint)
 			{
 				auto const result = ::connect(socket.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), static_cast<int>(endpoint.get_address_length()));
 
@@ -224,12 +224,12 @@ namespace bump
 			return platform::set_blocking_mode(*this, mode);
 		}
 
-		result<void, std::system_error> socket::bind(ip::endpoint const& endpoint) const
+		result<void, std::system_error> socket::bind(endpoint const& endpoint) const
 		{
 			return platform::bind(*this, endpoint);
 		}
 
-		result<void, std::system_error> socket::connect(ip::endpoint const& endpoint) const
+		result<void, std::system_error> socket::connect(endpoint const& endpoint) const
 		{
 			return platform::connect(*this, endpoint);
 		}
@@ -284,7 +284,7 @@ namespace bump
 			return temp;
 		}
 		
-		result<socket, std::system_error> open_socket(ip::address_family address_family, ip::protocol protocol)
+		result<socket, std::system_error> open_socket(ip_address_family address_family, ip_protocol protocol)
 		{
 			auto const result = platform::open_socket(address_family, protocol);
 

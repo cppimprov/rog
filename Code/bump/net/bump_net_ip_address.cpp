@@ -30,7 +30,7 @@ namespace bump
 
 #endif
 
-			static std::optional<ip::address> string_to_address(std::string const& str)
+			static std::optional<ip_address> string_to_address(std::string const& str)
 			{
 				// try to parse ipv4 address
 				{
@@ -38,7 +38,7 @@ namespace bump
 					auto result = ::inet_pton(AF_INET, str.c_str(), &addr);
 					die_if(result == -1);
 					
-					if (result == 1) return ip::address(addr); // success
+					if (result == 1) return ip_address(addr); // success
 				}
 
 				// try to parse ipv6 address
@@ -47,7 +47,7 @@ namespace bump
 					auto result = ::inet_pton(AF_INET6, str.c_str(), &addr);
 					die_if(result == -1);
 					
-					if (result == 1) return ip::address(addr); // success
+					if (result == 1) return ip_address(addr); // success
 				}
 
 				return std::nullopt;
@@ -72,10 +72,10 @@ namespace bump
 				return str;
 			}
 
-			static_string<IP_MAX> address_to_static_string(ip::address const& address)
+			static_string<IP_MAX> address_to_static_string(ip_address const& address)
 			{
-				if (address.get_address_family() == ip::address_family::V4) return address_to_static_string(address.data_v4());
-				if (address.get_address_family() == ip::address_family::V6) return address_to_static_string(address.data_v6());
+				if (address.get_address_family() == ip_address_family::V4) return address_to_static_string(address.data_v4());
+				if (address.get_address_family() == ip_address_family::V6) return address_to_static_string(address.data_v6());
 				die(); // invalid address family
 			}
 
@@ -91,55 +91,50 @@ namespace bump
 
 		} // platform
 
-		namespace ip
+		ip_address::ip_address(std::uint8_t a, std::uint8_t b, std::uint8_t c, std::uint8_t d):
+			m_data(std::in_place_index_t<0>())
 		{
+			auto const data = reinterpret_cast<std::uint8_t *>(&data_v4());
+			data[0] = a; data[1] = b; data[2] = c; data[3] = d;
+		}
 
-			address::address(std::uint8_t a, std::uint8_t b, std::uint8_t c, std::uint8_t d):
-				m_data(std::in_place_index_t<0>())
-			{
-				auto const data = reinterpret_cast<std::uint8_t *>(&data_v4());
-				data[0] = a; data[1] = b; data[2] = c; data[3] = d;
-			}
+		ip_address::ip_address(std::uint16_t a, std::uint16_t b, std::uint16_t c, std::uint16_t d, std::uint16_t e, std::uint16_t f, std::uint16_t g, std::uint16_t h):
+			m_data(std::in_place_index_t<1>())
+		{
+			auto const data = reinterpret_cast<std::uint16_t *>(&data_v6());
+			data[0] = to_network_byte_order(a);
+			data[1] = to_network_byte_order(b);
+			data[2] = to_network_byte_order(c);
+			data[3] = to_network_byte_order(d);
+			data[4] = to_network_byte_order(e);
+			data[5] = to_network_byte_order(f);
+			data[6] = to_network_byte_order(g);
+			data[7] = to_network_byte_order(h);
+		}
 
-			address::address(std::uint16_t a, std::uint16_t b, std::uint16_t c, std::uint16_t d, std::uint16_t e, std::uint16_t f, std::uint16_t g, std::uint16_t h):
-				m_data(std::in_place_index_t<1>())
-			{
-				auto const data = reinterpret_cast<std::uint16_t *>(&data_v6());
-				data[0] = to_network_byte_order(a);
-				data[1] = to_network_byte_order(b);
-				data[2] = to_network_byte_order(c);
-				data[3] = to_network_byte_order(d);
-				data[4] = to_network_byte_order(e);
-				data[5] = to_network_byte_order(f);
-				data[6] = to_network_byte_order(g);
-				data[7] = to_network_byte_order(h);
-			}
+		bool operator==(ip_address const& a, ip_address const& b)
+		{
+			auto const a_af = a.get_address_family();
+			auto const b_af = b.get_address_family();
 
-			bool operator==(address const& a, address const& b)
-			{
-				auto const a_af = a.get_address_family();
-				auto const b_af = b.get_address_family();
+			if (a_af != b_af) return false;
+			if (a_af == ip_address_family::V4) return (std::memcmp(&a.data_v4(), &b.data_v4(), sizeof(::in_addr)) == 0);
+			if (a_af == ip_address_family::V6) return (std::memcmp(&a.data_v6(), &b.data_v6(), sizeof(::in6_addr)) == 0);
 
-				if (a_af != b_af) return false;
-				if (a_af == address_family::V4) return (std::memcmp(&a.data_v4(), &b.data_v4(), sizeof(::in_addr)) == 0);
-				if (a_af == address_family::V6) return (std::memcmp(&a.data_v6(), &b.data_v6(), sizeof(::in6_addr)) == 0);
+			die();
+		}
 
-				die();
-			}
+		std::optional<ip_address> try_parse_address(std::string const& str)
+		{
+			return platform::string_to_address(str);
+		}
 
-			std::optional<address> try_parse_address(std::string const& str)
-			{
-				return platform::string_to_address(str);
-			}
-
-			std::string to_string(address const& a)
-			{
-				if (a.get_address_family() == address_family::V4) return platform::address_to_string(a.data_v4());
-				if (a.get_address_family() == address_family::V6) return platform::address_to_string(a.data_v6());
-				die(); // invalid address family
-			}
-
-		} // ip
+		std::string to_string(ip_address const& a)
+		{
+			if (a.get_address_family() == ip_address_family::V4) return platform::address_to_string(a.data_v4());
+			if (a.get_address_family() == ip_address_family::V6) return platform::address_to_string(a.data_v6());
+			die(); // invalid address family
+		}
 
 	} // net
 

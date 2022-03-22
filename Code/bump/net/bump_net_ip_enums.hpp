@@ -6,20 +6,15 @@ namespace bump
 	namespace net
 	{
 		
-		namespace ip
-		{
-
-			enum class address_family { V4, V6, UNSPECIFIED };
-			enum class protocol { UDP, TCP };
-
-		} // ip
+		enum class ip_address_family { V4, V6, UNSPECIFIED };
+		enum class ip_protocol { UDP, TCP };
 
 		namespace platform
 		{
 
-			int get_ai_family(ip::address_family version);
-			int get_ai_socktype(ip::protocol protocol);
-			int get_ai_protocol(ip::protocol protocol);
+			int get_ai_family(ip_address_family version);
+			int get_ai_socktype(ip_protocol protocol);
+			int get_ai_protocol(ip_protocol protocol);
 
 		} // platform
 
