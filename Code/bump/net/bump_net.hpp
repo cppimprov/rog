@@ -8,10 +8,9 @@
 
 // todo:
 
-	// test tcp_listener code
-	// make socket functions members!
 	// remove the ip namespace!
-	// udp_connection
+	// test tcp_listener code
+	// test udp stuff
 
 // todo (sometime):
 
