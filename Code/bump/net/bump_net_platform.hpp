@@ -99,6 +99,8 @@ namespace bump::net::platform
 		return std::system_error(std::error_code(::WSAGetLastError(), std::system_category()));
 	}
 
+	auto constexpr socket_error = SOCKET_ERROR;
+
 } // bump::net::platform
 
 #elif defined(BUMP_NET_BSD)
@@ -119,6 +121,8 @@ namespace bump::net::platform
 	{
 		return std::system_error(std::error_code(errno, std::generic_category()));
 	}
+
+	auto constexpr socket_error = -1;
 	
 } // bump::net::platform
 

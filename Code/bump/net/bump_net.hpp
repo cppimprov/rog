@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bump_net_context.hpp"
 #include "bump_net_address_lookup.hpp"
+#include "bump_net_context.hpp"
 #include "bump_net_endpoint.hpp"
 #include "bump_net_ip_address.hpp"
 #include "bump_net_ip_enums.hpp"
@@ -14,6 +14,16 @@
 
 
 // todo:
+
+	// make it compile / work on wsl!
+
+	// tcp_server_test project
+	// tcp_client_test project
+
+	// udp_server_test project
+	// udp_client_test project
+
+	// then make the actual server!
 
 	// test tcp_listener code
 	// test udp stuff

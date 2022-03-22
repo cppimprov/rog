@@ -30,6 +30,7 @@
             },
             "sourceFileMap": {
                 "/mnt/c": "C:\\",
+                "/mnt/d": "D:\\",
                 "/build/glibc-OTsEL5": "\\\\wsl$/Ubuntu-18.04/usr/src/glibc",
                 "/usr": "\\\\wsl$/Ubuntu-18.04/usr",
             },

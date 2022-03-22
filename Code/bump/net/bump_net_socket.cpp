@@ -13,7 +13,7 @@ namespace bump
 
 		namespace platform
 		{
-			
+
 			result<socket_handle, std::system_error> open_socket(ip_address_family address_family, ip_protocol protocol)
 			{
 				auto const result = ::socket(get_ai_family(address_family), get_ai_socktype(protocol), get_ai_protocol(protocol));
@@ -26,9 +26,13 @@ namespace bump
 
 			result<void, std::system_error> close_socket(socket& socket)
 			{
+#if defined(BUMP_NET_WS2)
 				auto const result = ::closesocket(socket.release());
+#else
+				auto const result = ::close(socket.release());
+#endif
 
-				if (result == SOCKET_ERROR)
+				if (result != 0)
 					return make_err(get_last_error());
 				
 				return make_ok();
@@ -36,8 +40,13 @@ namespace bump
 
 			result<void, std::system_error> set_blocking_mode(socket const& socket, blocking_mode mode)
 			{
+#if defined(BUMP_NET_WS2)
 				auto arg = (mode == blocking_mode::NON_BLOCKING ? 1ul : 0ul);
 				auto const result = ::ioctlsocket(socket.get_handle(), FIONBIO, &arg);
+#else
+				auto arg = (mode == blocking_mode::NON_BLOCKING ? 1 : 0);
+				auto const result = ::ioctl(socket.get_handle(), FIONBIO, &arg);
+#endif
 
 				if (result != 0)
 					return make_err(get_last_error());
@@ -121,11 +130,12 @@ namespace bump
 				FD_ZERO(&except_fds);
 				FD_SET(socket.get_handle(), &except_fds);
 
-				auto const timeout = timeval{ 0, 0 };
+				auto timeout = timeval{ 0, 0 };
+				auto n_fds = static_cast<int>(socket.get_handle()) + 1;
 
-				auto const result = ::select(0, nullptr, &write_fds, &except_fds, &timeout);
+				auto const result = ::select(n_fds, nullptr, &write_fds, &except_fds, &timeout);
 
-				if (result == SOCKET_ERROR)
+				if (result == socket_error)
 					return make_err(get_last_error());
 
 				if (result == 0)
@@ -144,7 +154,7 @@ namespace bump
 			{
 				auto const result = ::send(socket.get_handle(), reinterpret_cast<char const*>(data.data()), static_cast<int>(data.size()), 0);
 
-				if (result == SOCKET_ERROR)
+				if (result == socket_error)
 				{
 					auto const err = get_last_error();
 					auto const err_value = err.code().value();
@@ -170,7 +180,7 @@ namespace bump
 				if (result == 0 && buffer.size() != 0)
 					return make_ok(std::optional<std::size_t>(std::nullopt)); // connection closed!
 
-				if (result == SOCKET_ERROR)
+				if (result == socket_error)
 				{
 					auto const err = get_last_error();
 					auto const err_value = err.code().value();
