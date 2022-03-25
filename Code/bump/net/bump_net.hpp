@@ -15,8 +15,6 @@
 
 // todo:
 
-	// make it compile / work on wsl!
-
 	// tcp_server_test project
 	// tcp_client_test project
 

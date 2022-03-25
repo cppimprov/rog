@@ -40,7 +40,7 @@ namespace bump
 			socket m_socket;
 		};
 
-		result<tcp_listener, std::system_error> listen(endpoint const& endpoint);
+		result<tcp_listener, std::system_error> listen(endpoint const& endpoint, blocking_mode mode);
 
 	} // net
 	

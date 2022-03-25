@@ -41,7 +41,7 @@ namespace bump
 			return m_socket.release();
 		}
 
-		result<tcp_listener, std::system_error> listen(endpoint const& endpoint)
+		result<tcp_listener, std::system_error> listen(endpoint const& endpoint, blocking_mode mode)
 		{
 			auto socket_result = open_socket(endpoint.get_address_family(), ip_protocol::TCP);
 
@@ -49,6 +49,11 @@ namespace bump
 				return make_err(socket_result.error());
 
 			auto socket = socket_result.unwrap();
+			
+			auto blocking_mode_result = socket.set_blocking_mode(mode);
+
+			if (!blocking_mode_result)
+				return make_err(blocking_mode_result.error());
 		
 			auto bind_result = socket.bind(endpoint);
 

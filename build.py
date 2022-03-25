@@ -558,6 +558,33 @@ class PlatformMSVC:
 		rog_server.standard_libs = [ 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, rog_server)
 
+		rog_chat_client = ProjectExe.from_name('rog_chat_client', self, build_type)
+		rog_chat_client.defines = bump.defines
+		rog_chat_client.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		rog_chat_client.inc_dirs = rog_chat_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		rog_chat_client.libs = [
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+		]
+		rog_chat_client.standard_libs = [ 'Ws2_32.lib' ]
+		self.write_exe(n, build_type, rog_chat_client)
+		
+		rog_chat_server = ProjectExe.from_name('rog_chat_server', self, build_type)
+		rog_chat_server.defines = bump.defines
+		rog_chat_server.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		rog_chat_server.inc_dirs = rog_chat_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		rog_chat_server.libs = [
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+		]
+		rog_chat_server.standard_libs = [ 'Ws2_32.lib' ]
+		self.write_exe(n, build_type, rog_chat_server)
 
 
 class PlatformGCC:
@@ -713,6 +740,32 @@ class PlatformGCC:
 			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
 		]
 		self.write_exe(n, build_type, rog_server)
+		
+		rog_chat_client = ProjectExe.from_name('rog_chat_client', self, build_type)
+		rog_chat_client.defines = bump_core.defines
+		rog_chat_client.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		rog_chat_client.inc_dirs = rog_chat_client.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
+		rog_chat_client.libs = [
+			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
+		]
+		self.write_exe(n, build_type, rog_chat_client)
+		
+		rog_chat_server = ProjectExe.from_name('rog_chat_server', self, build_type)
+		rog_chat_server.defines = bump_core.defines
+		rog_chat_server.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		rog_chat_server.inc_dirs = rog_chat_server.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
+		rog_chat_server.libs = [
+			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
+		]
+		self.write_exe(n, build_type, rog_chat_server)
 
 def write(platform, build_type, build_file_name):
 	try:

@@ -39,7 +39,7 @@ namespace bump
 		};
 
 		result<tcp_requester, std::system_error> connect(endpoint const& endpoint, blocking_mode mode);
-			
+		
 	} // net
 	
 } // bump
