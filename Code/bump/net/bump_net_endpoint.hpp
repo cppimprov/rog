@@ -19,7 +19,7 @@ namespace bump
 			endpoint();
 			
 			explicit endpoint(::addrinfo const& info);
-			explicit endpoint(::sockaddr_storage const& addr, std::size_t addr_len);
+			explicit endpoint(::sockaddr_storage const& addr, ::socklen_t addr_len);
 
 			endpoint(endpoint const&) = default;
 			endpoint& operator=(endpoint const&) = default;
@@ -30,7 +30,7 @@ namespace bump
 			ip_address get_address() const;
 			std::uint16_t get_port() const;
 
-			std::size_t get_address_length() const { return m_length; }
+			::socklen_t get_address_length() const { return m_length; }
 			::sockaddr_storage const& get_address_storage() const { return m_address; }
 			::sockaddr_in      const& get_address_v4() const { return reinterpret_cast<::sockaddr_in  const&>(m_address); }
 			::sockaddr_in6     const& get_address_v6() const { return reinterpret_cast<::sockaddr_in6 const&>(m_address); }
@@ -40,7 +40,7 @@ namespace bump
 
 		private:
 			
-			std::size_t m_length;
+			::socklen_t m_length;
 			::sockaddr_storage m_address;
 		};
 

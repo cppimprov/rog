@@ -56,7 +56,7 @@ namespace bump
 
 			result<void, std::system_error> bind(socket const& socket, endpoint const& endpoint)
 			{
-				auto const result = ::bind(socket.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), static_cast<int>(endpoint.get_address_length()));
+				auto const result = ::bind(socket.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), endpoint.get_address_length());
 
 				if (result != 0)
 					return make_err(get_last_error());
@@ -66,7 +66,7 @@ namespace bump
 
 			result<void, std::system_error> connect(socket const& socket, endpoint const& endpoint)
 			{
-				auto const result = ::connect(socket.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), static_cast<int>(endpoint.get_address_length()));
+				auto const result = ::connect(socket.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), endpoint.get_address_length());
 
 				if (result != 0)
 				{

@@ -31,7 +31,7 @@ namespace bump
 			m_address() { }
 		
 		endpoint::endpoint(::addrinfo const& info):
-			m_length(info.ai_addrlen),
+			m_length(static_cast<socklen_t>(info.ai_addrlen)),
 			m_address()
 		{
 			die_if(m_length < sizeof(::sockaddr_storage::ss_family));
@@ -39,7 +39,7 @@ namespace bump
 			std::memcpy(&m_address, info.ai_addr, m_length);
 		}
 
-		endpoint::endpoint(::sockaddr_storage const& addr, std::size_t addr_len):
+		endpoint::endpoint(::sockaddr_storage const& addr, ::socklen_t addr_len):
 			m_length(addr_len),
 			m_address()
 		{
