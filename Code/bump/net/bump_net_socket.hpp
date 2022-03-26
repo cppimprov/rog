@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <system_error>
+#include <tuple>
 
 namespace bump
 {
@@ -59,7 +60,7 @@ namespace bump
 			result<void, std::system_error> bind(endpoint const& endpoint) const;
 			result<void, std::system_error> connect(endpoint const& endpoint) const;
 			result<void, std::system_error> listen() const;
-			result<socket, std::system_error> accept() const;
+			result<std::tuple<socket, endpoint>, std::system_error> accept() const;
 			result<std::optional<bool>, std::system_error> check() const;
 			result<std::size_t, std::system_error> send(std::span<const std::uint8_t> data) const;
 			result<std::optional<std::size_t>, std::system_error> receive(std::span<std::uint8_t> buffer) const;

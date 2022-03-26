@@ -15,7 +15,7 @@
 
 // todo:
 
-	// finish chat server test
+	// use socklen_t instead of int... (internally in endpoint?)
 
 	// udp_server_test project
 	// udp_client_test project

@@ -11,14 +11,17 @@ namespace bump
 		tcp_listener::tcp_listener(socket&& socket):
 			m_socket(std::move(socket)) { }
 
-		result<tcp_connection, std::system_error> tcp_listener::accept() const
+		result<std::tuple<tcp_connection, endpoint>, std::system_error> tcp_listener::accept() const
 		{
 			auto result = m_socket.accept();
 
 			if (!result.has_value())
 				return make_err(result.error());
 			
-			return make_ok(tcp_connection(result.unwrap()));
+			auto connection = tcp_connection(std::move(std::get<0>(result.value())));
+			auto const& endpoint = std::get<1>(result.value());
+			
+			return make_ok(std::make_tuple(std::move(connection), endpoint));
 		}
 
 		bool tcp_listener::is_active() const

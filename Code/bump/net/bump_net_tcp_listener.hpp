@@ -5,6 +5,7 @@
 #include "bump_result.hpp"
 
 #include <system_error>
+#include <tuple>
 
 namespace bump
 {
@@ -27,7 +28,7 @@ namespace bump
 			tcp_listener(tcp_listener&& other) = default;
 			tcp_listener& operator=(tcp_listener&& other) = default;
 
-			result<tcp_connection, std::system_error> accept() const;
+			result<std::tuple<tcp_connection, endpoint>, std::system_error> accept() const;
 
 			bool is_active() const;
 			result<void, std::system_error> cancel();

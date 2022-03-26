@@ -25,6 +25,10 @@ namespace bump
 			}
 
 		} // platform
+
+		endpoint::endpoint():
+			m_length(0),
+			m_address() { }
 		
 		endpoint::endpoint(::addrinfo const& info):
 			m_length(info.ai_addrlen),
@@ -33,6 +37,15 @@ namespace bump
 			die_if(m_length < sizeof(::sockaddr_storage::ss_family));
 			die_if(m_length > sizeof(m_address));
 			std::memcpy(&m_address, info.ai_addr, m_length);
+		}
+
+		endpoint::endpoint(::sockaddr_storage const& addr, std::size_t addr_len):
+			m_length(addr_len),
+			m_address()
+		{
+			die_if(m_length < sizeof(::sockaddr_storage::ss_family));
+			die_if(m_length > sizeof(m_address));
+			std::memcpy(&m_address, &addr, m_length);
 		}
 
 		ip_address_family endpoint::get_address_family() const

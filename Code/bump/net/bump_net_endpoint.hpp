@@ -16,7 +16,10 @@ namespace bump
 		{
 		public:
 
+			endpoint();
+			
 			explicit endpoint(::addrinfo const& info);
+			explicit endpoint(::sockaddr_storage const& addr, std::size_t addr_len);
 
 			endpoint(endpoint const&) = default;
 			endpoint& operator=(endpoint const&) = default;

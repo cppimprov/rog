@@ -23,7 +23,7 @@ int main()
 
 		// check for new clients
 		{
-			auto c = listener.accept().unwrap();
+			auto [c, e] = listener.accept().unwrap();
 
 			if (c.is_open())
 			{

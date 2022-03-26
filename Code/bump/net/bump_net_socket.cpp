@@ -97,9 +97,11 @@ namespace bump
 				return make_ok();
 			}
 
-			result<socket, std::system_error> accept(socket const& socket)
+			result<std::tuple<socket, endpoint>, std::system_error> accept(socket const& socket)
 			{
-				auto const result = ::accept(socket.get_handle(), nullptr, nullptr);
+				auto addr = ::sockaddr_storage();
+				auto addr_len = socklen_t{ sizeof(sockaddr_storage) };
+				auto const result = ::accept(socket.get_handle(), reinterpret_cast<::sockaddr*>(&addr), &addr_len);
 
 				if (result == invalid_socket_handle)
 				{
@@ -108,16 +110,16 @@ namespace bump
 
 #if defined(BUMP_NET_WS2)
 					if (err_value == WSAEWOULDBLOCK || err_value == WSAECONNRESET)
-						return make_ok(net::socket());
+						return make_ok(std::make_tuple(net::socket(), endpoint()));
 #else
 					if (err_value == EAGAIN || err_value == EWOULDBLOCK || err_value == ECONNABORTED)
-						return make_ok(net::socket());
+						return make_ok(std::make_tuple(net::socket(), endpoint()));
 #endif
 
 					return make_err(err);
 				}
 
-				return make_ok(net::socket(result));
+				return make_ok(std::make_tuple(net::socket(result), net::endpoint(addr, addr_len)));
 			}
 
 			result<std::optional<bool>, std::system_error> check(socket const& socket)
@@ -249,7 +251,7 @@ namespace bump
 			return platform::listen(*this);
 		}
 
-		result<socket, std::system_error> socket::accept() const
+		result<std::tuple<socket, endpoint>, std::system_error> socket::accept() const
 		{
 			return platform::accept(*this);
 		}
