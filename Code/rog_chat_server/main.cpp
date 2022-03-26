@@ -84,7 +84,8 @@ int main()
 					msg_buffer.push_back(newline.begin(), newline.end());
 
 					while (!msg_buffer.empty())
-						msg_buffer.send(conn).unwrap();
+						if (!msg_buffer.send(conn).has_value())
+							break;
 				}
 			}
 		}
