@@ -15,8 +15,7 @@
 
 // todo:
 
-	// tcp_server_test project
-	// tcp_client_test project
+	// finish chat server test
 
 	// udp_server_test project
 	// udp_client_test project

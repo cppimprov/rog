@@ -51,6 +51,8 @@ int main()
 	auto msg_timer = timer();
 	auto msg_time = std::chrono::seconds(2);
 
+	auto read_buffer = std::vector<std::uint8_t>(4096, '\0');
+
 	while (true)
 	{
 		// disconnected
@@ -69,7 +71,13 @@ int main()
 			msg_timer = timer();
 		}
 
-		// TODO: receive messages
+		// receive messages
+		{
+			auto const bytes = connection.receive(std::span<std::uint8_t>(read_buffer.data(), read_buffer.size()));
+
+			if (bytes.has_value() && bytes.value() != 0)
+				std::cout << std::string(read_buffer.begin(), read_buffer.begin() + bytes.value());
+		}
 	}
 
 	std::cout << "done!" << std::endl;

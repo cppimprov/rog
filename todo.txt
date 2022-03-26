@@ -2,7 +2,6 @@
 TODO:
 
 NET:
-	* Bring over basic networking code.
 	* Create test server / client that run on both Windows and WSL.
 
 UI:

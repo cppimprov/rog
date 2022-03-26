@@ -11,8 +11,12 @@ int main()
 	auto const context = net::init_context().unwrap();
 	auto const endpoint = net::get_address_info_loopback(net::ip_address_family::V6, net::ip_protocol::TCP, 4376).unwrap();
 	auto listener = net::listen(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
-	auto connections = std::vector<net::tcp_connection>();
+	auto connections = std::vector<std::tuple<net::tcp_connection, std::size_t>>();
 	auto read_buffer = std::vector<std::uint8_t>(4096, '\0');
+
+	auto next_client_id = std::size_t{ 0 };
+	auto messages = std::vector<std::tuple<std::string, std::size_t>>();
+	auto const newline = std::string("\n");
 
 	while (true)
 	{
@@ -24,15 +28,15 @@ int main()
 			if (c.is_open())
 			{
 				std::cout << "client connected!" << std::endl;
-				connections.push_back(std::move(c));
+				connections.push_back({ std::move(c), next_client_id++ });
 			}
 		}
 		
 		// handle disconnections
 		{
-			auto const dc = [] (net::tcp_connection const& c)
+			auto const dc = [] (std::tuple<net::tcp_connection, std::size_t> const& c)
 			{
-				if (!c.is_open())
+				if (!std::get<0>(c).is_open())
 				{
 					std::cout << "client disconnected!" << std::endl;
 					return true;
@@ -46,18 +50,44 @@ int main()
 				connections.end());
 		}
 
+		messages.clear();
+
 		// receive messages
 		{
 			for (auto& c : connections)
 			{
-				auto const bytes = c.receive(std::span<std::uint8_t>(read_buffer.data(), read_buffer.size()));
+				auto &[conn, id] = c;
+
+				auto const bytes = conn.receive(std::span<std::uint8_t>(read_buffer.data(), read_buffer.size()));
 
 				if (bytes.has_value() && bytes.value() != 0)
-					std::cout << std::string(read_buffer.begin(), read_buffer.begin() + bytes.value()) << std::endl;
+					messages.push_back({ std::string(read_buffer.begin(), read_buffer.begin() + bytes.value()), id });
 			}
 		}
 
-		// TODO: send messages!
+		// send messages
+		{
+			auto msg_buffer = net::send_buffer(1024);
+
+			for (auto const& m : messages)
+			{
+				auto const& [message, m_id] = m;
+
+				for (auto& c : connections)
+				{
+					auto &[conn, c_id] = c;
+
+					if (m_id == c_id) // don't send messages back to the sender...
+						continue;
+
+					msg_buffer.push_back(message.begin(), message.end());
+					msg_buffer.push_back(newline.begin(), newline.end());
+
+					while (!msg_buffer.empty())
+						msg_buffer.send(conn).unwrap();
+				}
+			}
+		}
 	}
 
 	std::cout << "done!" << std::endl;
