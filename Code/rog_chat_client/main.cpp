@@ -12,9 +12,9 @@ int main()
 
 	auto const context = net::init_context().unwrap();
 	auto const endpoint = net::get_address_info_loopback(net::ip_address_family::V6, net::ip_protocol::TCP, 4376).unwrap();
-	auto requester = net::connect(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
+	auto connector = net::make_tcp_connector_socket(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
 
-	auto connection = net::tcp_connection();
+	auto connection = net::socket();
 
 	auto retry_timer = timer();
 	auto const retry_time = std::chrono::seconds(2);
@@ -22,24 +22,22 @@ int main()
 	while (true)
 	{
 
-		if (requester.is_active())
+		if (connector.is_open())
 		{
-			auto c = requester.check().unwrap();
-
-			if (c.is_open())
+			if (connector.check())
 			{
 				std::cout << "connected to server!" << std::endl;
-				connection = std::move(c);
+				connection = std::move(connector);
 				break;
 			}
 
-			if (!requester.is_active())
+			if (!connector.is_open())
 				retry_timer = timer();
 		}
 		else
 		{
 			if (retry_timer.get_elapsed_time() >= retry_time)
-				requester = net::connect(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
+				connector = net::make_tcp_connector_socket(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
 		}
 	}
 

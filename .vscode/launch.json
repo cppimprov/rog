@@ -54,6 +54,7 @@
                 "rog_server",
                 "rog_chat_server",
                 "rog_chat_client",
+                "ta_server",
             ]
         },
         {

@@ -10,8 +10,8 @@ int main()
 
 	auto const context = net::init_context().unwrap();
 	auto const endpoint = net::get_address_info_loopback(net::ip_address_family::V6, net::ip_protocol::TCP, 4376).unwrap();
-	auto listener = net::listen(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
-	auto connections = std::vector<std::tuple<net::tcp_connection, std::size_t>>();
+	auto listener = net::make_tcp_listener_socket(endpoint.m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
+	auto connections = std::vector<std::tuple<net::socket, std::size_t>>();
 	auto read_buffer = std::vector<std::uint8_t>(4096, '\0');
 
 	auto next_client_id = std::size_t{ 0 };
@@ -34,7 +34,7 @@ int main()
 		
 		// handle disconnections
 		{
-			auto const dc = [] (std::tuple<net::tcp_connection, std::size_t> const& c)
+			auto const dc = [] (std::tuple<net::socket, std::size_t> const& c)
 			{
 				if (!std::get<0>(c).is_open())
 				{

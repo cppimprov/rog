@@ -1,6 +1,6 @@
 #pragma once
 
-#include "bump_net_tcp_connection.hpp"
+#include "bump_net_socket.hpp"
 
 #include <cstdint>
 #include <deque>
@@ -22,7 +22,7 @@ namespace bump
 			template<class It>
 			void push_back(It first, It last);
 
-			result<std::size_t, std::system_error> send(tcp_connection& connection);
+			result<std::size_t, std::system_error> send(socket& connection);
 
 			std::size_t size() const { return m_stream.size(); }
 			bool empty() const { return size() == 0; }
@@ -41,7 +41,7 @@ namespace bump
 			m_stream.insert(m_stream.end(), first, last);
 		}
 
-		result<std::size_t, std::system_error> send_buffer::send(tcp_connection& connection)
+		result<std::size_t, std::system_error> send_buffer::send(socket& connection)
 		{
 			auto const size = std::min(m_stream.size(), m_buffer.capacity());
 

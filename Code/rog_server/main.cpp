@@ -132,7 +132,7 @@ int main()
 
 	auto context = net::init_context().unwrap();
 
-	auto connection = net::tcp_connection();
+	auto connection = net::socket();
 
 	// connect:
 	{
@@ -142,13 +142,14 @@ int main()
 		
 		die_if(!info.has_value());
 
-		auto requester = connect(info.value().m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
+		auto requester = net::make_tcp_connector_socket(info.value().m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
 
 		while (true)
 		{
-			connection = requester.check().unwrap();
+			if (requester.check())
+				connection = std::move(requester);
 
-			if (connection.is_open())
+			if (!requester.is_open())
 				break;
 		}
 
