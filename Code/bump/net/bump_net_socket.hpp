@@ -82,7 +82,7 @@ namespace bump
 		result<socket, std::system_error> make_tcp_listener_socket(endpoint const& local, blocking_mode mode);
 		result<socket, std::system_error> make_tcp_connector_socket(endpoint const& remote, blocking_mode mode);
 		result<socket, std::system_error> make_udp_socket(endpoint const& local, blocking_mode mode);
-		result<socket, std::system_error> make_udp_connected_socket(endpoint const& local, blocking_mode mode);
+		result<socket, std::system_error> make_udp_connected_socket(endpoint const& local, endpoint const& remote, blocking_mode mode);
 
 	} // net
 	

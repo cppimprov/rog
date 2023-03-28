@@ -600,7 +600,19 @@ class PlatformMSVC:
 		ta_server.standard_libs = [ 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, ta_server)
 
-		# ... ta_client
+		ta_client = ProjectExe.from_name('ta_client', self, build_type)
+		ta_client.defines = bump.defines
+		ta_client.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		ta_client.libs = [
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+		]
+		ta_client.standard_libs = [ 'Ws2_32.lib' ]
+		self.write_exe(n, build_type, ta_client)
 
 
 class PlatformGCC:
@@ -782,6 +794,7 @@ class PlatformGCC:
 			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
 		]
 		self.write_exe(n, build_type, rog_chat_server)
+
 
 def write(platform, build_type, build_file_name):
 	try:
