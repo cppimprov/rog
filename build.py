@@ -586,16 +586,28 @@ class PlatformMSVC:
 		rog_chat_server.standard_libs = [ 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, rog_chat_server)
 
+		ta = ProjectStaticLib.from_name('ta', self, build_type)
+		ta.defines = bump.defines
+		ta.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			glm.code_dir,
+		]
+		ta.inc_dirs = ta.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		self.write_static_lib(n, build_type, ta)
+
 		ta_server = ProjectExe.from_name('ta_server', self, build_type)
 		ta_server.defines = bump.defines
 		ta_server.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
 			glm.code_dir,
+			ta.code_dir,
 		]
 		ta_server.inc_dirs = ta_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
 		ta_server.libs = [
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
 		]
 		ta_server.standard_libs = [ 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, ta_server)
@@ -606,10 +618,12 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			glm.code_dir,
+			ta.code_dir,
 		]
 		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
 		ta_client.libs = [
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
 		]
 		ta_client.standard_libs = [ 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, ta_client)
