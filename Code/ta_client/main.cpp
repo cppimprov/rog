@@ -25,22 +25,4 @@ int main()
 	std::cout << "done!" << std::endl;
 }
 
-// TODO:
-	// move ta code to separate library that both client and server can use
-	// add message id field to go with the message type
-	// add ack system to send / receive reliable messages by caching message ids on the server, and resending over a certain time-period on the client.
-
-// message_aggregator:
-	// take message data and package into packets for transmission
-	// and vice-versa
-
-// message:
-	// message type, message id, 
-
-// reliable_message:
-	// message type, message id,
-	// has ack?
-
-// message_receiver:
-	// type, id,
-	// data...
+// ... 
