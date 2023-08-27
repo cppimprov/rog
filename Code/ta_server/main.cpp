@@ -52,6 +52,11 @@ namespace ta
 
 		auto timer = bump::frame_timer();
 
+		auto input_up = false;
+		auto input_down = false;
+		auto input_left = false;
+		auto input_right = false;
+
 		while (true)
 		{
 			// get input
@@ -89,17 +94,13 @@ namespace ta
 						// todo: move this somewhere else!
 						auto& player = world.m_players[0];
 
-						player.m_direction = ta::direction::none;
+						if (k.m_key == kt::W) input_up = k.m_value;
+						if (k.m_key == kt::S) input_down = k.m_value;
+						if (k.m_key == kt::A) input_left = k.m_value;
+						if (k.m_key == kt::D) input_right = k.m_value;
 
-						if (k.m_key == kt::W && k.m_value)
-							player.m_direction = ta::direction::up;
-						if (k.m_key == kt::A && k.m_value)
-							player.m_direction = ta::direction::left;
-						if (k.m_key == kt::S && k.m_value)
-							player.m_direction = ta::direction::down;
-						if (k.m_key == kt::D && k.m_value)
-							player.m_direction = ta::direction::right;
-
+						player.m_direction = ta::get_input_dir(input_up, input_down, input_left, input_right);
+						
 						// todo: handle firing delay!
 						if (k.m_key == kt::SPACE && k.m_value)
 							world.m_bullets.push_back({ player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
@@ -250,8 +251,6 @@ int main(int , char* [])
 // todo:
 
 	// add input for a single player (temp for server)
-		// we want to be able to move diagonally!
-		// we want to ignore key repeat (i.e. keep flags for key down)
 
 	// player display:
 		// add texture to tank renderable

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bump_die.hpp>
 #include <bump_math.hpp>
 
 #include <array>
@@ -44,7 +45,27 @@ namespace ta
 		case direction::down:       return direction::up;
 		case direction::down_right: return direction::up_left;
 		}
-		assert(false); 
+		bump::die();
+	}
+
+	inline direction get_input_dir(bool up, bool down, bool left, bool right)
+	{
+		if (up)
+		{
+			if (left) return direction::up_left;
+			if (right) return direction::up_right;
+			return direction::up;
+		}
+
+		if (down)
+		{
+			if (left) return direction::down_left;
+			if (right) return direction::down_right;
+			return direction::down;
+		}
+
+		if (left) return direction::left;
+		if (right) return direction::right;
 		return direction::none;
 	}
 
