@@ -21,7 +21,7 @@ namespace ta
 	collision_result check_collision(world const& world, collision_object object, bool reflect, float delta_time_s)
 	{
 		// calculate movement
-		auto const movement = dir_to_vec(object.m_direction) * delta_time_s;
+		auto const movement = dir_to_vec(object.m_direction) * object.m_speed * delta_time_s;
 
 		// calculate new pos (without collision)
 		auto const new_pos = object.m_position + movement;
@@ -38,7 +38,7 @@ namespace ta
 		bool collision = false;
 
 		// iterate through vector components, reflecting if necessary
-		for (auto i = std::size_t{ 0 }; i != std::size_t{ 2 }; ++i)
+		for (auto i = std::size_t{ 0 }; i != object.m_position.length(); ++i)
 		{
 			if (new_pos[i] < bounds.m_min[i])
 			{
@@ -54,6 +54,8 @@ namespace ta
 					object.m_direction = direction::none;
 					object.m_position[i] = bounds.m_min[i];
 				}
+
+				continue;
 			}
 
 			if (new_pos[i] > bounds.m_max[i])
@@ -70,7 +72,11 @@ namespace ta
 					object.m_direction = direction::none;
 					object.m_position[i] = bounds.m_max[i];
 				}
+
+				continue;
 			}
+
+			object.m_position[i] = new_pos[i];
 		}
 
 		return collision_result{ collision, object.m_position, object.m_direction };

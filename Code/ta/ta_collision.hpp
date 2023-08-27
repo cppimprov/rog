@@ -12,6 +12,7 @@ namespace ta
 		glm::vec2 m_position;
 		direction m_direction;
 		float m_radius;
+		float m_speed;
 	};
 
 	struct collision_result

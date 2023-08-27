@@ -30,17 +30,20 @@ namespace ta
 		bump::log_info("main_loop()");
 
 		auto const max_hp = ta::hp_t{ 100 };
-		//auto const player_speed = 1.f;
+		auto const bullet_damage = ta::hp_t{ 10 };
+		auto const player_speed = 100.f;
+		auto const bullet_speed = 500.f;
 		auto const player_radius = 50.f;
 		auto const bullet_radius = 5.f;
 		auto const powerup_radius = 25.f;
 		auto const powerup_duration = 10.f;
+		auto const bullet_lifetime = 10.f;
 
 		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
-		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 000.f, 0.f }, ta::direction::up });
-		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 100.f, 0.f }, ta::direction::up });
-		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 200.f, 0.f }, ta::direction::up });
-		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 300.f, 0.f }, ta::direction::up });
+		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 000.f, player_radius }, ta::direction::none });
+		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 100.f, player_radius }, ta::direction::none });
+		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 200.f, player_radius }, ta::direction::none });
+		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 300.f, player_radius }, ta::direction::none });
 
 		auto tank_renderable = ta::tank_renderable(app.m_assets.m_shaders["tank"]);
 
@@ -81,6 +84,25 @@ namespace ta
 
 						if (k.m_key == kt::ESCAPE && k.m_value)
 							return { }; // quit
+						
+						// player input
+						// todo: move this somewhere else!
+						auto& player = world.m_players[0];
+
+						player.m_direction = ta::direction::none;
+
+						if (k.m_key == kt::W && k.m_value)
+							player.m_direction = ta::direction::up;
+						if (k.m_key == kt::A && k.m_value)
+							player.m_direction = ta::direction::left;
+						if (k.m_key == kt::S && k.m_value)
+							player.m_direction = ta::direction::down;
+						if (k.m_key == kt::D && k.m_value)
+							player.m_direction = ta::direction::right;
+
+						// todo: handle firing delay!
+						if (k.m_key == kt::SPACE && k.m_value)
+							world.m_bullets.push_back({ player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
 					}
 				}
 			}
@@ -90,17 +112,17 @@ namespace ta
 				auto const delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(timer.get_last_frame_time()).count();
 
 				// update player positions
-				// for (auto& player : world.m_players)
-				// {
-				// 	auto result = ta::check_collision(world, { player.m_position, player.m_direction, player_radius }, false, delta_time);
-				// 	player.m_position = result.m_position;
-				// 	player.m_direction = result.m_direction;
-				// }
+				for (auto& player : world.m_players)
+				{
+					auto result = ta::check_collision(world, { player.m_position, player.m_direction, player_radius, player_speed }, false, delta_time);
+					player.m_position = result.m_position;
+					player.m_direction = result.m_direction;
+				}
 
 				// update bullet positions
 				for (auto& bullet : world.m_bullets)
 				{
-					auto result = ta::check_collision(world, { bullet.m_position, bullet.m_direction, bullet_radius }, false, delta_time);
+					auto result = ta::check_collision(world, { bullet.m_position, bullet.m_direction, bullet_radius, bullet_speed }, false, delta_time);
 					bullet.m_position = result.m_position;
 					bullet.m_direction = result.m_direction;
 				}
@@ -167,7 +189,7 @@ namespace ta
 				// render powerups
 
 				for (auto const& p : world.m_players)
-					tank_renderable.render(app.m_renderer, matrices, p.m_position, glm::vec2(player_radius * 2.f), glm::vec3(1.f));
+					tank_renderable.render(app.m_renderer, matrices, p.m_position - glm::vec2(player_radius), glm::vec2(player_radius * 2.f), glm::vec3(1.f));
 
 				// render bullets
 
@@ -228,7 +250,8 @@ int main(int , char* [])
 // todo:
 
 	// add input for a single player (temp for server)
-	// fix collision code (for some reason it's offset by the player radius)
+		// we want to be able to move diagonally!
+		// we want to ignore key repeat (i.e. keep flags for key down)
 
 	// player display:
 		// add texture to tank renderable
