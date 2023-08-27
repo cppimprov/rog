@@ -56,7 +56,6 @@ namespace bump
 			glBindBuffer(GL_ARRAY_BUFFER, buffer.get_id());
 
 			auto const component_type = buffer.get_component_type();
-			auto const component_count = (GLint)buffer.get_component_count();
 			auto const stride = (GLsizei)buffer.get_element_size_bytes();
 
 			for (auto i = 0; i != elements; ++i)

@@ -15,9 +15,13 @@ namespace bump
 	namespace
 	{
 
-		std::string read_file_to_string(std::string const& filename)
+		std::optional<std::string> read_file_to_string(std::string const& filename)
 		{
 			auto file = std::ifstream(filename, std::ios::binary); // todo: widen filename for windows!
+
+			if (!file.is_open())
+				return std::nullopt;
+
 			return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 		}
 
@@ -102,10 +106,17 @@ namespace bump
 				for (auto const& file : metadata.m_filenames)
 				{
 					auto source = read_file_to_string("data/shaders/" + file);
+
+					if (!source.has_value())
+					{
+						log_error("Failed to read shader source file: " + file + " for shader asset: " + metadata.m_name);
+						die();
+					}
+
 					auto type = get_shader_type(file);
 
 					auto object = gl::shader_object(type);
-					object.set_source(source);
+					object.set_source(source.value());
 
 					if (!object.compile())
 					{

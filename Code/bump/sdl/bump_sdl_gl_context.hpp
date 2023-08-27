@@ -14,7 +14,12 @@ namespace bump
 		{
 		public:
 
+			enum class swap_interval_mode { IMMEDIATE, VSYNC, ADAPTIVE_VSYNC };
+
 			explicit gl_context(window const& window);
+
+			void set_swap_interval(swap_interval_mode interval);
+			swap_interval_mode get_swap_interval() const;
 		};
 		
 	} // sdl

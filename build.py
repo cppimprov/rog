@@ -230,9 +230,11 @@ class PlatformMSVC:
 		self.write_rules(n)
 
 		entt = ProjectStaticLib.from_name('entt', self, build_type)
+		entt.defines = [ '_SILENCE_CXX23_ALIGNED_STORAGE_DEPRECATION_WARNING' ]
 		# header only - don't write
 
 		json = ProjectStaticLib.from_name('json', self, build_type)
+		json.defines = [ '_SILENCE_CXX20_CISO646_REMOVED_WARNING' ]
 		# header only - don't write
 		
 		freetype = ProjectStaticLib.from_name('freetype', self, build_type)
@@ -480,7 +482,7 @@ class PlatformMSVC:
 		bump_core_dirs = [ 'debug', 'math', 'net', 'util' ]
 
 		bump = ProjectStaticLib.from_name('bump', self, build_type)
-		bump.defines = freetype.defines + harfbuzz.defines + glew.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
+		bump.defines = entt.defines + freetype.defines + harfbuzz.defines + glew.defines + json.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
 		bump.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
@@ -591,9 +593,10 @@ class PlatformMSVC:
 		ta.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			glew.code_dir,
 			glm.code_dir,
 		]
-		ta.inc_dirs = ta.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		ta.inc_dirs = ta.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		self.write_static_lib(n, build_type, ta)
 
 		ta_server = ProjectExe.from_name('ta_server', self, build_type)
@@ -601,15 +604,28 @@ class PlatformMSVC:
 		ta_server.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			join_dir(freetype.code_dir, 'include'),
+			join_dir(harfbuzz.code_dir, 'src'),
+			glew.code_dir,
+			stb.code_dir,
 			glm.code_dir,
+			join_dir(sdl.code_dir, 'include'),
+			sdlmixer.code_dir,
 			ta.code_dir,
 		]
-		ta_server.inc_dirs = ta_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		ta_server.inc_dirs = ta_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		ta_server.libs = [
+			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
+			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
+			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
+			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
+			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
+			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
+			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
 		]
-		ta_server.standard_libs = [ 'Ws2_32.lib' ]
+		ta_server.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, ta_server)
 
 		ta_client = ProjectExe.from_name('ta_client', self, build_type)
@@ -620,12 +636,19 @@ class PlatformMSVC:
 			glm.code_dir,
 			ta.code_dir,
 		]
-		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
+		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		ta_client.libs = [
+			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
+			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
+			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
+			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
+			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
+			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
+			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
 		]
-		ta_client.standard_libs = [ 'Ws2_32.lib' ]
+		ta_client.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, ta_client)
 
 
@@ -886,6 +909,16 @@ def main():
 			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
 			'Data/rog_ascii_gen', 
 			get_deploy_dir('rog_ascii_gen', platform_writer.get_platform_name(), build_type) + '/data'])
+			
+		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+		if copy_result > 8:
+			print('failed to copy data files!')
+			return
+
+		copy_result = subprocess.call(['robocopy', 
+			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
+			'Data/ta_server', 
+			get_deploy_dir('ta_server', platform_writer.get_platform_name(), build_type) + '/data'])
 			
 		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
 		if copy_result > 8:
