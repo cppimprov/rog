@@ -172,19 +172,9 @@ namespace ta
 					}
 				}
 
-				// check for player deaths (and move to end of players array)
-				auto const first_dead_player = std::remove_if(world.m_players.begin(), world.m_players.end(),
+				// check for player deaths
+				std::erase_if(world.m_players,
 					[] (auto const& p) { return p.m_hp <= 0; });
-
-				// remove dead players' bullets
-				for (auto p = first_dead_player; p != world.m_players.end(); ++p)
-				{
-					std::erase_if(world.m_bullets,
-						[&p] (auto const& b) { return b.m_owner_id == p->m_id; });
-				}
-				
-				// remove dead players
-				world.m_players.erase(first_dead_player, world.m_players.end());
 			}
 
 			// render
