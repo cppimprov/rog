@@ -19,9 +19,6 @@
 
 #include <iostream>
 
-// move game logic into state function
-// use bump::app class 
-
 namespace ta
 {
 
@@ -46,6 +43,7 @@ namespace ta
 		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 300.f, player_radius }, ta::direction::none });
 
 		auto tank_renderable = ta::tank_renderable(app.m_assets.m_shaders["tank"]);
+		auto bullet_renderable = ta::bullet_renderable(app.m_assets.m_shaders["bullet"]);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -92,18 +90,22 @@ namespace ta
 						
 						// player input
 						// todo: move this somewhere else!
-						auto& player = world.m_players[0];
+						// todo: what if the player is dead?
 
 						if (k.m_key == kt::W) input_up = k.m_value;
 						if (k.m_key == kt::S) input_down = k.m_value;
 						if (k.m_key == kt::A) input_left = k.m_value;
 						if (k.m_key == kt::D) input_right = k.m_value;
 
+						auto& player = world.m_players[0];
+
 						player.m_direction = ta::get_input_dir(input_up, input_down, input_left, input_right);
 						
 						// todo: handle firing delay!
+						// todo: avoid key repeat issues!
+						// todo: proper bullet spawn position!
 						if (k.m_key == kt::SPACE && k.m_value)
-							world.m_bullets.push_back({ player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
+							world.m_bullets.push_back({ player.m_id, player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
 					}
 				}
 			}
@@ -160,6 +162,9 @@ namespace ta
 				{
 					for (auto& bullet : world.m_bullets)
 					{
+						if (bullet.m_owner_id == player.m_id)
+							continue;
+
 						auto const dist = glm::distance(player.m_position, bullet.m_position);
 
 						if (dist < player_radius + bullet_radius)
@@ -167,10 +172,19 @@ namespace ta
 					}
 				}
 
-				// check for player deaths (remove dead players)
-				std::erase_if(world.m_players,
+				// check for player deaths (and move to end of players array)
+				auto const first_dead_player = std::remove_if(world.m_players.begin(), world.m_players.end(),
 					[] (auto const& p) { return p.m_hp <= 0; });
 
+				// remove dead players' bullets
+				for (auto p = first_dead_player; p != world.m_players.end(); ++p)
+				{
+					std::erase_if(world.m_bullets,
+						[&p] (auto const& b) { return b.m_owner_id == p->m_id; });
+				}
+				
+				// remove dead players
+				world.m_players.erase(first_dead_player, world.m_players.end());
 			}
 
 			// render
@@ -192,7 +206,8 @@ namespace ta
 				for (auto const& p : world.m_players)
 					tank_renderable.render(app.m_renderer, matrices, p.m_position - glm::vec2(player_radius), glm::vec2(player_radius * 2.f), glm::vec3(1.f));
 
-				// render bullets
+				for (auto const& b : world.m_bullets)
+					bullet_renderable.render(app.m_renderer, matrices, b.m_position - glm::vec2(bullet_radius), glm::vec2(bullet_radius * 2.f), glm::vec3(1.f));
 
 				app.m_window.swap_buffers();
 			}
@@ -223,6 +238,7 @@ int main(int , char* [])
 			// shaders
 			{
 				{ "tank", { "tank.vert", "tank.frag" } },
+				{ "bullet", { "bullet.vert", "bullet.frag" } },
 			},
 			// models
 			{
@@ -250,13 +266,15 @@ int main(int , char* [])
 
 // todo:
 
-	// add input for a single player (temp for server)
-
-	// player display:
+	// render players:
 		// add texture to tank renderable
-		// get color working on tank renderable
+		// add color to players / tank_renderable
 
-	// display players / powerups / bullets
-		// add sprite renderable (w/ instancing?)
+	// render bullets:
+		// get color from player
+
+	// fix issues with bullets (see todos above)
+	
+	// instancing for renderables?
 
 	// check that test project is set up for unit testing?

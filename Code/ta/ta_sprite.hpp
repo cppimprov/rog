@@ -36,8 +36,38 @@ namespace ta
 			bump::gl::vertex_array m_vertex_array;
 	};
 
+	class bullet_renderable
+	{
+	public:
+
+		explicit bullet_renderable(bump::gl::shader_program const& shader);
+
+		bullet_renderable(bullet_renderable const&) = delete;
+		bullet_renderable& operator=(bullet_renderable const&) = delete;
+
+		bullet_renderable(bullet_renderable &&) = default;
+		bullet_renderable& operator=(bullet_renderable &&) = default;
+
+		void render(bump::gl::renderer& renderer,
+			bump::camera_matrices const& matrices,
+			glm::vec2 position,
+			glm::vec2 size,
+			glm::vec3 color);
+
+	private:
+
+			bump::gl::shader_program const* m_shader;
+			GLint m_in_VertexPosition;
+			GLint m_u_Position;
+			GLint m_u_Size;
+			GLint m_u_Color;
+			GLint m_u_MVP;
+
+			bump::gl::buffer m_vertex_buffer;
+			bump::gl::vertex_array m_vertex_array;
+	};
+
 	// todo:
-	// bullet_renderable
 	// powerup_renderable
 
 } // ta

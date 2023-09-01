@@ -74,17 +74,15 @@ namespace ta
 	struct player
 	{
 		std::uint32_t m_id;
-
 		hp_t m_hp;
-
 		glm::vec2 m_position;
 		direction m_direction;
-
 		std::map<powerup_type, float> m_powerup_timers;
 	};
 
 	struct bullet
 	{
+		std::uint32_t m_owner_id;
 		glm::vec2 m_position;
 		direction m_direction;
 		float m_speed;
