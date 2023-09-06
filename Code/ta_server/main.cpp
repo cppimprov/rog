@@ -28,19 +28,19 @@ namespace ta
 
 		auto const max_hp = ta::hp_t{ 100 };
 		auto const bullet_damage = ta::hp_t{ 10 };
-		auto const player_speed = 100.f;
+		auto const player_speed = 200.f;
 		auto const bullet_speed = 500.f;
-		auto const player_radius = 50.f;
+		auto const player_radius = 30.f;
 		auto const bullet_radius = 5.f;
 		auto const powerup_radius = 25.f;
 		auto const powerup_duration = 10.f;
 		auto const bullet_lifetime = 3.f;
 
 		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
-		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 000.f, player_radius }, ta::direction::none });
-		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 100.f, player_radius }, ta::direction::none });
-		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 200.f, player_radius }, ta::direction::none });
-		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 300.f, player_radius }, ta::direction::none });
+		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 000.f, player_radius }, ta::direction::none, glm::vec3(1.f, 0.8f, 0.3f) });
+		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 100.f, player_radius }, ta::direction::none, glm::vec3(1.f, 0.f, 0.f) });
+		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 200.f, player_radius }, ta::direction::none, glm::vec3(0.f, 0.9f, 0.f) });
+		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 300.f, player_radius }, ta::direction::none, glm::vec3(0.2f, 0.2f, 1.f)});
 
 		auto tank_renderable = ta::tank_renderable(app.m_assets.m_shaders["tank"]);
 		auto bullet_renderable = ta::bullet_renderable(app.m_assets.m_shaders["bullet"]);
@@ -118,11 +118,12 @@ namespace ta
 						player.m_direction = ta::get_input_dir(input_up, input_down, input_left, input_right);
 						
 						// todo: proper bullet spawn position!
+						// todo: proper bullet velocity!
 						if (input_fire)
 						{
 							if (reload_timer.get_elapsed_time() >= reload_time)
 							{
-								world.m_bullets.push_back({ player.m_id, player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
+								world.m_bullets.push_back({ player.m_id, player.m_position, player.m_direction, player.m_color, bullet_speed, bullet_damage, bullet_lifetime });
 								reload_timer = bump::timer();
 							}
 						}
@@ -213,10 +214,10 @@ namespace ta
 				// render powerups
 
 				for (auto const& p : world.m_players)
-					tank_renderable.render(app.m_renderer, matrices, p.m_position - glm::vec2(player_radius), glm::vec2(player_radius * 2.f), glm::vec3(1.f));
+					tank_renderable.render(app.m_renderer, matrices, p.m_position - glm::vec2(player_radius), glm::vec2(player_radius * 2.f), p.m_color);
 
 				for (auto const& b : world.m_bullets)
-					bullet_renderable.render(app.m_renderer, matrices, b.m_position - glm::vec2(bullet_radius), glm::vec2(bullet_radius * 2.f), glm::vec3(1.f));
+					bullet_renderable.render(app.m_renderer, matrices, b.m_position - glm::vec2(bullet_radius), glm::vec2(bullet_radius * 2.f), b.m_color);
 
 				app.m_window.swap_buffers();
 			}
@@ -274,6 +275,8 @@ int main(int , char* [])
 }
 
 // todo:
+
+	// fix player directions -> shouldn't have a "none" direction (need a separate movement flag?)
 
 	// render players:
 		// add texture to tank renderable

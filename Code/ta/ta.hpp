@@ -77,6 +77,7 @@ namespace ta
 		hp_t m_hp;
 		glm::vec2 m_position;
 		direction m_direction;
+		glm::vec3 m_color;
 		std::map<powerup_type, float> m_powerup_timers;
 	};
 
@@ -85,6 +86,7 @@ namespace ta
 		std::uint32_t m_owner_id;
 		glm::vec2 m_position;
 		direction m_direction;
+		glm::vec3 m_color;
 		float m_speed;
 		hp_t m_damage;
 		float m_lifetime;
