@@ -34,7 +34,7 @@ namespace ta
 		auto const bullet_radius = 5.f;
 		auto const powerup_radius = 25.f;
 		auto const powerup_duration = 10.f;
-		auto const bullet_lifetime = 10.f;
+		auto const bullet_lifetime = 3.f;
 
 		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
 		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 000.f, player_radius }, ta::direction::none });
@@ -49,11 +49,14 @@ namespace ta
 		auto input_events = std::queue<bump::input::input_event>();
 
 		auto timer = bump::frame_timer();
+		auto reload_timer = bump::timer();
+		auto const reload_time = std::chrono::duration<float>(0.2f);
 
 		auto input_up = false;
 		auto input_down = false;
 		auto input_left = false;
 		auto input_right = false;
+		auto input_fire = false;
 
 		while (true)
 		{
@@ -88,24 +91,11 @@ namespace ta
 						if (k.m_key == kt::ESCAPE && k.m_value)
 							return { }; // quit
 						
-						// player input
-						// todo: move this somewhere else!
-						// todo: what if the player is dead?
-
 						if (k.m_key == kt::W) input_up = k.m_value;
 						if (k.m_key == kt::S) input_down = k.m_value;
 						if (k.m_key == kt::A) input_left = k.m_value;
 						if (k.m_key == kt::D) input_right = k.m_value;
-
-						auto& player = world.m_players[0];
-
-						player.m_direction = ta::get_input_dir(input_up, input_down, input_left, input_right);
-						
-						// todo: handle firing delay!
-						// todo: avoid key repeat issues!
-						// todo: proper bullet spawn position!
-						if (k.m_key == kt::SPACE && k.m_value)
-							world.m_bullets.push_back({ player.m_id, player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
+						if (k.m_key == kt::SPACE) input_fire = k.m_value;
 					}
 				}
 			}
@@ -113,6 +103,31 @@ namespace ta
 			// update
 			{
 				auto const delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(timer.get_last_frame_time()).count();
+
+				// update player input
+				{
+					// player input
+
+					auto p = std::find_if(world.m_players.begin(), world.m_players.end(),
+						[] (auto const& p) { return p.m_id == 0; });
+
+					if (p != world.m_players.end())
+					{
+						auto& player = *p;
+
+						player.m_direction = ta::get_input_dir(input_up, input_down, input_left, input_right);
+						
+						// todo: proper bullet spawn position!
+						if (input_fire)
+						{
+							if (reload_timer.get_elapsed_time() >= reload_time)
+							{
+								world.m_bullets.push_back({ player.m_id, player.m_position, player.m_direction, bullet_speed, bullet_damage, bullet_lifetime });
+								reload_timer = bump::timer();
+							}
+						}
+					}
+				}
 
 				// update player positions
 				for (auto& player : world.m_players)
@@ -129,6 +144,10 @@ namespace ta
 					bullet.m_position = result.m_position;
 					bullet.m_direction = result.m_direction;
 				}
+
+				// update bullet lifetimes
+				for (auto& bullet : world.m_bullets)
+					bullet.m_lifetime -= delta_time;
 
 				// remove expired bullets
 				std::erase_if(world.m_bullets,
