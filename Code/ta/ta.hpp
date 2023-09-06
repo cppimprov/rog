@@ -5,12 +5,13 @@
 
 #include <array>
 #include <map>
+#include <optional>
 #include <vector>
 
 namespace ta
 {
 
-	enum direction { up_left, up, up_right, left, none, right, down_left, down, down_right, };
+	enum direction { up_left, up, up_right, left, right, down_left, down, down_right, };
 	enum powerup_type { player_heal, player_shield, player_speed, player_firing_frequency, bullet_bounce, bullet_damage, bullet_speed };
 
 	auto constexpr direction_vectors = std::array<glm::vec2, 9>
@@ -19,7 +20,6 @@ namespace ta
 		glm::vec2{  0.f,  1.f },
 		glm::vec2{  1.f,  1.f },
 		glm::vec2{ -1.f,  0.f },
-		glm::vec2{  0.f,  0.f },
 		glm::vec2{  1.f,  0.f },
 		glm::vec2{ -1.f, -1.f },
 		glm::vec2{  0.f, -1.f },
@@ -39,7 +39,6 @@ namespace ta
 		case direction::up:         return direction::down;
 		case direction::up_right:   return direction::down_left;
 		case direction::left:       return direction::right;
-		case direction::none:       return direction::none;
 		case direction::right:      return direction::left;
 		case direction::down_left:  return direction::up_right;
 		case direction::down:       return direction::up;
@@ -48,7 +47,7 @@ namespace ta
 		bump::die();
 	}
 
-	inline direction get_input_dir(bool up, bool down, bool left, bool right)
+	inline std::optional<direction> get_input_dir(bool up, bool down, bool left, bool right)
 	{
 		if (up)
 		{
@@ -66,7 +65,8 @@ namespace ta
 
 		if (left) return direction::left;
 		if (right) return direction::right;
-		return direction::none;
+		
+		return { };
 	}
 
 	using hp_t = std::int32_t;
@@ -77,6 +77,7 @@ namespace ta
 		hp_t m_hp;
 		glm::vec2 m_position;
 		direction m_direction;
+		bool m_moving;
 		glm::vec3 m_color;
 		std::map<powerup_type, float> m_powerup_timers;
 	};

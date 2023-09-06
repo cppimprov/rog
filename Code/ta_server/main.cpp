@@ -37,10 +37,10 @@ namespace ta
 		auto const bullet_lifetime = 3.f;
 
 		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
-		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 000.f, player_radius }, ta::direction::none, glm::vec3(1.f, 0.8f, 0.3f) });
-		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 100.f, player_radius }, ta::direction::none, glm::vec3(1.f, 0.f, 0.f) });
-		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 200.f, player_radius }, ta::direction::none, glm::vec3(0.f, 0.9f, 0.f) });
-		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 300.f, player_radius }, ta::direction::none, glm::vec3(0.2f, 0.2f, 1.f)});
+		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 050.f, player_radius }, ta::direction::right, false, glm::vec3(1.f, 0.8f, 0.3f) });
+		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 150.f, player_radius }, ta::direction::right, false, glm::vec3(1.f, 0.f, 0.f) });
+		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 250.f, player_radius }, ta::direction::right, false, glm::vec3(0.f, 0.9f, 0.f) });
+		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 350.f, player_radius }, ta::direction::right, false, glm::vec3(0.2f, 0.2f, 1.f)});
 
 		auto tank_renderable = ta::tank_renderable(app.m_assets.m_shaders["tank"]);
 		auto bullet_renderable = ta::bullet_renderable(app.m_assets.m_shaders["bullet"]);
@@ -115,15 +115,17 @@ namespace ta
 					{
 						auto& player = *p;
 
-						player.m_direction = ta::get_input_dir(input_up, input_down, input_left, input_right);
+						auto const dir = ta::get_input_dir(input_up, input_down, input_left, input_right);
+
+						player.m_moving = dir.has_value();
+						player.m_direction = dir.value_or(player.m_direction);
 						
-						// todo: proper bullet spawn position!
-						// todo: proper bullet velocity!
 						if (input_fire)
 						{
 							if (reload_timer.get_elapsed_time() >= reload_time)
 							{
-								world.m_bullets.push_back({ player.m_id, player.m_position, player.m_direction, player.m_color, bullet_speed, bullet_damage, bullet_lifetime });
+								auto pos = player.m_position + dir_to_vec(player.m_direction) * player_radius;
+								world.m_bullets.push_back({ player.m_id, pos, player.m_direction, player.m_color, bullet_speed, bullet_damage, bullet_lifetime });
 								reload_timer = bump::timer();
 							}
 						}
@@ -133,6 +135,9 @@ namespace ta
 				// update player positions
 				for (auto& player : world.m_players)
 				{
+					if (!player.m_moving)
+						continue;
+
 					auto result = ta::check_collision(world, { player.m_position, player.m_direction, player_radius, player_speed }, false, delta_time);
 					player.m_position = result.m_position;
 					player.m_direction = result.m_direction;
@@ -144,6 +149,9 @@ namespace ta
 					auto result = ta::check_collision(world, { bullet.m_position, bullet.m_direction, bullet_radius, bullet_speed }, false, delta_time);
 					bullet.m_position = result.m_position;
 					bullet.m_direction = result.m_direction;
+
+					if (result.m_collided)
+						bullet.m_lifetime = 0.f;
 				}
 
 				// update bullet lifetimes
@@ -276,8 +284,6 @@ int main(int , char* [])
 
 // todo:
 
-	// fix player directions -> shouldn't have a "none" direction (need a separate movement flag?)
-
 	// render players:
 		// add texture to tank renderable
 		// add color to players / tank_renderable
@@ -285,8 +291,6 @@ int main(int , char* [])
 	// render bullets:
 		// get color from player
 
-	// fix issues with bullets (see todos above)
-	
 	// instancing for renderables?
 
 	// check that test project is set up for unit testing?

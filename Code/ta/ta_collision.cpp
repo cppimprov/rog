@@ -51,7 +51,7 @@ namespace ta
 				}
 				else
 				{
-					object.m_direction = direction::none;
+					object.m_direction = object.m_direction;
 					object.m_position[i] = bounds.m_min[i];
 				}
 
@@ -69,7 +69,7 @@ namespace ta
 				}
 				else
 				{
-					object.m_direction = direction::none;
+					object.m_direction = object.m_direction;
 					object.m_position[i] = bounds.m_max[i];
 				}
 
