@@ -42,8 +42,9 @@ namespace ta
 		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 250.f, player_radius }, ta::direction::right, false, glm::vec3(0.f, 0.9f, 0.f) });
 		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 350.f, player_radius }, ta::direction::right, false, glm::vec3(0.2f, 0.2f, 1.f)});
 
-		auto tank_renderable = ta::tank_renderable(app.m_assets.m_shaders["tank"]);
-		auto bullet_renderable = ta::bullet_renderable(app.m_assets.m_shaders["bullet"]);
+		auto tank_renderable = ta::sprite(app.m_assets.m_shaders["sprite"]);
+		auto bullet_renderable = ta::sprite(app.m_assets.m_shaders["sprite"]);
+		auto powerup_renderble = ta::sprite(app.m_assets.m_shaders["sprite"]);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -255,8 +256,7 @@ int main(int , char* [])
 			},
 			// shaders
 			{
-				{ "tank", { "tank.vert", "tank.frag" } },
-				{ "bullet", { "bullet.vert", "bullet.frag" } },
+				{ "sprite", { "sprite.vert", "sprite.frag" } },
 			},
 			// models
 			{
@@ -284,13 +284,9 @@ int main(int , char* [])
 
 // todo:
 
-	// render players:
-		// add texture to tank renderable
-		// add color to players / tank_renderable
+	// rendering:
+		// add texture and accent texture to sprites
 
-	// render bullets:
-		// get color from player
-
-	// instancing for renderables?
+	// make powerup collection work
 
 	// check that test project is set up for unit testing?
