@@ -166,15 +166,31 @@ namespace bump
 			}
 		}
 
+		// load 2d textures:
+		{
+			for (auto const& metadata : m.m_textures_2d)
+			{
+				auto file = "data/textures/" + metadata.m_filename;
+
+				auto texture = load_gl_texture_2d_from_file(file, metadata.m_parameters);
+
+				if (!out.m_textures_2d.insert({ metadata.m_name, std::move(texture) }).second)
+				{
+					log_error("load_assets(): duplicate texture_2d id: " + metadata.m_name);
+					die();
+				}
+			}
+		}
+
 		// load 2d array textures:
 		{
-			for (auto const& metadata : m.m_texture_2d_arrays)
+			for (auto const& metadata : m.m_textures_2d_array)
 			{
 				auto file = "data/textures/" + metadata.m_filename;
 
 				auto texture = load_gl_texture_2d_array_from_file(file, metadata.m_num_layers, metadata.m_parameters);
 
-				if (!out.m_texture_2d_arrays.insert({ metadata.m_name, std::move(texture) }).second)
+				if (!out.m_textures_2d_array.insert({ metadata.m_name, std::move(texture) }).second)
 				{
 					log_error("load_assets(): duplicate texture_2d_array id: " + metadata.m_name);
 					die();

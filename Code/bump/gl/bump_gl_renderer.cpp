@@ -19,7 +19,7 @@ namespace bump
 
 		renderer::renderer()
 		{
-			set_depth_test(depth_test::LESS);
+			set_depth_test(depth_test::LESS_EQUAL);
 			set_point_size_mode(point_size_mode::PROGRAM);
 			set_face_culling(face_culling::CLOCKWISE);
 		}
@@ -90,15 +90,20 @@ namespace bump
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			}
-			else if (mode == blending::ADD)
+			else if (mode == blending::ADDITIVE)
 			{
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_ONE, GL_ONE);
 			}
-			else if (mode == blending::MOD)
+			else if (mode == blending::MODULATE)
 			{
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_DST_COLOR, GL_ZERO);
+			}
+			else if (mode == blending::PREMULTIPLIED)
+			{
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 			}
 		}
 
@@ -129,6 +134,16 @@ namespace bump
 		void renderer::set_depth_write(depth_write mode)
 		{
 			glDepthMask(mode == depth_write::ENABLED ? GL_TRUE : GL_FALSE);
+		}
+
+		void renderer::set_color_write(color_write red, color_write green, color_write blue, color_write alpha)
+		{
+			glColorMask(
+				red == color_write::ENABLED ? GL_TRUE : GL_FALSE,
+				green == color_write::ENABLED ? GL_TRUE : GL_FALSE,
+				blue == color_write::ENABLED ? GL_TRUE : GL_FALSE,
+				alpha == color_write::ENABLED ? GL_TRUE : GL_FALSE
+			);
 		}
 
 		void renderer::set_face_culling(face_culling mode)

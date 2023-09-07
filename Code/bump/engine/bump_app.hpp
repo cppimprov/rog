@@ -17,7 +17,6 @@ namespace bump
 	{
 	public:
 		
-
 		explicit app(asset_metadata const& metadata, glm::i32vec2 window_size, std::string const& window_title, sdl::window::display_mode window_display_mode);
 		app(app const&) = delete;
 		app& operator=(app const&) = delete;

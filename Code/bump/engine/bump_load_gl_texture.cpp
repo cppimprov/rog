@@ -43,6 +43,39 @@ namespace bump
 
 	} // unnamed
 
+	gl::texture_2d load_gl_texture_2d_from_file(std::string const& file, texture_parameters_metadata const& parameters)
+	{
+		auto out = gl::texture_2d();
+
+		stbi_set_flip_vertically_on_load(true);
+
+		auto width = 0;
+		auto height = 0;
+		auto channels = 0;
+		auto pixels = stbi_load(file.c_str(), &width, &height, &channels, 0);
+
+		if (!pixels)
+		{
+			log_error("stbi_load() failed: " + std::string(stbi_failure_reason()));
+			die();
+		}
+
+		out.set_data({ width, height }, parameters.m_internal_format, 
+			gl::make_texture_data_source(parameters.m_data_format, pixels));
+		
+		stbi_image_free(pixels);
+
+		out.set_min_filter(parameters.m_min_filter);
+		out.set_mag_filter(parameters.m_mag_filter);
+		out.set_wrap_mode(parameters.m_wrap_mode);
+		out.set_anisotropy(parameters.m_anisotropy);
+
+		if (parameters.m_generate_mipmaps)
+			out.generate_mipmaps();
+
+		return out;
+	}
+
 	gl::texture_2d_array load_gl_texture_2d_array_from_file(std::string const& file, std::uint32_t num_layers, texture_parameters_metadata const& parameters)
 	{
 		auto out = gl::texture_2d_array();

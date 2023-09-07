@@ -30,10 +30,10 @@ namespace ta
 		auto const bullet_damage = ta::hp_t{ 10 };
 		auto const player_speed = 200.f;
 		auto const bullet_speed = 500.f;
-		auto const player_radius = 30.f;
-		auto const bullet_radius = 5.f;
-		auto const powerup_radius = 25.f;
-		auto const powerup_duration = 10.f;
+		auto const player_radius = 32.f;
+		auto const bullet_radius = 4.f;
+		auto const powerup_radius = 16.f;
+		auto const powerup_duration = 5.f;
 		auto const bullet_lifetime = 3.f;
 
 		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
@@ -42,9 +42,9 @@ namespace ta
 		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 250.f, player_radius }, ta::direction::right, false, glm::vec3(0.f, 0.9f, 0.f) });
 		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 350.f, player_radius }, ta::direction::right, false, glm::vec3(0.2f, 0.2f, 1.f)});
 
-		auto tank_renderable = ta::sprite(app.m_assets.m_shaders["sprite"]);
-		auto bullet_renderable = ta::sprite(app.m_assets.m_shaders["sprite"]);
-		auto powerup_renderble = ta::sprite(app.m_assets.m_shaders["sprite"]);
+		auto tank_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]);
+		auto bullet_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]);
+		auto powerup_renderble = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -219,14 +219,19 @@ namespace ta
 				
 				auto const matrices = bump::camera_matrices(camera);
 
-				// render world
-				// render powerups
+				// todo: render world
+
+				app.m_renderer.set_blending(bump::gl::renderer::blending::BLEND);
 
 				for (auto const& p : world.m_players)
 					tank_renderable.render(app.m_renderer, matrices, p.m_position - glm::vec2(player_radius), glm::vec2(player_radius * 2.f), p.m_color);
 
 				for (auto const& b : world.m_bullets)
 					bullet_renderable.render(app.m_renderer, matrices, b.m_position - glm::vec2(bullet_radius), glm::vec2(bullet_radius * 2.f), b.m_color);
+					
+				// todo: render powerups
+				
+				app.m_renderer.set_blending(bump::gl::renderer::blending::NONE);
 
 				app.m_window.swap_buffers();
 			}
@@ -262,6 +267,15 @@ int main(int , char* [])
 			{
 				// { "skybox", "skybox.mbp_model" },
 			},
+			// 2d textures
+			{
+				{ "tank", "tank_color.png", { GL_RGBA8, GL_RGBA } },
+				{ "tank_accent", "tank_mask.png", { GL_RGBA8, GL_RGBA } },
+				{ "bullet", "bullet_color.png", { GL_RGBA8, GL_RGBA } },
+				{ "bullet_accent", "bullet_mask.png", { GL_RGBA8, GL_RGBA } },
+				{ "powerup", "powerup_color.png", { GL_RGBA8, GL_RGBA } },
+				{ "powerup_accent", "powerup_mask.png", { GL_RGBA8, GL_RGBA } },
+			},
 			// 2d array textures
 			{
 				// { "ascii_tiles", "ascii_tiles.png", 256, { GL_R8, GL_RED } },
@@ -285,7 +299,7 @@ int main(int , char* [])
 // todo:
 
 	// rendering:
-		// add texture and accent texture to sprites
+		// rotate player to face the relevant direction
 
 	// make powerup collection work
 

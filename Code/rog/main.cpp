@@ -347,6 +347,10 @@ int main(int , char* [])
 			{
 				// { "skybox", "skybox.mbp_model" },
 			},
+			// 2d textures
+			{
+				// { "sprite", "sprite.png", { GL_R8, GL_RED } },
+			},
 			// 2d array textures
 			{
 				{ "ascii_tiles", "ascii_tiles.png", 256, { GL_R8, GL_RED } },

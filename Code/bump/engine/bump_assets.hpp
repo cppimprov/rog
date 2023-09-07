@@ -60,6 +60,13 @@ namespace bump
 		bool m_generate_mipmaps = false;
 	};
 
+	struct texture_2d_metadata
+	{
+		std::string m_name;
+		std::string m_filename;
+		texture_parameters_metadata m_parameters;
+	};
+
 	struct texture_2d_array_metadata
 	{
 		std::string m_name;
@@ -82,7 +89,8 @@ namespace bump
 		std::vector<music_metadata> m_music;
 		std::vector<shader_metadata> m_shaders;
 		std::vector<model_metadata> m_models;
-		std::vector<texture_2d_array_metadata> m_texture_2d_arrays;
+		std::vector<texture_2d_metadata> m_textures_2d;
+		std::vector<texture_2d_array_metadata> m_textures_2d_array;
 		std::vector<texture_cubemap_metadata> m_texture_cubemaps;
 	};
 
@@ -95,7 +103,8 @@ namespace bump
 		std::unordered_map<std::string, sdl::mixer_music> m_music;
 		std::unordered_map<std::string, gl::shader_program> m_shaders;
 		std::unordered_map<std::string, mbp_model> m_models;
-		std::unordered_map<std::string, gl::texture_2d_array> m_texture_2d_arrays;
+		std::unordered_map<std::string, gl::texture_2d> m_textures_2d;
+		std::unordered_map<std::string, gl::texture_2d_array> m_textures_2d_array;
 		std::unordered_map<std::string, gl::texture_cubemap> m_texture_cubemaps;
 	};
 

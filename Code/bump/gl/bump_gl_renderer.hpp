@@ -40,7 +40,7 @@ namespace bump
 			void set_point_size_mode(point_size_mode mode);
 			void set_pipeline_point_size(float size);
 
-			enum class blending { NONE, BLEND, ADD, MOD };
+			enum class blending { NONE, BLEND, ADDITIVE, MODULATE, PREMULTIPLIED };
 			void set_blending(blending mode);
 
 			enum class depth_test { LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL, ALWAYS, NEVER };
@@ -48,6 +48,9 @@ namespace bump
 
 			enum class depth_write { ENABLED, DISABLED };
 			void set_depth_write(depth_write mode);
+
+			enum class color_write { ENABLED, DISABLED };
+			void set_color_write(color_write red, color_write green, color_write blue, color_write alpha);
 
 			enum class face_culling { NONE, CLOCKWISE, COUNTER_CLOCKWISE };
 			void set_face_culling(face_culling mode);

@@ -75,7 +75,7 @@ namespace rog
 	tile_renderer::tile_renderer(bump::app& app, glm::vec2 tile_size):
 		m_tile_renderable(app.m_assets.m_shaders.at("tile")),
 		m_tile_size(tile_size),
-		m_tile_texture(&app.m_assets.m_texture_2d_arrays.at("ascii_tiles"))
+		m_tile_texture(&app.m_assets.m_textures_2d_array.at("ascii_tiles"))
 	{
 
 	}
