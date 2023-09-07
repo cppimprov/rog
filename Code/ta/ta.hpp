@@ -97,6 +97,8 @@ namespace ta
 	{
 		powerup_type m_type;
 		glm::vec2 m_position;
+		glm::vec3 m_color;
+		float m_lifetime;
 	};
 
 	struct bounds

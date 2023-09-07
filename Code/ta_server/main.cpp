@@ -42,6 +42,8 @@ namespace ta
 		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 250.f, player_radius }, ta::direction::right, false, glm::vec3(0.f, 0.9f, 0.f) });
 		world.m_players.push_back(ta::player{ 3, max_hp, glm::vec2{ 350.f, player_radius }, ta::direction::right, false, glm::vec3(0.2f, 0.2f, 1.f)});
 
+		world.m_powerups.push_back(ta::powerup{ ta::powerup_type::bullet_speed, glm::vec2{ 250.f, 250.f }, glm::vec3(1.f, 0.f, 0.f), 5.f });
+
 		auto tank_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]);
 		auto bullet_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]);
 		auto powerup_renderble = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]);
@@ -181,10 +183,21 @@ namespace ta
 					{
 						auto const dist = glm::distance(player.m_position, powerup.m_position);
 
-						if (dist < player_radius + powerup_radius)
+						if (dist < (player_radius + powerup_radius))
+						{
 							player.m_powerup_timers[powerup.m_type] = powerup_duration;
+							powerup.m_lifetime = 0.f;
+						}
 					}
 				}
+
+				// update powerup lifetimes
+				for (auto& powerup : world.m_powerups)
+					powerup.m_lifetime -= delta_time;
+
+				// check for expired powerups
+				std::erase_if(world.m_powerups,
+					[] (auto const& p) { return p.m_lifetime <= 0.f; });
 
 				// check for player damage
 				for (auto& player : world.m_players)
@@ -197,7 +210,10 @@ namespace ta
 						auto const dist = glm::distance(player.m_position, bullet.m_position);
 
 						if (dist < player_radius + bullet_radius)
+						{
 							player.m_hp -= bullet.m_damage;
+							bullet.m_lifetime = 0.f;
+						}
 					}
 				}
 
@@ -229,7 +245,8 @@ namespace ta
 				for (auto const& b : world.m_bullets)
 					bullet_renderable.render(app.m_renderer, matrices, b.m_position - glm::vec2(bullet_radius), glm::vec2(bullet_radius * 2.f), b.m_color);
 					
-				// todo: render powerups
+				for (auto const& p : world.m_powerups)
+					powerup_renderble.render(app.m_renderer, matrices, p.m_position - glm::vec2(powerup_radius), glm::vec2(powerup_radius * 2.f), p.m_color);
 				
 				app.m_renderer.set_blending(bump::gl::renderer::blending::NONE);
 
@@ -298,9 +315,6 @@ int main(int , char* [])
 
 // todo:
 
-	// rendering:
-		// rotate player to face the relevant direction
-
-	// make powerup collection work
+	// rotate player to face the relevant direction
 
 	// check that test project is set up for unit testing?
