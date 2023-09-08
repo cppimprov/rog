@@ -45,6 +45,7 @@ namespace ta
 		world.m_powerups.push_back(ta::powerup{ ta::powerup_type::bullet_speed, glm::vec2{ 250.f, 250.f }, glm::vec3(1.f, 0.f, 0.f), 5.f });
 
 		auto tank_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]);
+		auto tank_renderable_diagonal = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]);
 		auto bullet_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]);
 		auto powerup_renderble = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]);
 
@@ -240,13 +241,30 @@ namespace ta
 				app.m_renderer.set_blending(bump::gl::renderer::blending::BLEND);
 
 				for (auto const& p : world.m_players)
-					tank_renderable.render(app.m_renderer, matrices, p.m_position - glm::vec2(player_radius), glm::vec2(player_radius * 2.f), p.m_color);
+				{
+					auto const rotation_angle = dir_to_angle(p.m_direction);
+
+					auto model_matrix = glm::mat4(1.f);
+					bump::set_position(model_matrix, glm::vec3(p.m_position, 0.f));
+					bump::set_rotation(model_matrix, glm::angleAxis(glm::radians(rotation_angle), glm::vec3(0.f, 0.f, 1.f)));
+
+					auto& renderable = is_diagonal(p.m_direction) ? tank_renderable_diagonal : tank_renderable;
+					renderable.render(app.m_renderer, matrices, model_matrix, glm::vec2(player_radius * 2.f), p.m_color);
+				}
 
 				for (auto const& b : world.m_bullets)
-					bullet_renderable.render(app.m_renderer, matrices, b.m_position - glm::vec2(bullet_radius), glm::vec2(bullet_radius * 2.f), b.m_color);
+				{
+					auto model_matrix = glm::mat4(1.f);
+					bump::set_position(model_matrix, glm::vec3(b.m_position, 0.f));
+					bullet_renderable.render(app.m_renderer, matrices, model_matrix, glm::vec2(bullet_radius * 2.f), b.m_color);
+				}
 					
 				for (auto const& p : world.m_powerups)
-					powerup_renderble.render(app.m_renderer, matrices, p.m_position - glm::vec2(powerup_radius), glm::vec2(powerup_radius * 2.f), p.m_color);
+				{
+					auto model_matrix = glm::mat4(1.f);
+					bump::set_position(model_matrix, glm::vec3(p.m_position, 0.f));
+					powerup_renderble.render(app.m_renderer, matrices, model_matrix, glm::vec2(powerup_radius * 2.f), p.m_color);
+				}
 				
 				app.m_renderer.set_blending(bump::gl::renderer::blending::NONE);
 
@@ -288,6 +306,8 @@ int main(int , char* [])
 			{
 				{ "tank", "tank_color.png", { GL_RGBA8, GL_RGBA } },
 				{ "tank_accent", "tank_mask.png", { GL_RGBA8, GL_RGBA } },
+				{ "tank_diagonal", "tank_color_diagonal.png", { GL_RGBA8, GL_RGBA } },
+				{ "tank_accent_diagonal", "tank_mask_diagonal.png", { GL_RGBA8, GL_RGBA } },
 				{ "bullet", "bullet_color.png", { GL_RGBA8, GL_RGBA } },
 				{ "bullet_accent", "bullet_mask.png", { GL_RGBA8, GL_RGBA } },
 				{ "powerup", "powerup_color.png", { GL_RGBA8, GL_RGBA } },
@@ -315,6 +335,13 @@ int main(int , char* [])
 
 // todo:
 
-	// rotate player to face the relevant direction
+	// implement powerup functionality
+	
+	// world:
+		// tiles / generation
+		// rendering
+		// collision (players / bullets)
 
-	// check that test project is set up for unit testing?
+
+	// ... finally ...
+	// start working on server code!

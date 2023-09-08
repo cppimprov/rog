@@ -20,7 +20,7 @@ namespace ta
 
 		void render(bump::gl::renderer& renderer,
 			bump::camera_matrices const& matrices,
-			glm::vec2 position,
+			glm::mat4 model_matrix,
 			glm::vec2 size,
 			glm::vec3 accent_color);
 

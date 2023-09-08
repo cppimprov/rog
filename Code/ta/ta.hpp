@@ -14,7 +14,7 @@ namespace ta
 	enum direction { up_left, up, up_right, left, right, down_left, down, down_right, };
 	enum powerup_type { player_heal, player_shield, player_speed, player_firing_frequency, bullet_bounce, bullet_damage, bullet_speed };
 
-	auto constexpr direction_vectors = std::array<glm::vec2, 9>
+	auto constexpr direction_vectors = std::array<glm::vec2, 8>
 	{
 		glm::vec2{ -1.f,  1.f },
 		glm::vec2{  0.f,  1.f },
@@ -26,9 +26,40 @@ namespace ta
 		glm::vec2{  1.f, -1.f },
 	};
 
+	auto constexpr direction_angles = std::array<float, 8>
+	{
+		0.f,
+		-90.f,
+		-90.f,
+		0.f,
+		180.f,
+		90.f,
+		90.f,
+		180.f,
+	};
+
+	inline bool is_diagonal(direction dir)
+	{
+		switch (dir)
+		{
+		case direction::up_left:
+		case direction::up_right:
+		case direction::down_left:
+		case direction::down_right:
+			return true;
+		default:
+			return false;
+		}
+	}
+
 	inline glm::vec2 dir_to_vec(direction dir)
 	{
 		return direction_vectors[static_cast<std::size_t>(dir)];
+	}
+
+	inline float dir_to_angle(direction dir)
+	{
+		return direction_angles[static_cast<std::size_t>(dir)];
 	}
 
 	inline direction reflect_dir(direction dir)
