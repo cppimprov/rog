@@ -6,6 +6,7 @@
 #include <bump_app.hpp>
 #include <bump_camera.hpp>
 #include <bump_gamestate.hpp>
+#include <bump_grid.hpp>
 #include <bump_input.hpp>
 #include <bump_log.hpp>
 #include <bump_timer.hpp>
@@ -14,6 +15,7 @@
 #include <iostream>
 #include <map>
 #include <queue>
+#include <ranges>
 #include <string>
 #include <system_error>
 
@@ -33,10 +35,65 @@ namespace ta
 		auto const player_radius = 32.f;
 		auto const bullet_radius = 4.f;
 		auto const powerup_radius = 16.f;
+		auto const tile_radius = 32.f;
 		auto const powerup_duration = 5.f;
 		auto const bullet_lifetime = 3.f;
 
+		auto const tile_textures = std::vector<bump::gl::texture_2d const*>
+		{
+			&app.m_assets.m_textures_2d["grass"],
+			&app.m_assets.m_textures_2d["road_ew"],
+			&app.m_assets.m_textures_2d["road_ns"],
+			&app.m_assets.m_textures_2d["building"],
+			&app.m_assets.m_textures_2d["rubble"],
+		};
+
+		auto const tile_symbols = std::map<char, std::size_t>
+		{
+			{ ' ', 0 },
+			{ '-', 1 },
+			{ '|', 2 },
+			{ '#', 3 },
+			{ 'x', 4 },
+		};
+
+		using namespace std::string_view_literals;
+
+		auto const symbol_map = 
+		{
+			"   xxxxx    ### "sv,
+			"------------### "sv,
+			"##### |  xx ### "sv,
+			"     x|  xx     "sv,
+			"    ##|---------"sv,
+			" ##  x| ## |##  "sv,
+			" ##  x| ## |--|#"sv,
+			"  |--------|#x|#"sv,
+			"  |#xx|x## |--|#"sv,
+			"# |###| ##x|x###"sv,
+			"----------------"sv,
+			" ####     ##xx  "sv,
+		};
+
+		auto map_grid = bump::grid<std::size_t, 2>({ 16, 12 });
+
+		auto map_y = std::size_t{ 0 };
+
+		for (auto const row : std::ranges::reverse_view(symbol_map))
+		{
+			auto map_x = std::size_t{ 0 };
+
+			for (auto const symbol : row)
+			{
+				map_grid.at({ map_x, map_y }) = tile_symbols.at(symbol);
+				++map_x;
+			}
+
+			++map_y;
+		}
+
 		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
+
 		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 050.f, player_radius }, ta::direction::right, false, glm::vec3(1.f, 0.8f, 0.3f) });
 		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 150.f, player_radius }, ta::direction::right, false, glm::vec3(1.f, 0.f, 0.f) });
 		world.m_players.push_back(ta::player{ 2, max_hp, glm::vec2{ 250.f, player_radius }, ta::direction::right, false, glm::vec3(0.f, 0.9f, 0.f) });
@@ -44,10 +101,11 @@ namespace ta
 
 		world.m_powerups.push_back(ta::powerup{ ta::powerup_type::bullet_speed, glm::vec2{ 250.f, 250.f }, glm::vec3(1.f, 0.f, 0.f), 5.f });
 
-		auto tank_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]);
-		auto tank_renderable_diagonal = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]);
-		auto bullet_renderable = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]);
-		auto powerup_renderble = ta::sprite(app.m_assets.m_shaders["sprite"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]);
+		auto tile_renderable = ta::tile_renderable(app.m_assets.m_shaders["sprite"]);
+		auto tank_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]);
+		auto tank_renderable_diagonal = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]);
+		auto bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]);
+		auto powerup_renderble = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -236,9 +294,23 @@ namespace ta
 				
 				auto const matrices = bump::camera_matrices(camera);
 
-				// todo: render world
-
 				app.m_renderer.set_blending(bump::gl::renderer::blending::BLEND);
+
+				for (auto y : bump::range(0, map_grid.extents()[1]))
+				{
+					for (auto x : bump::range(0, map_grid.extents()[0]))
+					{
+						auto const tile_index = map_grid.at({ x, y });
+						auto const tile_texture = tile_textures[tile_index];
+
+						auto const position = glm::vec2(tile_radius) + glm::vec2(x * tile_radius * 2.f, y * tile_radius * 2.f);
+
+						auto model_matrix = glm::mat4(1.f);
+						bump::set_position(model_matrix, glm::vec3(position, 0.f));
+
+						tile_renderable.render(app.m_renderer, *tile_texture, matrices, model_matrix, glm::vec2(tile_radius * 2.f));
+					}
+				}
 
 				for (auto const& p : world.m_players)
 				{
@@ -297,6 +369,7 @@ int main(int , char* [])
 			// shaders
 			{
 				{ "sprite", { "sprite.vert", "sprite.frag" } },
+				{ "sprite_accent", { "sprite_accent.vert", "sprite_accent.frag" } },
 			},
 			// models
 			{
@@ -304,12 +377,20 @@ int main(int , char* [])
 			},
 			// 2d textures
 			{
+				{ "grass", "grass.png", { GL_RGBA8, GL_RGBA } },
+				{ "road_ew", "road_ew.png", { GL_RGBA8, GL_RGBA } },
+				{ "road_ns", "road_ns.png", { GL_RGBA8, GL_RGBA } },
+				{ "building", "building.png", { GL_RGBA8, GL_RGBA } },
+				{ "rubble", "rubble.png", { GL_RGBA8, GL_RGBA } },
+
 				{ "tank", "tank_color.png", { GL_RGBA8, GL_RGBA } },
 				{ "tank_accent", "tank_mask.png", { GL_RGBA8, GL_RGBA } },
 				{ "tank_diagonal", "tank_color_diagonal.png", { GL_RGBA8, GL_RGBA } },
 				{ "tank_accent_diagonal", "tank_mask_diagonal.png", { GL_RGBA8, GL_RGBA } },
+
 				{ "bullet", "bullet_color.png", { GL_RGBA8, GL_RGBA } },
 				{ "bullet_accent", "bullet_mask.png", { GL_RGBA8, GL_RGBA } },
+				
 				{ "powerup", "powerup_color.png", { GL_RGBA8, GL_RGBA } },
 				{ "powerup_accent", "powerup_mask.png", { GL_RGBA8, GL_RGBA } },
 			},
@@ -335,13 +416,16 @@ int main(int , char* [])
 
 // todo:
 
-	// implement powerup functionality
-	
+	// tiles:
+		// add grass dots to edges of building texture
+		// add crossroads texture
+		// make road texture a bit less bright
+
 	// world:
-		// tiles / generation
-		// rendering
+		// set world size to map size (put map grid in world structure?)
 		// collision (players / bullets)
 
+	// implement powerup functionality
 
 	// ... finally ...
 	// start working on server code!
