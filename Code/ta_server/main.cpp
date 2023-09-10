@@ -18,11 +18,17 @@
 #include <ranges>
 #include <string>
 #include <system_error>
-
-#include <iostream>
+#include <vector>
 
 namespace ta
 {
+	
+	enum tile_flags : std::uint8_t
+	{
+		none = 0,
+		passable = 1 << 0,
+		shootable = 1 << 1,
+	};
 
 	bump::gamestate main_loop(bump::app& app)
 	{
@@ -44,8 +50,10 @@ namespace ta
 			&app.m_assets.m_textures_2d["grass"],
 			&app.m_assets.m_textures_2d["road_ew"],
 			&app.m_assets.m_textures_2d["road_ns"],
+			&app.m_assets.m_textures_2d["road_cross"],
 			&app.m_assets.m_textures_2d["building"],
 			&app.m_assets.m_textures_2d["rubble"],
+			&app.m_assets.m_textures_2d["water"],
 		};
 
 		auto const tile_symbols = std::map<char, std::size_t>
@@ -53,26 +61,39 @@ namespace ta
 			{ ' ', 0 },
 			{ '-', 1 },
 			{ '|', 2 },
-			{ '#', 3 },
-			{ 'x', 4 },
+			{ '+', 3 },
+			{ '#', 4 },
+			{ 'x', 5 },
+			{ '~', 6 },
+		};
+
+		auto const tile_flags = std::vector<int>
+		{
+			tile_flags::passable | tile_flags::shootable,
+			tile_flags::passable | tile_flags::shootable,
+			tile_flags::passable | tile_flags::shootable,
+			tile_flags::passable | tile_flags::shootable,
+			tile_flags::none,
+			tile_flags::passable | tile_flags::shootable,
+			tile_flags::shootable,
 		};
 
 		using namespace std::string_view_literals;
 
 		auto const symbol_map = 
 		{
-			"   xxxxx    ### "sv,
-			"------------### "sv,
-			"##### |  xx ### "sv,
-			"     x|  xx     "sv,
-			"    ##|---------"sv,
-			" ##  x| ## |##  "sv,
-			" ##  x| ## |--|#"sv,
-			"  |--------|#x|#"sv,
-			"  |#xx|x## |--|#"sv,
+			"   xxxxx    ###~"sv,
+			"------+-----###~"sv,
+			"##### |  xx ###~"sv,
+			"~~~  x|  xx~~ ~~"sv,
+			"~~~ ##+----+----"sv,
+			" ##  x|~##~|##  "sv,
+			" ##  x|~##~+--+#"sv,
+			"  +---+----+#x|#"sv,
+			"  |#xx|x## +--+#"sv,
 			"# |###| ##x|x###"sv,
-			"----------------"sv,
-			" ####     ##xx  "sv,
+			"--+---+----+----"sv,
+			" #### ~~~ ##xx  "sv,
 		};
 
 		auto map_grid = bump::grid<std::size_t, 2>({ 16, 12 });
@@ -92,7 +113,7 @@ namespace ta
 			++map_y;
 		}
 
-		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2{ 1000.f, 1000.f } };
+		auto world = ta::world{ glm::vec2{ 0.f, 0.f }, glm::vec2(map_grid.extents()) * tile_radius * 2.f };
 
 		world.m_players.push_back(ta::player{ 0, max_hp, glm::vec2{ 050.f, player_radius }, ta::direction::right, false, glm::vec3(1.f, 0.8f, 0.3f) });
 		world.m_players.push_back(ta::player{ 1, max_hp, glm::vec2{ 150.f, player_radius }, ta::direction::right, false, glm::vec3(1.f, 0.f, 0.f) });
@@ -380,8 +401,10 @@ int main(int , char* [])
 				{ "grass", "grass.png", { GL_RGBA8, GL_RGBA } },
 				{ "road_ew", "road_ew.png", { GL_RGBA8, GL_RGBA } },
 				{ "road_ns", "road_ns.png", { GL_RGBA8, GL_RGBA } },
+				{ "road_cross", "road_cross.png", { GL_RGBA8, GL_RGBA } },
 				{ "building", "building.png", { GL_RGBA8, GL_RGBA } },
 				{ "rubble", "rubble.png", { GL_RGBA8, GL_RGBA } },
+				{ "water", "water.png", { GL_RGBA8, GL_RGBA } },
 
 				{ "tank", "tank_color.png", { GL_RGBA8, GL_RGBA } },
 				{ "tank_accent", "tank_mask.png", { GL_RGBA8, GL_RGBA } },
@@ -416,14 +439,9 @@ int main(int , char* [])
 
 // todo:
 
-	// tiles:
-		// add grass dots to edges of building texture
-		// add crossroads texture
-		// make road texture a bit less bright
-
 	// world:
-		// set world size to map size (put map grid in world structure?)
-		// collision (players / bullets)
+		// building collision (players / bullets)
+		// water (impassable, but can shoot over)
 
 	// implement powerup functionality
 
