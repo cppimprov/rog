@@ -1,7 +1,14 @@
 #pragma once
 
 #include <bump_die.hpp>
+#include <bump_gl.hpp>
+#include <bump_grid.hpp>
 #include <bump_math.hpp>
+#include <bump_result.hpp>
+#include <bump_timer.hpp>
+
+#include <box2d/box2d.h>
+#include <entt.hpp>
 
 #include <array>
 #include <map>
@@ -10,162 +17,205 @@
 
 namespace ta
 {
-
-	enum direction { up_left, up, up_right, left, right, down_left, down, down_right, };
-	enum powerup_type { player_heal, player_shield, player_speed, player_firing_frequency, bullet_bounce, bullet_damage, bullet_speed };
-
-	auto constexpr direction_vectors = std::array<glm::vec2, 8>
+	enum collision_category : std::uint16_t
 	{
-		glm::vec2{ -1.f,  1.f },
-		glm::vec2{  0.f,  1.f },
-		glm::vec2{  1.f,  1.f },
-		glm::vec2{ -1.f,  0.f },
-		glm::vec2{  1.f,  0.f },
-		glm::vec2{ -1.f, -1.f },
-		glm::vec2{  0.f, -1.f },
-		glm::vec2{  1.f, -1.f },
+		none =              0,
+		player =       1 << 0,
+		bullet =       1 << 1,
+		powerup =      1 << 2,
+		tile =         1 << 3,
+		tile_wall =    1 << 4,
+		tile_void  =   1 << 5,
+		world_bounds = 1 << 6,
 	};
 
-	auto constexpr direction_angles = std::array<float, 8>
+	enum class direction { up, down, left, right, up_left, up_right, down_left, down_right };
+	enum class powerup_type { player_heal, player_shield, player_speed, player_firing_frequency, bullet_bounce, bullet_damage, bullet_speed };
+
+	inline b2Vec2 to_b2_vec2(glm::vec2 v) { return b2Vec2(v.x, v.y); }
+	inline glm::vec2 to_glm_vec2(b2Vec2 v) { return glm::vec2(v.x, v.y); }
+
+	std::optional<direction> get_input_dir(bool input_up, bool input_down, bool input_left, bool input_right);
+	glm::vec2 dir_to_vec(direction dir);
+	float dir_to_angle(direction dir);
+	bool is_diagonal(direction dir);
+
+	glm::vec3 get_powerup_color(powerup_type type);
+
+	// PLAYERS:
+	struct c_player_id
 	{
-		0.f,
-		-90.f,
-		-90.f,
-		0.f,
-		180.f,
-		90.f,
-		90.f,
-		180.f,
+		std::int16_t m_id = 0;
 	};
 
-	inline bool is_diagonal(direction dir)
+	struct c_player_hp
 	{
-		switch (dir)
-		{
-		case direction::up_left:
-		case direction::up_right:
-		case direction::down_left:
-		case direction::down_right:
-			return true;
-		default:
-			return false;
-		}
-	}
-
-	inline glm::vec2 dir_to_vec(direction dir)
-	{
-		return direction_vectors[static_cast<std::size_t>(dir)];
-	}
-
-	inline float dir_to_angle(direction dir)
-	{
-		return direction_angles[static_cast<std::size_t>(dir)];
-	}
-
-	inline direction reflect_dir(direction dir)
-	{
-		switch (dir)
-		{
-		case direction::up_left:    return direction::down_right;
-		case direction::up:         return direction::down;
-		case direction::up_right:   return direction::down_left;
-		case direction::left:       return direction::right;
-		case direction::right:      return direction::left;
-		case direction::down_left:  return direction::up_right;
-		case direction::down:       return direction::up;
-		case direction::down_right: return direction::up_left;
-		}
-		bump::die();
-	}
-
-	inline std::optional<direction> get_input_dir(bool up, bool down, bool left, bool right)
-	{
-		if (up)
-		{
-			if (left) return direction::up_left;
-			if (right) return direction::up_right;
-			return direction::up;
-		}
-
-		if (down)
-		{
-			if (left) return direction::down_left;
-			if (right) return direction::down_right;
-			return direction::down;
-		}
-
-		if (left) return direction::left;
-		if (right) return direction::right;
-		
-		return { };
-	}
-
-	using hp_t = std::int32_t;
-
-	struct player
-	{
-		std::uint32_t m_id;
-		hp_t m_hp;
-		glm::vec2 m_position;
-		direction m_direction;
-		bool m_moving;
-		glm::vec3 m_color;
-		std::map<powerup_type, float> m_powerup_timers;
+		std::uint32_t m_hp = 0;
 	};
 
-	struct bullet
+	struct c_player_graphics
 	{
-		std::uint32_t m_owner_id;
-		glm::vec2 m_position;
-		direction m_direction;
-		glm::vec3 m_color;
-		float m_speed;
-		hp_t m_damage;
-		float m_lifetime;
+		glm::vec3 m_color = glm::vec3(1.f);
 	};
 
-	struct powerup
+	struct c_player_powerups
+	{
+		std::map<powerup_type, float> m_timers;
+	};
+
+	struct c_player_physics
+	{
+		b2Body* m_b2_body = nullptr;
+	};
+
+	struct c_player_movement
+	{
+		bool m_moving = false;
+		direction m_direction = direction::right;
+	};
+
+	struct c_player_input
+	{
+		bool m_input_up = false;
+		bool m_input_down = false;
+		bool m_input_left = false;
+		bool m_input_right = false;
+		bool m_input_fire = false;
+		bump::timer<> m_reload_timer;
+	};
+
+	entt::entity create_player(entt::registry& registry, b2World& b2_world, std::int16_t id, glm::vec2 position_px, glm::vec3 color);
+	void destroy_player(entt::registry& registry, b2World& b2_world, entt::entity player);
+
+	// BULLETS:
+	struct c_bullet_owner_id
+	{
+		entt::entity m_owner_id = entt::null;
+	};
+
+	struct c_bullet_lifetime
+	{
+		float m_lifetime = 0.f;
+	};
+
+	struct c_bullet_physics
+	{
+		b2Body* m_b2_body = nullptr;
+	};
+
+	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, std::uint32_t owner_id, std::int16_t owner_player_id, glm::vec2 position_px, glm::vec2 velocity_px);
+	void destroy_bullet(entt::registry& registry, b2World& b2_world, entt::entity bullet);
+	
+	// POWERUPS:
+	struct c_powerup_type
 	{
 		powerup_type m_type;
-		glm::vec2 m_position;
-		glm::vec3 m_color;
-		float m_lifetime;
 	};
 
-	struct bounds
+	struct c_powerup_lifetime
 	{
-		glm::vec2 m_min;
-		glm::vec2 m_max;
-
-		bool is_valid() const
-		{
-			return m_min.x <= m_max.x && m_min.y <= m_max.y;
-		}
+		float m_lifetime = 0.f;
 	};
+
+	struct c_powerup_physics
+	{
+		b2Body* m_b2_body = nullptr;
+	};
+
+	entt::entity create_powerup(entt::registry& registry, b2World& b2_world, powerup_type type, glm::vec2 position_px);
+	void destroy_powerup(entt::registry& registry, b2World& b2_world, entt::entity powerup);
+
+	// TILES:
+	enum class tile_type : std::size_t
+	{
+		grass,
+		road_ew,
+		road_ns,
+		road_cross,
+		building,
+		rubble,
+		water,
+	};
+
+	std::uint16_t get_tile_collision_category(tile_type type);
+	std::uint16_t get_tile_collision_mask(tile_type type);
+
+	struct c_tile_type
+	{
+		tile_type m_type;
+	};
+
+	struct c_tile_physics
+	{
+		b2Body* m_b2_body = nullptr;
+	};
+
+	entt::entity create_tile(entt::registry& registry, b2World& b2_world, tile_type type, glm::vec2 position_px);
 
 	struct world
 	{
-		bounds m_bounds;
+		entt::registry m_registry;
 
-		std::vector<player> m_players;
-		std::vector<powerup> m_powerups;
-		std::vector<bullet> m_bullets;
+		std::vector<entt::entity> m_players;
+		std::vector<entt::entity> m_bullets;
+		std::vector<entt::entity> m_powerups;
+		bump::grid<entt::entity, 2> m_tiles;
 	};
 
-	namespace net
+	struct world_physics
+	{
+		b2World m_b2_world;
+	};
+
+	void load_test_map(world& world, world_physics& world_physics);
+	void set_world_bounds(world_physics& world_physics, glm::vec2 size_px);
+
+	struct world_graphics
+	{
+		// textures, renderables, etc.
+	};
+
+	void create_renderables(world_graphics& world_graphics);
+
+	namespace globals
 	{
 
-		enum class message_type : std::uint8_t { HELLO, GOODBYE, };
+		auto const player_hp = std::uint32_t{ 100 };
+		auto const bullet_damage = std::uint32_t{ 10 };
 
-		using message_id_t = std::uint32_t;
+		auto const player_speed = 200.f;
+		auto const bullet_speed = 500.f;
 
-		struct message
-		{
-			message_type m_type;
-			message_id_t m_id;
-			std::vector<std::uint8_t> m_data;
-		};
+		auto const powerup_duration = 8.f;
+		auto const powerup_lifetime = 5.f;
+		auto const bullet_lifetime = 3.f;
 
-	} // net
+		auto const tile_radius = glm::vec2(32.f);
+		auto const player_radius = glm::vec2(32.f);
+		auto const bullet_radius = glm::vec2(4.f);
+		auto const powerup_radius = glm::vec2(16.f);
+
+		auto const b2_scale_factor = 0.1f;
+		auto const b2_inv_scale_factor = 1.f / b2_scale_factor;
+
+		auto const reload_time = std::chrono::milliseconds{ 200 };
+
+	} // globals
+
+	// namespace net
+	// {
+	//
+	// 	enum class message_type : std::uint8_t { HELLO, GOODBYE, };
+	//
+	// 	using message_id_t = std::uint32_t;
+	//
+	// 	struct message
+	// 	{
+	// 		message_type m_type;
+	// 		message_id_t m_id;
+	// 		std::vector<std::uint8_t> m_data;
+	// 	};
+	//
+	// } // net
 
 } // ta

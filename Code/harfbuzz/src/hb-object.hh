@@ -169,7 +169,7 @@ struct hb_user_data_array_t
     hb_destroy_func_t destroy;
 
     bool operator == (hb_user_data_key_t *other_key) const { return key == other_key; }
-    bool operator == (hb_user_data_item_t &other) const { return key == other.key; }
+    bool operator == (hb_user_data_item_t const& other) const { return key == other.key; }
 
     void fini () { if (destroy) destroy (data); }
   };

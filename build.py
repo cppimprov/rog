@@ -236,6 +236,10 @@ class PlatformMSVC:
 		json = ProjectStaticLib.from_name('json', self, build_type)
 		json.defines = [ '_SILENCE_CXX20_CISO646_REMOVED_WARNING' ]
 		# header only - don't write
+
+		box2d = ProjectStaticLib.from_name('box2d', self, build_type)
+		box2d.inc_dirs = [ join_dir(box2d.code_dir, 'include'), join_dir(box2d.code_dir, 'src') ]
+		self.write_static_lib(n, build_type, box2d, '3')
 		
 		freetype = ProjectStaticLib.from_name('freetype', self, build_type)
 		freetype.defines = [ '_LIB', '_CRT_SECURE_NO_WARNINGS', 'FT2_BUILD_LIBRARY', 'FT_CONFIG_OPTION_ERROR_STRINGS' ]
@@ -593,6 +597,7 @@ class PlatformMSVC:
 		ta.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			join_dir(box2d.code_dir, 'include'),
 			glew.code_dir,
 			glm.code_dir,
 		]
@@ -604,6 +609,7 @@ class PlatformMSVC:
 		ta_server.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			join_dir(box2d.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
 			glew.code_dir,
@@ -615,6 +621,7 @@ class PlatformMSVC:
 		]
 		ta_server.inc_dirs = ta_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		ta_server.libs = [
+			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
@@ -633,11 +640,19 @@ class PlatformMSVC:
 		ta_client.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			join_dir(box2d.code_dir, 'include'),
+			join_dir(freetype.code_dir, 'include'),
+			join_dir(harfbuzz.code_dir, 'src'),
+			glew.code_dir,
+			stb.code_dir,
 			glm.code_dir,
+			join_dir(sdl.code_dir, 'include'),
+			sdlmixer.code_dir,
 			ta.code_dir,
 		]
 		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		ta_client.libs = [
+			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),

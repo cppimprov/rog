@@ -24,5 +24,4 @@ namespace bump
 	
 } // bump
 
-
 #endif
