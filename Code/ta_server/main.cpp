@@ -140,7 +140,7 @@ namespace ta
 		bump::die();
 	}
 
-	entt::entity create_player(entt::registry& registry, b2World& b2_world, std::int16_t id, glm::vec2 position_px, glm::vec3 color)
+	entt::entity create_player(entt::registry& registry, b2World& b2_world, glm::vec2 position_px, glm::vec3 color)
 	{
 		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
 
@@ -168,13 +168,14 @@ namespace ta
 			collision_category::tile_wall | 
 			collision_category::tile_void | 
 			collision_category::world_bounds;
-		fixture_def.filter.groupIndex = -id;
+
+		static auto id = std::int16_t{ 0 };
+		fixture_def.filter.groupIndex = --id;
 
 		body->CreateFixture(&fixture_def);
 
 		auto const entity = registry.create();
 
-		registry.emplace<c_player_id>(entity, id);
 		registry.emplace<c_player_hp>(entity, globals::player_hp);
 		registry.emplace<c_player_graphics>(entity, color);
 		registry.emplace<c_player_powerups>(entity);
@@ -193,7 +194,7 @@ namespace ta
 		registry.destroy(player);
 	}
 
-	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, entt::entity owner_id, std::int16_t owner_player_id, glm::vec2 position_px, glm::vec2 velocity_px)
+	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px)
 	{
 		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
 		auto const b2_velocity = to_b2_vec2(globals::b2_scale_factor * velocity_px);
@@ -221,7 +222,7 @@ namespace ta
 			collision_category::player | 
 			collision_category::tile_wall | 
 			collision_category::world_bounds;
-		fixture_def.filter.groupIndex = -owner_player_id;
+		fixture_def.filter.groupIndex = owner_player_group_index;
 		
 		body->CreateFixture(&fixture_def);
 
@@ -464,14 +465,14 @@ namespace ta
 			.m_powerup_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]),
 		};
 
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 1, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
+		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
 
 		auto player_entity = world.m_players.back();
 		world.m_registry.emplace<c_player_input>(player_entity);
 
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 2, globals::player_radius * glm::vec2{ 5.f, 3.f }, glm::vec3(1.f, 0.f, 0.f)));
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 3, globals::player_radius * glm::vec2{ 7.f, 3.f }, glm::vec3(0.f, 0.9f, 0.f)));
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 4, globals::player_radius * glm::vec2{ 9.f, 3.f }, glm::vec3(0.2f, 0.2f, 1.f)));
+		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 5.f, 3.f }, glm::vec3(1.f, 0.f, 0.f)));
+		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 7.f, 3.f }, glm::vec3(0.f, 0.9f, 0.f)));
+		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 9.f, 3.f }, glm::vec3(0.2f, 0.2f, 1.f)));
 
 		load_test_map(world, world_physics);
 		set_world_bounds(world_physics, glm::vec2(world.m_tiles.extents()) * globals::tile_radius * 2.f);
@@ -540,7 +541,7 @@ namespace ta
 				{
 					if (player_entity != entt::null)
 					{
-						auto [pid, pu, pp, pm, pi] = world.m_registry.get<c_player_id, c_player_powerups, c_player_physics, c_player_movement, c_player_input>(player_entity);
+						auto [pu, pp, pm, pi] = world.m_registry.get<c_player_powerups, c_player_physics, c_player_movement, c_player_input>(player_entity);
 
 						auto const dir = ta::get_input_dir(pi.m_input_up, pi.m_input_down, pi.m_input_left, pi.m_input_right);
 
@@ -555,7 +556,8 @@ namespace ta
 							{
 								auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
 								auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
-								world.m_bullets.push_back(create_bullet(world.m_registry, world_physics.m_b2_world, player_entity, pid.m_id, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
+								auto const group_index = pp.m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
+								world.m_bullets.push_back(create_bullet(world.m_registry, world_physics.m_b2_world, player_entity, group_index, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
 								pi.m_reload_timer = bump::timer();
 							}
 						}

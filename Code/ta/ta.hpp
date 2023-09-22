@@ -65,11 +65,6 @@ namespace ta
 	glm::vec3 get_powerup_color(powerup_type type);
 
 	// PLAYERS:
-	struct c_player_id
-	{
-		std::int16_t m_id = 0;
-	};
-
 	struct c_player_hp
 	{
 		std::uint32_t m_hp = 0;
@@ -106,7 +101,7 @@ namespace ta
 		bump::timer<> m_reload_timer;
 	};
 
-	entt::entity create_player(entt::registry& registry, b2World& b2_world, std::int16_t id, glm::vec2 position_px, glm::vec3 color);
+	entt::entity create_player(entt::registry& registry, b2World& b2_world, glm::vec2 position_px, glm::vec3 color);
 	void destroy_player(entt::registry& registry, b2World& b2_world, entt::entity player);
 
 	// BULLETS:
