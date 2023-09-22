@@ -98,7 +98,7 @@ namespace ta
 		switch (type)
 		{
 		case powerup_type::player_heal:         return glm::vec3(0.0f, 0.95f, 0.0f);
-		case powerup_type::player_speed:        return glm::vec3(0.2f, 0.2f, 0.95f);
+		case powerup_type::player_speed:        return glm::vec3(0.5f, 0.5f, 0.95f);
 		case powerup_type::player_reload_speed: return glm::vec3(0.8f, 0.8f, 0.2f);
 		case powerup_type::bullet_bounce:       return glm::vec3(0.1f, 0.1f, 0.1f);
 		case powerup_type::bullet_damage:       return glm::vec3(0.95f, 0.0f, 0.0f);
@@ -215,7 +215,7 @@ namespace ta
 		fixture_def.shape = &shape;
 		fixture_def.density = 1.f;
 		fixture_def.friction = 0.f;
-		fixture_def.restitution = 0.f;
+		fixture_def.restitution = 1.f;
 		fixture_def.filter.categoryBits = collision_category::bullet;
 		fixture_def.filter.maskBits = 
 			collision_category::player | 
@@ -540,7 +540,7 @@ namespace ta
 				{
 					if (player_entity != entt::null)
 					{
-						auto [pid, pp, pm, pi] = world.m_registry.get<c_player_id, c_player_physics, c_player_movement, c_player_input>(player_entity);
+						auto [pid, pu, pp, pm, pi] = world.m_registry.get<c_player_id, c_player_powerups, c_player_physics, c_player_movement, c_player_input>(player_entity);
 
 						auto const dir = ta::get_input_dir(pi.m_input_up, pi.m_input_down, pi.m_input_left, pi.m_input_right);
 
@@ -549,10 +549,13 @@ namespace ta
 
 						if (pi.m_input_fire)
 						{
-							if (pi.m_reload_timer.get_elapsed_time() >= globals::reload_time)
+							auto const reload_time = pu.m_timers.contains(powerup_type::player_reload_speed) ? globals::powerup_player_reload_speed : globals::reload_time;
+
+							if (pi.m_reload_timer.get_elapsed_time() >= reload_time)
 							{
+								auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
 								auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
-								world.m_bullets.push_back(create_bullet(world.m_registry, world_physics.m_b2_world, player_entity, pid.m_id, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed));
+								world.m_bullets.push_back(create_bullet(world.m_registry, world_physics.m_b2_world, player_entity, pid.m_id, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
 								pi.m_reload_timer = bump::timer();
 							}
 						}
@@ -561,11 +564,11 @@ namespace ta
 
 				// update player movement
 				{
-					auto const player_view = world.m_registry.view<c_player_physics, c_player_movement>();
+					auto const player_view = world.m_registry.view<c_player_physics, c_player_powerups, c_player_movement>();
 
 					for (auto const p : player_view)
 					{
-						auto [pp, pm] = player_view.get<c_player_physics, c_player_movement>(p);
+						auto [pp, pu, pm] = player_view.get<c_player_physics, c_player_powerups, c_player_movement>(p);
 
 						if (!pm.m_moving)
 						{
@@ -573,7 +576,8 @@ namespace ta
 						}
 						else
 						{
-							auto const velocity_px = dir_to_vec(pm.m_direction) * globals::player_speed;
+							auto const multiplier = pu.m_timers.contains(powerup_type::player_speed) ? globals::powerup_player_speed_multiplier : 1.f;
+							auto const velocity_px = dir_to_vec(pm.m_direction) * globals::player_speed * multiplier;
 							auto const b2_velocity = to_b2_vec2(globals::b2_scale_factor * velocity_px);
 							pp.m_b2_body->SetLinearVelocity(b2_velocity);
 						}
@@ -634,7 +638,10 @@ namespace ta
 						if (bo.m_owner_id == player_entity)
 							return;
 
-						ph.m_hp -= globals::bullet_damage;
+						auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
+						auto const damage_multiplier = opu.m_timers.contains(powerup_type::bullet_damage) ? globals::powerup_bullet_damage_multiplier : 1.f;
+
+						ph.m_hp -= static_cast<std::uint32_t>(globals::bullet_damage * damage_multiplier);
 						bl.m_lifetime = 0.f;
 					}
 
@@ -649,15 +656,23 @@ namespace ta
 
 					void bullet_tile(entt::entity bullet_entity, entt::entity )
 					{
-						auto& bl = m_world.m_registry.get<c_bullet_lifetime>(bullet_entity);
+						auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+						auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
 
+						if (opu.m_timers.contains(powerup_type::bullet_bounce))
+							return;
+						
 						bl.m_lifetime = 0.f;
 					}
 
 					void bullet_world_bounds(entt::entity bullet_entity)
 					{
-						auto& bl = m_world.m_registry.get<c_bullet_lifetime>(bullet_entity);
+						auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+						auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
 
+						if (opu.m_timers.contains(powerup_type::bullet_bounce))
+							return;
+						
 						bl.m_lifetime = 0.f;
 					}
 
@@ -670,7 +685,7 @@ namespace ta
 
 				// update physics
 				// TODO: use an accumulator to make this framerate independent
-				world_physics.m_b2_world.Step(delta_time, 6, 2); 
+				world_physics.m_b2_world.Step(delta_time, 6, 2);
 
 				// update bullet lifetimes
 				{
@@ -694,6 +709,24 @@ namespace ta
 						destroy_bullet(world.m_registry, world_physics.m_b2_world, b);
 
 					world.m_bullets.erase(first_expired, world.m_bullets.end());
+				}
+
+				// update player hp
+				{
+					auto const player_view = world.m_registry.view<c_player_hp, c_player_powerups>();
+
+					for (auto const p : player_view)
+					{
+						auto [ph, pp] = player_view.get<c_player_hp, c_player_powerups>(p);
+
+						auto hp_timer = pp.m_timers.find(powerup_type::player_heal);
+
+						if (hp_timer == pp.m_timers.end())
+							continue;
+
+						ph.m_hp = std::min(ph.m_hp + globals::powerup_player_heal_hp, globals::player_hp);
+						hp_timer->second = 0.f;
+					}
 				}
 
 				// update player powerup timers
@@ -744,7 +777,12 @@ namespace ta
 						[&] (auto const& p) { return player_view.get<c_player_hp>(p).m_hp > 0; });
 
 					for (auto const p : std::ranges::subrange(first_dead, world.m_players.end()))
+					{
+						if (p == player_entity)
+							player_entity = entt::null;
+
 						destroy_player(world.m_registry, world_physics.m_b2_world, p);
+					}
 
 					world.m_players.erase(first_dead, world.m_players.end());
 				}
@@ -959,13 +997,12 @@ int main(int , char* [])
 
 // todo:
 
-	// implement powerup functionality
-		// player_heal, (+ one time boost?)
-		// player_speed, (+ speed for a certain time)
-		// player_reload_speed, (+ reload speed for a certain time)
-		// bullet_bounce, (bullets bounce off walls)
-		// bullet_damage, (bullets do more damage)
-		// bullet_speed, (bullets move faster)
+	// TODO:
+		// better way of handling local player
+		// we want player objects to exist, even for dead / disconnected players
+
+		// when doing powerup lookups, owning player might not exist anymore!!!
+			// so... 
 
 	// ... finally ...
 	// start working on server code!
