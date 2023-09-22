@@ -23,7 +23,7 @@ namespace ta
 			bump::gl::texture_2d const& texture,
 			bump::camera_matrices const& matrices,
 			glm::mat4 model_matrix,
-			glm::vec2 size);
+			glm::vec2 size) const;
 
 	private:
 
@@ -56,7 +56,7 @@ namespace ta
 			bump::camera_matrices const& matrices,
 			glm::mat4 model_matrix,
 			glm::vec2 size,
-			glm::vec3 accent_color);
+			glm::vec3 accent_color) const;
 
 	private:
 

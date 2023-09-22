@@ -16,6 +16,7 @@
 #include <iostream>
 #include <map>
 #include <queue>
+#include <random>
 #include <ranges>
 #include <string>
 #include <system_error>
@@ -96,13 +97,12 @@ namespace ta
 	{
 		switch (type)
 		{
-		case powerup_type::player_heal:             return glm::vec3(0.2f, 0.8f, 0.2f);
-		case powerup_type::player_shield:           return glm::vec3(0.2f, 0.2f, 0.8f);
-		case powerup_type::player_speed:            return glm::vec3(0.8f, 0.2f, 0.2f);
-		case powerup_type::player_firing_frequency: return glm::vec3(0.8f, 0.8f, 0.2f);
-		case powerup_type::bullet_bounce:           return glm::vec3(0.8f, 0.2f, 0.8f);
-		case powerup_type::bullet_damage:           return glm::vec3(0.2f, 0.8f, 0.8f);
-		case powerup_type::bullet_speed:            return glm::vec3(0.8f, 0.8f, 0.8f);
+		case powerup_type::player_heal:         return glm::vec3(0.0f, 0.95f, 0.0f);
+		case powerup_type::player_speed:        return glm::vec3(0.2f, 0.2f, 0.95f);
+		case powerup_type::player_reload_speed: return glm::vec3(0.8f, 0.8f, 0.2f);
+		case powerup_type::bullet_bounce:       return glm::vec3(0.1f, 0.1f, 0.1f);
+		case powerup_type::bullet_damage:       return glm::vec3(0.95f, 0.0f, 0.0f);
+		case powerup_type::bullet_speed:        return glm::vec3(0.8f, 0.8f, 0.8f);
 		}
 
 		bump::die();
@@ -443,19 +443,26 @@ namespace ta
 	{
 		bump::log_info("main_loop()");
 
-		auto const tile_textures = std::vector<bump::gl::texture_2d const*>
-		{
-			&app.m_assets.m_textures_2d["grass"],
-			&app.m_assets.m_textures_2d["road_ew"],
-			&app.m_assets.m_textures_2d["road_ns"],
-			&app.m_assets.m_textures_2d["road_cross"],
-			&app.m_assets.m_textures_2d["building"],
-			&app.m_assets.m_textures_2d["rubble"],
-			&app.m_assets.m_textures_2d["water"],
-		};
-
 		auto world = ta::world();
 		auto world_physics = ta::world_physics{ b2World{ b2Vec2{ 0.f, 0.f } } };
+		auto world_graphics = ta::world_graphics
+		{
+			.m_tile_textures = {
+				&app.m_assets.m_textures_2d["grass"],
+				&app.m_assets.m_textures_2d["road_ew"],
+				&app.m_assets.m_textures_2d["road_ns"],
+				&app.m_assets.m_textures_2d["road_cross"],
+				&app.m_assets.m_textures_2d["building"],
+				&app.m_assets.m_textures_2d["rubble"],
+				&app.m_assets.m_textures_2d["water"],
+			},
+
+			.m_tile_renderable = ta::tile_renderable(app.m_assets.m_shaders["sprite"]),
+			.m_tank_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]),
+			.m_tank_renderable_diagonal = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]),
+			.m_bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]),
+			.m_powerup_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]),
+		};
 
 		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 1, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
 
@@ -466,21 +473,17 @@ namespace ta
 		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 3, globals::player_radius * glm::vec2{ 7.f, 3.f }, glm::vec3(0.f, 0.9f, 0.f)));
 		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, 4, globals::player_radius * glm::vec2{ 9.f, 3.f }, glm::vec3(0.2f, 0.2f, 1.f)));
 
-		world.m_powerups.push_back(create_powerup(world.m_registry, world_physics.m_b2_world, ta::powerup_type::bullet_speed, globals::powerup_radius * glm::vec2{ 10.f, 10.f }));
-		
 		load_test_map(world, world_physics);
 		set_world_bounds(world_physics, glm::vec2(world.m_tiles.extents()) * globals::tile_radius * 2.f);
-
-		auto tile_renderable = ta::tile_renderable(app.m_assets.m_shaders["sprite"]);
-		auto tank_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]);
-		auto tank_renderable_diagonal = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]);
-		auto bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]);
-		auto powerup_renderble = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
 
+		auto rng = std::mt19937_64{ std::random_device{}() };
+		auto tile_list = std::vector<entt::entity>();
+
 		auto timer = bump::frame_timer();
+		auto powerup_spawn_timer = bump::timer();
 
 		while (true)
 		{
@@ -638,9 +641,10 @@ namespace ta
 					void player_powerup(entt::entity player_entity, entt::entity powerup_entity)
 					{
 						auto& pp = m_world.m_registry.get<c_player_powerups>(player_entity);
-						auto const& pt = m_world.m_registry.get<c_powerup_type>(powerup_entity);
+						auto [pt, pl] = m_world.m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
 
 						pp.m_timers[pt.m_type] = globals::powerup_duration;
+						pl.m_lifetime = 0.f;
 					}
 
 					void bullet_tile(entt::entity bullet_entity, entt::entity )
@@ -744,6 +748,41 @@ namespace ta
 
 					world.m_players.erase(first_dead, world.m_players.end());
 				}
+
+				// spawn powerups
+				{
+					if (powerup_spawn_timer.get_elapsed_time() >= globals::powerup_spawn_time)
+					{
+						auto dist = std::uniform_int_distribution<std::size_t>{ 0, static_cast<std::size_t>(ta::powerup_type::COUNT) - 1 };
+						auto const type = static_cast<ta::powerup_type>(dist(rng));
+
+						auto const tile_view = world.m_registry.view<c_tile_physics>();
+
+						tile_list.clear();
+						tile_list.insert(tile_list.end(), tile_view.begin(), tile_view.end());
+
+						auto const can_spawn = [&] (entt::entity tile)
+						{
+							auto tp = tile_view.get<c_tile_physics>(tile);
+
+							auto const& fixture = *tp.m_b2_body->GetFixtureList();
+							auto const& filter = fixture.GetFilterData();
+
+							return (filter.categoryBits & collision_category::tile_wall) == 0
+								&& (filter.categoryBits & collision_category::tile_void) == 0;
+						};
+						
+						auto const end = std::remove_if(tile_list.begin(), tile_list.end(), std::not_fn(can_spawn));
+
+						auto tile = entt::entity();
+						std::sample(tile_list.begin(), end, &tile, 1, rng);
+						
+						auto const pos_px = globals::b2_inv_scale_factor * to_glm_vec2(tile_view.get<c_tile_physics>(tile).m_b2_body->GetPosition());
+
+						world.m_powerups.push_back(create_powerup(world.m_registry, world_physics.m_b2_world, type, pos_px));
+						powerup_spawn_timer = bump::timer();
+					}
+				}
 			}
 
 			// render
@@ -773,14 +812,14 @@ namespace ta
 							auto const& tt = tile_view.get<c_tile_type>(entity);
 
 							auto const tile_index = static_cast<std::size_t>(tt.m_type);
-							auto const tile_texture = tile_textures[tile_index];
+							auto const tile_texture = world_graphics.m_tile_textures[tile_index];
 
 							auto const position_px = globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(x, y);
 
 							auto model_matrix = glm::mat4(1.f);
 							bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
 
-							tile_renderable.render(app.m_renderer, *tile_texture, matrices, model_matrix, globals::tile_radius * 2.f);
+							world_graphics.m_tile_renderable.render(app.m_renderer, *tile_texture, matrices, model_matrix, globals::tile_radius * 2.f);
 						}
 					}
 				}
@@ -800,7 +839,7 @@ namespace ta
 						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
 						bump::set_rotation(model_matrix, glm::angleAxis(glm::radians(rotation_angle), glm::vec3(0.f, 0.f, 1.f)));
 
-						auto& renderable = is_diagonal(pm.m_direction) ? tank_renderable_diagonal : tank_renderable;
+						auto& renderable = is_diagonal(pm.m_direction) ? world_graphics.m_tank_renderable_diagonal : world_graphics.m_tank_renderable;
 						renderable.render(app.m_renderer, matrices, model_matrix, globals::player_radius * 2.f, pg.m_color);
 					}
 				}
@@ -819,7 +858,7 @@ namespace ta
 
 						auto model_matrix = glm::mat4(1.f);
 						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
-						bullet_renderable.render(app.m_renderer, matrices, model_matrix, globals::bullet_radius * 2.f, pg.m_color);
+						world_graphics.m_bullet_renderable.render(app.m_renderer, matrices, model_matrix, globals::bullet_radius * 2.f, pg.m_color);
 					}
 				}
 
@@ -836,7 +875,7 @@ namespace ta
 
 						auto model_matrix = glm::mat4(1.f);
 						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
-						powerup_renderble.render(app.m_renderer, matrices, model_matrix, globals::powerup_radius * 2.f, color);
+						world_graphics.m_powerup_renderable.render(app.m_renderer, matrices, model_matrix, globals::powerup_radius * 2.f, color);
 					}
 				}
 				
@@ -920,8 +959,13 @@ int main(int , char* [])
 
 // todo:
 
-	// implement powerup colors
 	// implement powerup functionality
+		// player_heal, (+ one time boost?)
+		// player_speed, (+ speed for a certain time)
+		// player_reload_speed, (+ reload speed for a certain time)
+		// bullet_bounce, (bullets bounce off walls)
+		// bullet_damage, (bullets do more damage)
+		// bullet_speed, (bullets move faster)
 
 	// ... finally ...
 	// start working on server code!

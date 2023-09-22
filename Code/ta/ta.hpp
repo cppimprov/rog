@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ta_sprite.hpp"
+
 #include <bump_die.hpp>
 #include <bump_gl.hpp>
 #include <bump_grid.hpp>
@@ -49,6 +51,7 @@ namespace ta
 		bullet_bounce,
 		bullet_damage,
 		bullet_speed,
+		COUNT,
 	};
 
 	inline b2Vec2 to_b2_vec2(glm::vec2 v) { return b2Vec2(v.x, v.y); }
@@ -185,16 +188,19 @@ namespace ta
 	{
 		b2World m_b2_world;
 	};
+	
+	struct world_graphics
+	{
+		std::vector<bump::gl::texture_2d const*> m_tile_textures;
+
+		ta::tile_renderable m_tile_renderable;
+		ta::object_renderable m_tank_renderable, m_tank_renderable_diagonal;
+		ta::object_renderable m_bullet_renderable;
+		ta::object_renderable m_powerup_renderable;
+	};
 
 	void load_test_map(world& world, world_physics& world_physics);
 	void set_world_bounds(world_physics& world_physics, glm::vec2 size_px);
-
-	struct world_graphics
-	{
-		// textures, renderables, etc.
-	};
-
-	void create_renderables(world_graphics& world_graphics);
 
 	namespace globals
 	{
@@ -218,6 +224,7 @@ namespace ta
 		auto const b2_inv_scale_factor = 1.f / b2_scale_factor;
 
 		auto const reload_time = std::chrono::milliseconds{ 200 };
+		auto const powerup_spawn_time = std::chrono::seconds{ 10 };
 
 	} // globals
 
