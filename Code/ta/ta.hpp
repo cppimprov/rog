@@ -29,8 +29,27 @@ namespace ta
 		world_bounds = 1 << 6,
 	};
 
-	enum class direction { up, down, left, right, up_left, up_right, down_left, down_right };
-	enum class powerup_type { player_heal, player_shield, player_speed, player_firing_frequency, bullet_bounce, bullet_damage, bullet_speed };
+	enum class direction
+	{
+		up,
+		down,
+		left,
+		right,
+		up_left,
+		up_right,
+		down_left,
+		down_right,
+	};
+
+	enum class powerup_type
+	{
+		player_heal,
+		player_speed,
+		player_reload_speed,
+		bullet_bounce,
+		bullet_damage,
+		bullet_speed,
+	};
 
 	inline b2Vec2 to_b2_vec2(glm::vec2 v) { return b2Vec2(v.x, v.y); }
 	inline glm::vec2 to_glm_vec2(b2Vec2 v) { return glm::vec2(v.x, v.y); }

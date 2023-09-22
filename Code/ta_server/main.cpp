@@ -285,7 +285,7 @@ namespace ta
 		registry.destroy(powerup);
 	}
 
-	entt::entity create_tile(entt::registry& registry, b2World& b2_world, tile_type type, glm::vec2 position_px)
+	entt::entity create_tile(entt::registry& registry, b2World& b2_world, tile_type type, glm::vec2 position_px, glm::vec2 radius_px)
 	{
 		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
 
@@ -295,7 +295,7 @@ namespace ta
 
 		auto const body = b2_world.CreateBody(&body_def);
 
-		auto const b2_radius = globals::b2_scale_factor * globals::tile_radius;
+		auto const b2_radius = globals::b2_scale_factor * radius_px;
 
 		auto shape = b2PolygonShape();
 		shape.SetAsBox(b2_radius.x, b2_radius.y);
@@ -332,6 +332,17 @@ namespace ta
 			{ '~', tile_type::water },
 		};
 
+		auto const tile_radii = std::vector<glm::vec2>
+		{
+			globals::tile_radius,
+			globals::tile_radius,
+			globals::tile_radius,
+			globals::tile_radius,
+			globals::tile_radius - glm::vec2(8.f),
+			globals::tile_radius,
+			globals::tile_radius,
+		};
+
 		using namespace std::string_view_literals;
 
 		auto const symbol_map = 
@@ -363,7 +374,8 @@ namespace ta
 				auto const coords = glm::size2{ map_x, map_y };
 
 				auto const tile_type = tile_symbols.at(symbol);
-				auto const tile = create_tile(world.m_registry, world_physics.m_b2_world, tile_type, globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(coords));
+				auto const radius = tile_radii.at(static_cast<std::size_t>(tile_type));
+				auto const tile = create_tile(world.m_registry, world_physics.m_b2_world, tile_type, globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(coords), radius);
 
 				map_grid.at(coords) = tile;
 				++map_x;
@@ -654,7 +666,6 @@ namespace ta
 
 				// update physics
 				// TODO: use an accumulator to make this framerate independent
-				// TODO: where do we really want to do this? after updating input / movement?
 				world_physics.m_b2_world.Step(delta_time, 6, 2); 
 
 				// update bullet lifetimes
@@ -909,11 +920,7 @@ int main(int , char* [])
 
 // todo:
 
-	// make bullets brighter
-
-	// entt / box2d fixes:
-		// shrink building collision box?
-
+	// implement powerup colors
 	// implement powerup functionality
 
 	// ... finally ...
