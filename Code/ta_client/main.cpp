@@ -2,8 +2,6 @@
 #include <bump_log.hpp>
 #include <bump_net.hpp>
 
-#include <ta.hpp>
-
 #include <iostream>
 
 int main()

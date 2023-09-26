@@ -1,4 +1,4 @@
-#include "ta_sprite.hpp"
+#include "ta_renderable.hpp"
 
 namespace ta
 {

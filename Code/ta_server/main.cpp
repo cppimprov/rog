@@ -1,445 +1,17 @@
 
-#include <ta.hpp>
-#include <ta_sprite.hpp>
+#include "ta_world.hpp"
+#include "ta_globals.hpp"
 
 #include <bump_app.hpp>
-#include <bump_camera.hpp>
 #include <bump_gamestate.hpp>
-#include <bump_grid.hpp>
-#include <bump_input.hpp>
 #include <bump_log.hpp>
-#include <bump_timer.hpp>
 #include <bump_transform.hpp>
 
-#include <box2d/box2d.h>
-
-#include <iostream>
-#include <map>
-#include <queue>
 #include <random>
-#include <ranges>
-#include <string>
-#include <system_error>
-#include <vector>
 
 namespace ta
 {
 
-	std::optional<direction> get_input_dir(bool input_up, bool input_down, bool input_left, bool input_right)
-	{
-		if (input_up && input_left)    return direction::up_left;
-		if (input_up && input_right)   return direction::up_right;
-		if (input_down && input_left)  return direction::down_left;
-		if (input_down && input_right) return direction::down_right;
-
-		if (input_up)    return direction::up;
-		if (input_down)  return direction::down;
-		if (input_left)  return direction::left;
-		if (input_right) return direction::right;
-
-		return { };
-	}
-
-	glm::vec2 dir_to_vec(direction dir)
-	{
-		switch (dir)
-		{
-		case direction::up:         return glm::vec2( 0.f,  1.f);
-		case direction::down:       return glm::vec2( 0.f, -1.f);
-		case direction::left:       return glm::vec2(-1.f,  0.f);
-		case direction::right:      return glm::vec2( 1.f,  0.f);
-		case direction::up_left:    return glm::vec2(-1.f,  1.f);
-		case direction::up_right:   return glm::vec2( 1.f,  1.f);
-		case direction::down_left:  return glm::vec2(-1.f, -1.f);
-		case direction::down_right: return glm::vec2( 1.f, -1.f);
-		}
-
-		bump::die();
-	}
-
-	float dir_to_angle(direction dir)
-	{
-		switch (dir)
-		{
-		case direction::up:         return -90.f;
-		case direction::down:       return 90.f;
-		case direction::left:       return 0.f;
-		case direction::right:      return 180.f;
-		case direction::up_left:    return 0.f;
-		case direction::up_right:   return -90.f;
-		case direction::down_left:  return 90.f;
-		case direction::down_right: return 180.f;
-		}
-
-		bump::die();
-	}
-
-	bool is_diagonal(direction dir)
-	{
-		switch (dir)
-		{
-		case direction::up:
-		case direction::down:
-		case direction::left:
-		case direction::right:
-			return false;
-		case direction::up_left:
-		case direction::up_right:
-		case direction::down_left:
-		case direction::down_right:
-			return true;
-		}
-
-		bump::die();
-	}
-
-	glm::vec3 get_powerup_color(powerup_type type)
-	{
-		switch (type)
-		{
-		case powerup_type::player_heal:         return glm::vec3(0.0f, 0.95f, 0.0f);
-		case powerup_type::player_speed:        return glm::vec3(0.5f, 0.5f, 0.95f);
-		case powerup_type::player_reload_speed: return glm::vec3(0.8f, 0.8f, 0.2f);
-		case powerup_type::bullet_bounce:       return glm::vec3(0.1f, 0.1f, 0.1f);
-		case powerup_type::bullet_damage:       return glm::vec3(0.95f, 0.0f, 0.0f);
-		case powerup_type::bullet_speed:        return glm::vec3(0.8f, 0.8f, 0.8f);
-		}
-
-		bump::die();
-	}
-
-	std::uint16_t get_tile_collision_category(tile_type type)
-	{
-		switch (type)
-		{
-		case tile_type::grass:      return collision_category::tile;
-		case tile_type::road_ew:    return collision_category::tile;
-		case tile_type::road_ns:    return collision_category::tile;
-		case tile_type::road_cross: return collision_category::tile;
-		case tile_type::building:   return collision_category::tile_wall;
-		case tile_type::rubble:     return collision_category::tile;
-		case tile_type::water:      return collision_category::tile_void;
-		}
-
-		bump::die();
-	}
-
-	std::uint16_t get_tile_collision_mask(tile_type type)
-	{
-		switch (type)
-		{
-		case tile_type::grass: return collision_category::none;
-		case tile_type::road_ew: return collision_category::none;
-		case tile_type::road_ns: return collision_category::none;
-		case tile_type::road_cross: return collision_category::none;
-		case tile_type::building: return collision_category::player | collision_category::bullet;
-		case tile_type::rubble: return collision_category::none;
-		case tile_type::water: return collision_category::player;
-		}
-
-		bump::die();
-	}
-
-	entt::entity create_player(entt::registry& registry, b2World& b2_world, glm::vec2 position_px, glm::vec3 color)
-	{
-		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
-
-		auto body_def = b2BodyDef();
-		body_def.type = b2_dynamicBody;
-		body_def.position = b2_position;
-		body_def.fixedRotation = true;
-
-		auto const body = b2_world.CreateBody(&body_def);
-
-		auto const b2_radius = globals::b2_scale_factor * globals::player_radius;
-
-		auto shape = b2CircleShape();
-		shape.m_radius = b2_radius.x;
-
-		auto fixture_def = b2FixtureDef();
-		fixture_def.shape = &shape;
-		fixture_def.density = 1.f;
-		fixture_def.friction = 0.f;
-		fixture_def.restitution = 0.f;
-		fixture_def.filter.categoryBits = collision_category::player;
-		fixture_def.filter.maskBits = 
-			collision_category::bullet | 
-			collision_category::powerup | 
-			collision_category::tile_wall | 
-			collision_category::tile_void | 
-			collision_category::world_bounds;
-
-		static auto id = std::int16_t{ 0 };
-		fixture_def.filter.groupIndex = --id;
-
-		body->CreateFixture(&fixture_def);
-
-		auto const entity = registry.create();
-
-		registry.emplace<c_player_hp>(entity, globals::player_hp);
-		registry.emplace<c_player_graphics>(entity, color);
-		registry.emplace<c_player_powerups>(entity);
-		registry.emplace<c_player_physics>(entity, body);
-		registry.emplace<c_player_movement>(entity);
-
-		body->SetUserData(reinterpret_cast<void*>(entity));
-
-		return entity;
-	}
-
-	void destroy_player(entt::registry& registry, b2World& b2_world, entt::entity player)
-	{
-		auto const& pp = registry.get<c_player_physics>(player);
-		b2_world.DestroyBody(pp.m_b2_body);
-		registry.destroy(player);
-	}
-
-	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px)
-	{
-		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
-		auto const b2_velocity = to_b2_vec2(globals::b2_scale_factor * velocity_px);
-
-		auto body_def = b2BodyDef();
-		body_def.type = b2_dynamicBody;
-		body_def.position = b2_position;
-		body_def.linearVelocity = b2_velocity;
-		body_def.fixedRotation = true;
-
-		auto const body = b2_world.CreateBody(&body_def);
-
-		auto const b2_radius = globals::b2_scale_factor * globals::bullet_radius;
-
-		auto shape = b2CircleShape();
-		shape.m_radius = b2_radius.x;
-
-		auto fixture_def = b2FixtureDef();
-		fixture_def.shape = &shape;
-		fixture_def.density = 1.f;
-		fixture_def.friction = 0.f;
-		fixture_def.restitution = 1.f;
-		fixture_def.filter.categoryBits = collision_category::bullet;
-		fixture_def.filter.maskBits = 
-			collision_category::player | 
-			collision_category::tile_wall | 
-			collision_category::world_bounds;
-		fixture_def.filter.groupIndex = owner_player_group_index;
-		
-		body->CreateFixture(&fixture_def);
-
-		auto const entity = registry.create();
-
-		registry.emplace<c_bullet_owner_id>(entity, owner_id);
-		registry.emplace<c_bullet_lifetime>(entity, globals::bullet_lifetime);
-		registry.emplace<c_bullet_physics>(entity, body);
-
-		body->SetUserData(reinterpret_cast<void*>(entity));
-
-		return entity;
-	}
-
-	void destroy_bullet(entt::registry& registry, b2World& b2_world, entt::entity bullet)
-	{
-		auto const& bp = registry.get<c_bullet_physics>(bullet);
-		b2_world.DestroyBody(bp.m_b2_body);
-		registry.destroy(bullet);
-	}
-
-	entt::entity create_powerup(entt::registry& registry, b2World& b2_world, powerup_type type, glm::vec2 position_px)
-	{
-		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
-
-		auto body_def = b2BodyDef();
-		body_def.type = b2_staticBody;
-		body_def.position = b2_position;
-
-		auto const body = b2_world.CreateBody(&body_def);
-
-		auto const b2_radius = globals::b2_scale_factor * globals::powerup_radius;
-
-		auto shape = b2CircleShape();
-		shape.m_radius = b2_radius.x;
-
-		auto fixture_def = b2FixtureDef();
-		fixture_def.shape = &shape;
-		fixture_def.friction = 0.f;
-		fixture_def.restitution = 0.f;
-		fixture_def.filter.categoryBits = collision_category::powerup;
-		fixture_def.filter.maskBits = collision_category::player;
-
-		body->CreateFixture(&fixture_def);
-
-		auto const entity = registry.create();
-
-		registry.emplace<c_powerup_type>(entity, type);
-		registry.emplace<c_powerup_lifetime>(entity, globals::powerup_lifetime);
-		registry.emplace<c_powerup_physics>(entity, body);
-
-		body->SetUserData(reinterpret_cast<void*>(entity));
-
-		return entity;
-	}
-
-	void destroy_powerup(entt::registry& registry, b2World& b2_world, entt::entity powerup)
-	{
-		auto const& pp = registry.get<c_powerup_physics>(powerup);
-		b2_world.DestroyBody(pp.m_b2_body);
-		registry.destroy(powerup);
-	}
-
-	entt::entity create_tile(entt::registry& registry, b2World& b2_world, tile_type type, glm::vec2 position_px, glm::vec2 radius_px)
-	{
-		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
-
-		auto body_def = b2BodyDef();
-		body_def.type = b2_staticBody;
-		body_def.position = b2_position;
-
-		auto const body = b2_world.CreateBody(&body_def);
-
-		auto const b2_radius = globals::b2_scale_factor * radius_px;
-
-		auto shape = b2PolygonShape();
-		shape.SetAsBox(b2_radius.x, b2_radius.y);
-		
-		auto fixture_def = b2FixtureDef();
-		fixture_def.shape = &shape;
-		fixture_def.friction = 0.f;
-		fixture_def.restitution = 0.f;
-		fixture_def.filter.categoryBits = get_tile_collision_category(type);
-		fixture_def.filter.maskBits = get_tile_collision_mask(type);
-
-		body->CreateFixture(&fixture_def);
-
-		auto const entity = registry.create();
-
-		registry.emplace<c_tile_type>(entity, type);
-		registry.emplace<c_tile_physics>(entity, body);
-
-		body->SetUserData(reinterpret_cast<void*>(entity));
-
-		return entity;
-	}
-
-	void load_test_map(ta::world& world, ta::world_physics& world_physics)
-	{
-		auto const tile_symbols = std::map<char, tile_type>
-		{
-			{ ' ', tile_type::grass },
-			{ '-', tile_type::road_ew },
-			{ '|', tile_type::road_ns },
-			{ '+', tile_type::road_cross },
-			{ '#', tile_type::building },
-			{ 'x', tile_type::rubble },
-			{ '~', tile_type::water },
-		};
-
-		auto const tile_radii = std::vector<glm::vec2>
-		{
-			globals::tile_radius,
-			globals::tile_radius,
-			globals::tile_radius,
-			globals::tile_radius,
-			globals::tile_radius - glm::vec2(8.f),
-			globals::tile_radius,
-			globals::tile_radius,
-		};
-
-		using namespace std::string_view_literals;
-
-		auto const symbol_map = 
-		{
-			"   xxxxx    ###~"sv,
-			"------+-----###~"sv,
-			"##### |  xx ###~"sv,
-			"~~~  x|  xx~~ ~~"sv,
-			"~~~ ##+----+----"sv,
-			" ##  x|~##~|##  "sv,
-			" ##  x|~##~+--+#"sv,
-			"  +---+----+#x|#"sv,
-			"  |#xx|x## +--+#"sv,
-			"# |###| ##x|x###"sv,
-			"--+---+----+----"sv,
-			" #### ~~~ ##xx  "sv,
-		};
-
-		auto map_grid = bump::grid<entt::entity, 2>({ 16, 12 });
-
-		auto map_y = std::size_t{ 0 };
-
-		for (auto const row : std::ranges::reverse_view(symbol_map))
-		{
-			auto map_x = std::size_t{ 0 };
-
-			for (auto const symbol : row)
-			{
-				auto const coords = glm::size2{ map_x, map_y };
-
-				auto const tile_type = tile_symbols.at(symbol);
-				auto const radius = tile_radii.at(static_cast<std::size_t>(tile_type));
-				auto const tile = create_tile(world.m_registry, world_physics.m_b2_world, tile_type, globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(coords), radius);
-
-				map_grid.at(coords) = tile;
-				++map_x;
-			}
-
-			++map_y;
-		}
-
-		world.m_tiles = std::move(map_grid);
-	}
-	
-	void set_world_bounds(ta::world_physics& world_physics, glm::vec2 size_px)
-	{
-		auto const half_size = globals::b2_scale_factor * size_px * 0.5f;
-
-		auto body_def = b2BodyDef();
-		body_def.type = b2_staticBody;
-		body_def.position = to_b2_vec2(half_size);
-
-		auto const body = world_physics.m_b2_world.CreateBody(&body_def);
-
-		auto const boundsThickness = globals::b2_scale_factor * 10.f;
-		auto const boundsFriction = 0.f;
-		auto const boundsRestitution = 0.f;
-
-		auto const make_fixture = [&] (b2PolygonShape& shape)
-		{
-			auto fixture_def = b2FixtureDef();
-			fixture_def.shape = &shape;
-			fixture_def.friction = boundsFriction;
-			fixture_def.restitution = boundsRestitution;
-			fixture_def.filter.categoryBits = collision_category::world_bounds;
-			fixture_def.filter.maskBits = collision_category::player | collision_category::bullet;
-
-			body->CreateFixture(&fixture_def);
-		};
-
-		// left
-		{
-			auto shape = b2PolygonShape{};
-			shape.SetAsBox(boundsThickness, half_size.y, b2Vec2{ -half_size.x - (boundsThickness * 0.5f), 0.f }, 0.f);
-			make_fixture(shape);
-		}
-		// right
-		{
-			auto shape = b2PolygonShape{};
-			shape.SetAsBox(boundsThickness, half_size.y, b2Vec2{ half_size.x + (boundsThickness * 0.5f), 0.f }, 0.f);
-			make_fixture(shape);
-		}
-		// top
-		{
-			auto shape = b2PolygonShape{};
-			shape.SetAsBox(half_size.x, boundsThickness, b2Vec2{ 0.f, half_size.y + (boundsThickness * 0.5f) }, 0.f);
-			make_fixture(shape);
-		}
-		// bottom
-		{
-			auto shape = b2PolygonShape{};
-			shape.SetAsBox(half_size.x, boundsThickness, b2Vec2{ 0.f, -half_size.y - (boundsThickness * 0.5f) }, 0.f);
-			make_fixture(shape);
-		}
-	}
-	
 	bump::gamestate main_loop(bump::app& app)
 	{
 		bump::log_info("main_loop()");
@@ -467,7 +39,7 @@ namespace ta
 
 		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
 
-		auto player_entity = world.m_players.back();
+		auto player_entity = entt::entity{ world.m_players.back() };
 		world.m_registry.emplace<c_player_input>(player_entity);
 
 		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 5.f, 3.f }, glm::vec3(1.f, 0.f, 0.f)));
@@ -824,7 +396,7 @@ namespace ta
 					}
 				}
 			}
-
+ 
 			// render
 			{
 				app.m_renderer.clear_color_buffers({ 0.39215f, 0.58431f, 0.92941f, 1.f });
@@ -1000,11 +572,33 @@ int main(int , char* [])
 // todo:
 
 	// TODO:
-		// better way of handling local player
+		// better way of handling local player (maybe think about this more when separating client / server)
 		// we want player objects to exist, even for dead / disconnected players
 
-		// when doing powerup lookups, owning player might not exist anymore!!!
-			// so... 
+		// when doing bullet owner lookups, owning player might not exist anymore!!!
+			// add a flag to the player to indicate if they are dead???
+			// if they are, don't render / update / whatever...
 
 	// ... finally ...
 	// start working on server code!
+
+// move the main loop code to the client
+// get the client running
+// start working on the server code
+
+
+	// namespace net
+	// {
+	//
+	// 	enum class message_type : std::uint8_t { HELLO, GOODBYE, };
+	//
+	// 	using message_id_t = std::uint32_t;
+	//
+	// 	struct message
+	// 	{
+	// 		message_type m_type;
+	// 		message_id_t m_id;
+	// 		std::vector<std::uint8_t> m_data;
+	// 	};
+	//
+	// } // net
