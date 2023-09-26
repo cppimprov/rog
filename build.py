@@ -939,9 +939,21 @@ def main():
 		if copy_result > 8:
 			print('failed to copy data files!')
 			return
+		
+		copy_result = subprocess.call(['robocopy', 
+			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
+			'Data/ta_client', 
+			get_deploy_dir('ta_client', platform_writer.get_platform_name(), build_type) + '/data'])
+			
+		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+		if copy_result > 8:
+			print('failed to copy data files!')
+			return
 
 		print('data files copied')
 
 	print('done!')
 	
 main()
+
+# TODO: move file copying to a function
