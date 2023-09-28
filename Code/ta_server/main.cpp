@@ -11,16 +11,17 @@
 
 namespace ta
 {
+	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr);
 
-	bump::gamestate main_loop(bump::app& app)
+	bump::gamestate loading(bump::app& app)
 	{
-		bump::log_info("main_loop()");
+		bump::log_info("loading()");
 
-		auto world = ta::world();
-		auto world_physics = ta::world_physics{ b2World{ b2Vec2{ 0.f, 0.f } } };
-		auto world_graphics = ta::world_graphics
+		auto world = std::unique_ptr<ta::world>(new ta::world
 		{
-			.m_tile_textures = {
+			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },
+
+			.m_tile_textures = { // TODO: these are map specific? should be done in load_test_map()?
 				&app.m_assets.m_textures_2d["grass"],
 				&app.m_assets.m_textures_2d["road_ew"],
 				&app.m_assets.m_textures_2d["road_ns"],
@@ -35,19 +36,32 @@ namespace ta
 			.m_tank_renderable_diagonal = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]),
 			.m_bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]),
 			.m_powerup_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]),
-		};
+		});
 
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
+		// ecs.m_players.push_back(create_player(ecs.m_registry, physics.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
+		// ecs.m_players.push_back(create_player(ecs.m_registry, physics.m_b2_world, globals::player_radius * glm::vec2{ 5.f, 3.f }, glm::vec3(1.f, 0.f, 0.f)));
+		// ecs.m_players.push_back(create_player(ecs.m_registry, physics.m_b2_world, globals::player_radius * glm::vec2{ 7.f, 3.f }, glm::vec3(0.f, 0.9f, 0.f)));
+		// ecs.m_players.push_back(create_player(ecs.m_registry, physics.m_b2_world, globals::player_radius * glm::vec2{ 9.f, 3.f }, glm::vec3(0.2f, 0.2f, 1.f)));
 
-		auto player_entity = entt::entity{ world.m_players.back() };
-		world.m_registry.emplace<c_player_input>(player_entity);
+		load_test_map(*world);
+		set_world_bounds(world->m_b2_world, glm::vec2(world->m_tiles.extents()) * globals::tile_radius * 2.f);
 
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 5.f, 3.f }, glm::vec3(1.f, 0.f, 0.f)));
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 7.f, 3.f }, glm::vec3(0.f, 0.9f, 0.f)));
-		world.m_players.push_back(create_player(world.m_registry, world_physics.m_b2_world, globals::player_radius * glm::vec2{ 9.f, 3.f }, glm::vec3(0.2f, 0.2f, 1.f)));
+		return { [&, world = std::move(world)] (bump::app& app) mutable { return main_loop(app, std::move(world)); } };
+	}
 
-		load_test_map(world, world_physics);
-		set_world_bounds(world_physics, glm::vec2(world.m_tiles.extents()) * globals::tile_radius * 2.f);
+	// bump::gamestate waiting_for_players(bump::app& app)
+	// {
+	// 	bump::log_info("waiting_for_players()");
+
+	// 	// ... wait for (4) players to connect (handle disconnections)
+	// 	// ... move to main_loop state
+	// }
+
+	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr)
+	{
+		bump::log_info("main_loop()");
+
+		auto& world = *world_ptr;
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -90,17 +104,6 @@ namespace ta
 
 						if (k.m_key == kt::ESCAPE && k.m_value)
 							return { }; // quit
-						
-						if (player_entity != entt::null)
-						{
-							auto& pi = world.m_registry.get<c_player_input>(player_entity);
-
-							if (k.m_key == kt::W) pi.m_input_up = k.m_value;
-							if (k.m_key == kt::S) pi.m_input_down = k.m_value;
-							if (k.m_key == kt::A) pi.m_input_left = k.m_value;
-							if (k.m_key == kt::D) pi.m_input_right = k.m_value;
-							if (k.m_key == kt::SPACE) pi.m_input_fire = k.m_value;
-						}
 					}
 				}
 			}
@@ -111,29 +114,7 @@ namespace ta
 
 				// update player input
 				{
-					if (player_entity != entt::null)
-					{
-						auto [pu, pp, pm, pi] = world.m_registry.get<c_player_powerups, c_player_physics, c_player_movement, c_player_input>(player_entity);
-
-						auto const dir = ta::get_input_dir(pi.m_input_up, pi.m_input_down, pi.m_input_left, pi.m_input_right);
-
-						pm.m_moving = dir.has_value();
-						pm.m_direction = dir.value_or(pm.m_direction);
-
-						if (pi.m_input_fire)
-						{
-							auto const reload_time = pu.m_timers.contains(powerup_type::player_reload_speed) ? globals::powerup_player_reload_speed : globals::reload_time;
-
-							if (pi.m_reload_timer.get_elapsed_time() >= reload_time)
-							{
-								auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
-								auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
-								auto const group_index = pp.m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
-								world.m_bullets.push_back(create_bullet(world.m_registry, world_physics.m_b2_world, player_entity, group_index, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
-								pi.m_reload_timer = bump::timer();
-							}
-						}
-					}
+					// ...
 				}
 
 				// update player movement
@@ -161,9 +142,9 @@ namespace ta
 				// prepare collision callbacks
 				struct contact_listener : public b2ContactListener
 				{
-					contact_listener(ta::world& world, ta::world_physics& world_physics):
-						m_world(world),
-						m_world_physics(world_physics)
+					contact_listener(entt::registry& registry, b2World& b2_world):
+						m_registry(registry),
+						m_b2_world(b2_world)
 					{ }
 
 					void BeginContact(b2Contact* contact) override
@@ -206,13 +187,13 @@ namespace ta
 
 					void player_bullet(entt::entity player_entity, entt::entity bullet_entity)
 					{
-						auto& ph = m_world.m_registry.get<c_player_hp>(player_entity);
-						auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+						auto& ph = m_registry.get<c_player_hp>(player_entity);
+						auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
 
 						if (bo.m_owner_id == player_entity)
 							return;
 
-						auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
+						auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
 						auto const damage_multiplier = opu.m_timers.contains(powerup_type::bullet_damage) ? globals::powerup_bullet_damage_multiplier : 1.f;
 
 						ph.m_hp -= static_cast<std::uint32_t>(globals::bullet_damage * damage_multiplier);
@@ -221,8 +202,8 @@ namespace ta
 
 					void player_powerup(entt::entity player_entity, entt::entity powerup_entity)
 					{
-						auto& pp = m_world.m_registry.get<c_player_powerups>(player_entity);
-						auto [pt, pl] = m_world.m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
+						auto& pp = m_registry.get<c_player_powerups>(player_entity);
+						auto [pt, pl] = m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
 
 						pp.m_timers[pt.m_type] = globals::powerup_duration;
 						pl.m_lifetime = 0.f;
@@ -230,8 +211,8 @@ namespace ta
 
 					void bullet_tile(entt::entity bullet_entity, entt::entity )
 					{
-						auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-						auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
+						auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+						auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
 
 						if (opu.m_timers.contains(powerup_type::bullet_bounce))
 							return;
@@ -241,8 +222,8 @@ namespace ta
 
 					void bullet_world_bounds(entt::entity bullet_entity)
 					{
-						auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-						auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
+						auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+						auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
 
 						if (opu.m_timers.contains(powerup_type::bullet_bounce))
 							return;
@@ -250,16 +231,16 @@ namespace ta
 						bl.m_lifetime = 0.f;
 					}
 
-					ta::world& m_world;
-					ta::world_physics& m_world_physics;
+					entt::registry& m_registry;
+					b2World& m_b2_world;
 				};
 
-				auto cl = contact_listener(world, world_physics);
-				world_physics.m_b2_world.SetContactListener(&cl);
+				auto cl = contact_listener(world.m_registry, world.m_b2_world);
+				world.m_b2_world.SetContactListener(&cl);
 
 				// update physics
 				// TODO: use an accumulator to make this framerate independent
-				world_physics.m_b2_world.Step(delta_time, 6, 2);
+				world.m_b2_world.Step(delta_time, 6, 2);
 
 				// update bullet lifetimes
 				{
@@ -280,7 +261,7 @@ namespace ta
 						[&] (auto const& b) { return bullet_view.get<c_bullet_lifetime>(b).m_lifetime > 0.f; });
 
 					for (auto const b : std::ranges::subrange(first_expired, world.m_bullets.end()))
-						destroy_bullet(world.m_registry, world_physics.m_b2_world, b);
+						destroy_bullet(world.m_registry, world.m_b2_world, b);
 
 					world.m_bullets.erase(first_expired, world.m_bullets.end());
 				}
@@ -338,7 +319,7 @@ namespace ta
 						[&] (auto const& p) { return powerup_view.get<c_powerup_lifetime>(p).m_lifetime > 0.f; });
 
 					for (auto const p : std::ranges::subrange(first_expired, world.m_powerups.end()))
-						destroy_powerup(world.m_registry, world_physics.m_b2_world, p);
+						destroy_powerup(world.m_registry, world.m_b2_world, p);
 
 					world.m_powerups.erase(first_expired, world.m_powerups.end());
 				}
@@ -351,12 +332,7 @@ namespace ta
 						[&] (auto const& p) { return player_view.get<c_player_hp>(p).m_hp > 0; });
 
 					for (auto const p : std::ranges::subrange(first_dead, world.m_players.end()))
-					{
-						if (p == player_entity)
-							player_entity = entt::null;
-
-						destroy_player(world.m_registry, world_physics.m_b2_world, p);
-					}
+						destroy_player(world.m_registry, world.m_b2_world, p);
 
 					world.m_players.erase(first_dead, world.m_players.end());
 				}
@@ -391,7 +367,7 @@ namespace ta
 						
 						auto const pos_px = globals::b2_inv_scale_factor * to_glm_vec2(tile_view.get<c_tile_physics>(tile).m_b2_body->GetPosition());
 
-						world.m_powerups.push_back(create_powerup(world.m_registry, world_physics.m_b2_world, type, pos_px));
+						world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, type, pos_px));
 						powerup_spawn_timer = bump::timer();
 					}
 				}
@@ -424,14 +400,14 @@ namespace ta
 							auto const& tt = tile_view.get<c_tile_type>(entity);
 
 							auto const tile_index = static_cast<std::size_t>(tt.m_type);
-							auto const tile_texture = world_graphics.m_tile_textures[tile_index];
+							auto const tile_texture = world.m_tile_textures[tile_index];
 
 							auto const position_px = globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(x, y);
 
 							auto model_matrix = glm::mat4(1.f);
 							bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
 
-							world_graphics.m_tile_renderable.render(app.m_renderer, *tile_texture, matrices, model_matrix, globals::tile_radius * 2.f);
+							world.m_tile_renderable.render(app.m_renderer, *tile_texture, matrices, model_matrix, globals::tile_radius * 2.f);
 						}
 					}
 				}
@@ -451,7 +427,7 @@ namespace ta
 						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
 						bump::set_rotation(model_matrix, glm::angleAxis(glm::radians(rotation_angle), glm::vec3(0.f, 0.f, 1.f)));
 
-						auto& renderable = is_diagonal(pm.m_direction) ? world_graphics.m_tank_renderable_diagonal : world_graphics.m_tank_renderable;
+						auto& renderable = is_diagonal(pm.m_direction) ? world.m_tank_renderable_diagonal : world.m_tank_renderable;
 						renderable.render(app.m_renderer, matrices, model_matrix, globals::player_radius * 2.f, pg.m_color);
 					}
 				}
@@ -470,7 +446,7 @@ namespace ta
 
 						auto model_matrix = glm::mat4(1.f);
 						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
-						world_graphics.m_bullet_renderable.render(app.m_renderer, matrices, model_matrix, globals::bullet_radius * 2.f, pg.m_color);
+						world.m_bullet_renderable.render(app.m_renderer, matrices, model_matrix, globals::bullet_radius * 2.f, pg.m_color);
 					}
 				}
 
@@ -487,7 +463,7 @@ namespace ta
 
 						auto model_matrix = glm::mat4(1.f);
 						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
-						world_graphics.m_powerup_renderable.render(app.m_renderer, matrices, model_matrix, globals::powerup_radius * 2.f, color);
+						world.m_powerup_renderable.render(app.m_renderer, matrices, model_matrix, globals::powerup_radius * 2.f, color);
 					}
 				}
 				
@@ -561,7 +537,7 @@ int main(int , char* [])
 
 		auto app = bump::app(metadata, { 1024, 768 }, "ta_server", bump::sdl::window::display_mode::WINDOWED);
 		app.m_gl_context.set_swap_interval(bump::sdl::gl_context::swap_interval_mode::ADAPTIVE_VSYNC);
-		bump::run_state({ [] (bump::app& app) { return ta::main_loop(app); } }, app);
+		bump::run_state({ [] (bump::app& app) { return ta::loading(app); } }, app);
 	}
 
 	bump::log_info("done!");
@@ -579,11 +555,14 @@ int main(int , char* [])
 			// add a flag to the player to indicate if they are dead???
 			// if they are, don't render / update / whatever...
 
-	// ... finally ...
-	// start working on server code!
 
-// start working on the server code
-
+		// server code:
+		// - load the world, then wait for clients to connect
+		// - when a client connects, send them the world state
+		// - run the game loop
+			// - get input from clients and world state updates
+		// - when a client disconnects, remove them from the world
+		// - if all clients disconnect, go back to waiting for clients
 
 	// namespace net
 	// {

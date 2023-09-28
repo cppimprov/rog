@@ -239,7 +239,7 @@ namespace ta
 	}
 
 	// WORLD:
-	void load_test_map(ta::world& world, ta::world_physics& world_physics)
+	void load_test_map(ta::world& world)
 	{
 		auto const tile_symbols = std::map<char, tile_type>
 		{
@@ -295,7 +295,7 @@ namespace ta
 
 				auto const tile_type = tile_symbols.at(symbol);
 				auto const radius = tile_radii.at(static_cast<std::size_t>(tile_type));
-				auto const tile = create_tile(world.m_registry, world_physics.m_b2_world, tile_type, globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(coords), radius);
+				auto const tile = create_tile(world.m_registry, world.m_b2_world, tile_type, globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(coords), radius);
 
 				map_grid.at(coords) = tile;
 				++map_x;
@@ -307,7 +307,7 @@ namespace ta
 		world.m_tiles = std::move(map_grid);
 	}
 	
-	void set_world_bounds(ta::world_physics& world_physics, glm::vec2 size_px)
+	void set_world_bounds(b2World& b2_world, glm::vec2 size_px)
 	{
 		auto const half_size = globals::b2_scale_factor * size_px * 0.5f;
 
@@ -315,7 +315,7 @@ namespace ta
 		body_def.type = b2_staticBody;
 		body_def.position = to_b2_vec2(half_size);
 
-		auto const body = world_physics.m_b2_world.CreateBody(&body_def);
+		auto const body = b2_world.CreateBody(&body_def);
 
 		auto const boundsThickness = globals::b2_scale_factor * 10.f;
 		auto const boundsFriction = 0.f;

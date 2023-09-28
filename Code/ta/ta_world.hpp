@@ -133,30 +133,28 @@ namespace ta
 	// WORLD:
 	struct world
 	{
+		// ecs:
 		entt::registry m_registry;
 
 		std::vector<entt::entity> m_players;
 		std::vector<entt::entity> m_bullets;
 		std::vector<entt::entity> m_powerups;
 		bump::grid<entt::entity, 2> m_tiles;
-	};
 
-	struct world_physics
-	{
+		// physics:
 		b2World m_b2_world;
-	};
-	
-	struct world_graphics
-	{
+
+		// graphics:
 		std::vector<bump::gl::texture_2d const*> m_tile_textures;
 
 		ta::tile_renderable m_tile_renderable;
-		ta::object_renderable m_tank_renderable, m_tank_renderable_diagonal;
+		ta::object_renderable m_tank_renderable;
+		ta::object_renderable m_tank_renderable_diagonal;
 		ta::object_renderable m_bullet_renderable;
 		ta::object_renderable m_powerup_renderable;
 	};
 
-	void load_test_map(world& world, world_physics& world_physics);
-	void set_world_bounds(world_physics& world_physics, glm::vec2 size_px);
+	void load_test_map(world& world);
+	void set_world_bounds(b2World& b2_world, glm::vec2 size_px);
 
 } // ta
