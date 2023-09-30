@@ -5,12 +5,68 @@
 #include <bump_app.hpp>
 #include <bump_gamestate.hpp>
 #include <bump_log.hpp>
+#include <bump_net.hpp>
 #include <bump_transform.hpp>
 
 #include <random>
 
 namespace ta
 {
+
+	// enum class msg_type
+	// {
+	// 	HELLO,
+	// 	GOODBYE,
+	// 	ACK,
+	// 	HEARTBEAT,
+	// };
+
+	// struct msg
+	// { 
+	// 	msg_type m_type;
+	// 	std::uint32_t m_id;
+	// 	std::span<std::uint8_t> m_data;
+	// };
+
+	// struct msg_hello { };
+	// struct msg_goodbye { };
+	// struct msg_ack { std::uint32_t m_acked_msg_id; };
+	// struct msg_heartbeat { };
+
+	// std::size_t msg_read(msg_hello& msg, std::span<std::uint8_t> data) { return 0; }
+	// std::size_t msg_read(msg_goodbye& msg, std::span<std::uint8_t> data) { return 0; }
+	// std::size_t msg_read(msg_ack& msg, std::span<std::uint8_t> data)
+	// {
+	// 	// todo: deserialize
+	// }
+
+	// std::size_t msg_write(msg_hello const& msg, std::span<std::uint8_t> data) { return 0; }
+	// std::size_t msg_write(msg_goodbye const& msg, std::span<std::uint8_t> data) { return 0; }
+	// std::size_t msg_write(msg_ack const& msg, std::span<std::uint8_t> data)
+	// {
+	// 	// todo: binary serialization
+	// 	// write the acked msg id to the span...
+
+	// 	// if span too small, some kind of error...?
+	// }
+
+	// std::queue<msg> receive_messages(bump::net::socket& socket, std::span<std::uint8_t> buffer)
+	// {
+	// 	// call receive_from() on the socket until it returns an empty message
+	// 	// push received messages onto the queue...
+	// 	// what to do if we run out of space in the buffer? i guess we log an error, and discard extra messages?
+	// }
+
+
+	// todo:
+	// binary serialization
+
+	// to think about:
+	// do we need a sequence number / timestamp in the heartbeat message?
+	// what to do about buffer sizes? (receiving / sending too many messages per frame?)
+	// ...
+
+
 	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr);
 
 	bump::gamestate loading(bump::app& app)
@@ -49,13 +105,59 @@ namespace ta
 		return { [&, world = std::move(world)] (bump::app& app) mutable { return main_loop(app, std::move(world)); } };
 	}
 
-	// bump::gamestate waiting_for_players(bump::app& app)
-	// {
-	// 	bump::log_info("waiting_for_players()");
+	bump::gamestate waiting_for_players(bump::app& , std::unique_ptr<ta::world> world_ptr)
+	{
+		namespace net = bump::net;
 
-	// 	// ... wait for (4) players to connect (handle disconnections)
-	// 	// ... move to main_loop state
-	// }
+		bump::log_info("waiting_for_players()");
+
+		//auto& world = *world_ptr;
+
+		auto const endpoints = net::get_address_info_any(net::ip_address_family::V6, net::ip_protocol::UDP).unwrap();
+		
+		auto listener = net::socket();
+
+		for (auto const& ep : endpoints.m_endpoints)
+		{
+			listener = net::make_udp_socket(ep, net::blocking_mode::NON_BLOCKING).unwrap();
+
+			if (listener.is_open())
+				break;
+		}
+
+		bump::die_if(!listener.is_open());
+
+		// struct connection
+		// {
+		// 	net::socket m_socket;
+		// 	net::endpoint m_endpoint;
+		// 	std::size_t m_id;
+		// };
+
+		// auto next_client_id = std::size_t{ 0 };
+		// auto connections = std::vector<connection>();
+		// auto read_buffer = std::vector<std::uint8_t>(4096, '\0'); // TODO: what's the max expected message size?
+
+		// // receive messages from new clients... should get hello as the first message, then heartbeats
+		// // send hello back to new clients
+		// // send world state to new clients
+
+		// while (true)
+		// {
+		// 	auto [endpoint, bytes_read] = listener.receive_from(read_buffer).unwrap(); // TODO: test sending 0 bytes to this... we don't actually want the listener to close!
+
+		// 	// if it's a new endpoint... expect a hello message
+		// 	// if it's a known endpoint, expect a heartbeat or goodbye message
+
+		// }
+
+		
+
+		// ... wait for (4) players to connect (handle disconnections)
+		// ... move to main_loop state
+
+		return { };
+	}
 
 	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr)
 	{
@@ -545,24 +647,32 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo:
+// TODO:
 
-	// TODO:
-		// better way of handling local player (maybe think about this more when separating client / server)
-		// we want player objects to exist, even for dead / disconnected players
-
-		// when doing bullet owner lookups, owning player might not exist anymore!!!
-			// add a flag to the player to indicate if they are dead???
-			// if they are, don't render / update / whatever...
+	// server code!
 
 
-		// server code:
-		// - load the world, then wait for clients to connect
-		// - when a client connects, send them the world state
-		// - run the game loop
-			// - get input from clients and world state updates
-		// - when a client disconnects, remove them from the world
-		// - if all clients disconnect, go back to waiting for clients
+
+
+	
+
+	// ...
+
+	// better way of handling local player (maybe think about this more when separating client / server)
+	// we want player objects to exist, even for dead / disconnected players
+
+	// when doing bullet owner lookups, owning player might not exist anymore!!!
+		// add a flag to the player to indicate if they are dead???
+		// if they are, don't render / update / whatever...
+
+
+	// server code:
+	// - load the world, then wait for clients to connect
+	// - when a client connects, send them the world state
+	// - run the game loop
+		// - get input from clients and world state updates
+	// - when a client disconnects, remove them from the world
+	// - if all clients disconnect, go back to waiting for clients
 
 	// namespace net
 	// {

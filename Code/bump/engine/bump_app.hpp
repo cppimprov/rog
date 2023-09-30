@@ -4,6 +4,7 @@
 #include "bump_assets.hpp"
 #include "bump_gl_renderer.hpp"
 #include "bump_glew_context.hpp"
+#include "bump_net.hpp"
 #include "bump_sdl_context.hpp"
 #include "bump_sdl_gl_context.hpp"
 #include "bump_sdl_input_handler.hpp"
@@ -35,6 +36,8 @@ namespace bump
 		sdl::gl_context m_gl_context;
 		glew_context m_glew_context;
 		gl::renderer m_renderer;
+
+		net::context m_net_context;
 
 		assets m_assets;
 	};
