@@ -59,7 +59,7 @@ namespace ta
 
 
 	// todo:
-	// binary serialization
+	
 
 	// to think about:
 	// do we need a sequence number / timestamp in the heartbeat message?
