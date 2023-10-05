@@ -288,6 +288,12 @@ class PlatformMSVC:
 		freetype.src_files = [ join_file(freetype.code_dir, f) for f in freetype_src_files ]
 		self.write_static_lib(n, build_type, freetype, '0')
 
+		gtest = ProjectStaticLib.from_name('googletest', self, build_type)
+		gtest.src_files = [ join_file(gtest.code_dir, 'src', 'gtest-all.cc') ]
+		gtest.inc_dirs = [ join_dir(gtest.code_dir, 'include'), join_dir(gtest.code_dir, '.') ]
+		gtest.defines = [ 'GTEST_LANG_CXX11', 'GTEST_HAS_STD_TUPLE_', 'GTEST_HAS_TR1_TUPLE=0' ]
+		self.write_static_lib(n, build_type, gtest)
+
 		harfbuzz = ProjectStaticLib.from_name('harfbuzz', self, build_type)
 		harfbuzz.defines = [ 'WIN32', '_WINDOWS', 'UNICODE', '_UNICODE', 'NDEBUG', 'HAVE_FREETYPE', 'HAVE_ATEXIT', 'HAVE_ISATTY', 'HAVE_ROUNDF', 'HAVE_STDBOOL_H', '_CRT_SECURE_NO_WARNINGS', '_CRT_NONSTDC_NO_WARNINGS', ] + freetype.defines
 		harfbuzz.inc_dirs = [ join_dir(harfbuzz.code_dir, 'src') ] + freetype.inc_dirs
@@ -665,6 +671,46 @@ class PlatformMSVC:
 		]
 		ta_client.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, ta_client)
+
+		# include all the test files (.test.cpp extension) in a source file so the linker doesn't
+		# think they are unreferenced and remove them
+		test_files = get_test_files(rog.code_dir)
+		with open(join_file(get_code_dir('test'), 'test.cpp'), 'w') as test_src_file:
+			test_src_file.write('/* auto-generated: see build.py */\n\n')
+			for f in test_files:
+				test_src_file.write('#include "' + f + '"\n')
+
+		test = ProjectExe.from_name('test', self, build_type)
+		test.defines = bump.defines
+		test.inc_dirs = [
+			entt.code_dir,
+			json.code_dir,
+			join_dir(box2d.code_dir, 'include'),
+			join_dir(freetype.code_dir, 'include'),
+			join_dir(gtest.code_dir, 'include'),
+			join_dir(harfbuzz.code_dir, 'src'),
+			glew.code_dir,
+			stb.code_dir,
+			glm.code_dir,
+			join_dir(sdl.code_dir, 'include'),
+			sdlmixer.code_dir,
+			ta.code_dir,
+		]
+		test.libs = [
+			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
+			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
+			join_file(gtest.deploy_dir, self.get_lib_name(gtest.project_name)),
+			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
+			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
+			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
+			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
+			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
+			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
+		]
+		test.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
+		self.write_exe(n, build_type, test)
 
 
 class PlatformGCC:

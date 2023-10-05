@@ -1,17 +1,31 @@
 #pragma once
 
+#include "bump_result.hpp"
+
 #include <bit>
-#include <iostream>
+#include <span>
 
 namespace bump
 {
 
 	namespace io
 	{
-	
-		inline void write_data(std::ostream& os, char const* data, std::size_t size) { os.write(data, size); }
-		inline void read_data(std::istream& is, char* data, std::size_t size) { is.read(data, size); }
 
+		enum class io_err
+		{
+			output_buffer_too_small = 1,
+		};
+
+		inline result<void, io_err> copy_span(std::span<char> dst, std::span<char const> src)
+		{
+			if (dst.size() < src.size())
+				return make_err(io_err::output_buffer_too_small);
+
+			std::memcpy(dst.data(), src.data(), src.size());
+
+			return make_ok();
+		}
+		
 		namespace 
 		{
 
@@ -20,94 +34,98 @@ namespace bump
 			using get_unsigned_t = std::conditional_t<std::is_same_v<T, bool>, std::uint8_t, std::make_unsigned_t<T>>;
 
 			template<std::size_t Bits, class T>
-			void write(std::ostream& os, T value, std::endian e)
+			result<void, io_err> write(std::span<char> dst, T value, std::endian e)
 			{
-				static_assert(std::is_integral_v<T>, "T is not an integral type");
-				static_assert(sizeof(T) * CHAR_BIT == Bits, "T does not have the correct size");
+				static_assert(std::is_integral_v<T>, "type T is not an integral type");
+				static_assert(sizeof(T) * CHAR_BIT == Bits, "type T is not the correct size");
 
 				auto bytes = std::bit_cast<get_unsigned_t<T>>(value);
 
 				if (e != std::endian::native)
 					bytes = std::byteswap(bytes);
 
-				write_data(os, reinterpret_cast<char const*>(&bytes), sizeof(bytes));
+				return copy_span(dst, { reinterpret_cast<char const*>(&bytes), sizeof(bytes) });
 			}
 
 			template<std::size_t Bits, class T>
-			T read(std::istream& is, std::endian e)
+			result<T, io_err> read(std::span<char const> src, std::endian e)
 			{
-				static_assert(std::is_integral_v<T>, "T is not an integral type");
-				static_assert(sizeof(T) * CHAR_BIT == Bits, "T does not have the correct size");
+				static_assert(std::is_integral_v<T>, "type T is not an integral type");
+				static_assert(sizeof(T) * CHAR_BIT == Bits, "type T is not the correct size");
 
 				get_unsigned_t<T> bytes;
-				read_data(is, reinterpret_cast<char*>(&bytes), sizeof(bytes));
+				auto copy_result = copy_span(src, { reinterpret_cast<char*>(&bytes), sizeof(bytes) });
+
+				if (!copy_result.has_value())
+					return make_err(copy_result.err());
 
 				if (e != std::endian::native)
 					bytes = std::byteswap(bytes);
 
-				return std::bit_cast<T>(bytes);
+				return make_ok(std::bit_cast<T>(bytes));
 			}
 		
 		} // unnamed
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_8(std::ostream& os, T value, std::endian endian) { write<8>(os, value, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_8_be(std::ostream& os, T value) { write_8(os, value, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_8_le(std::ostream& os, T value) { write_8(os, value, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_8_ne(std::ostream& os, T value) { write_8(os, value, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_8(std::span<char> dst, T value, std::endian endian) { return write<8>(dst, value, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_8_be(std::span<char> dst, T value) { return write_8(dst, value, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_8_le(std::span<char> dst, T value) { return write_8(dst, value, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_8_ne(std::span<char> dst, T value) { return write_8(dst, value, std::endian::native); }
 		
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_16(std::ostream& os, T value, std::endian endian) { write<16>(os, value, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_16_be(std::ostream& os, T value) { write_16(os, value, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_16_le(std::ostream& os, T value) { write_16(os, value, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_16_ne(std::ostream& os, T value) { write_16(os, value, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_16(std::span<char> dst, T value, std::endian endian) { return write<16>(dst, value, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_16_be(std::span<char> dst, T value) { return write_16(dst, value, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_16_le(std::span<char> dst, T value) { return write_16(dst, value, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_16_ne(std::span<char> dst, T value) { return write_16(dst, value, std::endian::native); }
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_32(std::ostream& os, T value, std::endian endian) { write<32>(os, value, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_32_be(std::ostream& os, T value) { write_32(os, value, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_32_le(std::ostream& os, T value) { write_32(os, value, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_32_ne(std::ostream& os, T value) { write_32(os, value, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_32(std::span<char> dst, T value, std::endian endian) { return write<32>(dst, value, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_32_be(std::span<char> dst, T value) { return write_32(dst, value, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_32_le(std::span<char> dst, T value) { return write_32(dst, value, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_32_ne(std::span<char> dst, T value) { return write_32(dst, value, std::endian::native); }
 
-		inline void write_32(std::ostream& os, float value, std::endian endian) { write_32(os, std::bit_cast<std::uint32_t>(value), endian); }
-		inline void write_32_be(std::ostream& os, float value) { write_32_be(os, std::bit_cast<std::uint32_t>(value)); }
-		inline void write_32_le(std::ostream& os, float value) { write_32_le(os, std::bit_cast<std::uint32_t>(value)); }
-		inline void write_32_ne(std::ostream& os, float value) { write_32_ne(os, std::bit_cast<std::uint32_t>(value)); }
+		inline result<void, io_err> write_32(std::span<char> dst, float value, std::endian endian) { return write_32(dst, std::bit_cast<std::uint32_t>(value), endian); }
+		inline result<void, io_err> write_32_be(std::span<char> dst, float value) { return write_32(dst, value, std::endian::big); }
+		inline result<void, io_err> write_32_le(std::span<char> dst, float value) { return write_32(dst, value, std::endian::little); }
+		inline result<void, io_err> write_32_ne(std::span<char> dst, float value) { return write_32(dst, value, std::endian::native); }
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_64(std::ostream& os, T value, std::endian endian) { write<64>(os, value, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_64_be(std::ostream& os, T value) { write_64(os, value, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_64_le(std::ostream& os, T value) { write_64(os, value, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> void write_64_ne(std::ostream& os, T value) { write_64(os, value, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_64(std::span<char> dst, T value, std::endian endian) { return write<64>(dst, value, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_64_be(std::span<char> dst, T value) { return write_64(dst, value, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_64_le(std::span<char> dst, T value) { return write_64(dst, value, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_64_ne(std::span<char> dst, T value) { return write_64(dst, value, std::endian::native); }
 
-		inline void write_64(std::ostream& os, double value, std::endian endian) { write_64(os, std::bit_cast<std::uint64_t>(value), endian); }
-		inline void write_64_be(std::ostream& os, double value) { write_64_be(os, std::bit_cast<std::uint64_t>(value)); }
-		inline void write_64_le(std::ostream& os, double value) { write_64_le(os, std::bit_cast<std::uint64_t>(value)); }
-		inline void write_64_ne(std::ostream& os, double value) { write_64_ne(os, std::bit_cast<std::uint64_t>(value)); }
+		inline result<void, io_err> write_64(std::span<char> dst, double value, std::endian endian) { return write_64(dst, std::bit_cast<std::uint64_t>(value), endian); }
+		inline result<void, io_err> write_64_be(std::span<char> dst, double value) { return write_64(dst, value, std::endian::big); }
+		inline result<void, io_err> write_64_le(std::span<char> dst, double value) { return write_64(dst, value, std::endian::little); }
+		inline result<void, io_err> write_64_ne(std::span<char> dst, double value) { return write_64(dst, value, std::endian::native); }
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_8(std::istream& is, std::endian endian) { return read<8, T>(is, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_8_be(std::istream& is) { return read_8<T>(is, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_8_le(std::istream& is) { return read_8<T>(is, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_8_ne(std::istream& is) { return read_8<T>(is, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_8(std::span<char const> src, std::endian endian) { return read<8, T>(src, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_8_be(std::span<char const> src) { return read_8<T>(src, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_8_le(std::span<char const> src) { return read_8<T>(src, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_8_ne(std::span<char const> src) { return read_8<T>(src, std::endian::native); }
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_16(std::istream& is, std::endian endian) { return read<16, T>(is, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_16_be(std::istream& is) { return read_16<T>(is, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_16_le(std::istream& is) { return read_16<T>(is, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_16(std::span<char const> src, std::endian endian) { return read<16, T>(src, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_16_be(std::span<char const> src) { return read_16<T>(src, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_16_le(std::span<char const> src) { return read_16<T>(src, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_16_ne(std::span<char const> src) { return read_16<T>(src, std::endian::native); }
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_32(std::istream& is, std::endian endian) { return read<32, T>(is, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_32_be(std::istream& is) { return read_32<T>(is, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_32_le(std::istream& is) { return read_32<T>(is, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_32_ne(std::istream& is) { return read_32<T>(is, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_32(std::span<char const> src, std::endian endian) { return read<32, T>(src, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_32_be(std::span<char const> src) { return read_32<T>(src, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_32_le(std::span<char const> src) { return read_32<T>(src, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_32_ne(std::span<char const> src) { return read_32<T>(src, std::endian::native); }
 
-		inline float read_32(std::istream& is, std::endian endian) { return std::bit_cast<float>(read_32<std::uint32_t>(is, endian)); }
-		inline float read_32_be(std::istream& is) { return std::bit_cast<float>(read_32_be<std::uint32_t>(is)); }
-		inline float read_32_le(std::istream& is) { return std::bit_cast<float>(read_32_le<std::uint32_t>(is)); }
-		inline float read_32_ne(std::istream& is) { return std::bit_cast<float>(read_32_ne<std::uint32_t>(is)); }
+		inline result<float, io_err> read_32(std::span<char const> src, std::endian endian) { auto const f = read<32, std::uint32_t>(src, endian); if (!f.has_value()) return make_err(f.error()); return make_ok(std::bit_cast<float>(f.value())); }
+		inline result<float, io_err> read_32_be(std::span<char const> src) { return read_32(src, std::endian::big); }
+		inline result<float, io_err> read_32_le(std::span<char const> src) { return read_32(src, std::endian::little); }
+		inline result<float, io_err> read_32_ne(std::span<char const> src) { return read_32(src, std::endian::native); }
 
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_64(std::istream& is, std::endian endian) { return read<64, T>(is, endian); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_64_be(std::istream& is) { return read_64<T>(is, std::endian::big); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_64_le(std::istream& is) { return read_64<T>(is, std::endian::little); }
-		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> T read_64_ne(std::istream& is) { return read_64<T>(is, std::endian::native); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_64(std::span<char const> src, std::endian endian) { return read<64, T>(src, endian); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_64_be(std::span<char const> src) { return read_64<T>(src, std::endian::big); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_64_le(std::span<char const> src) { return read_64<T>(src, std::endian::little); }
+		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<T, io_err> read_64_ne(std::span<char const> src) { return read_64<T>(src, std::endian::native); }
 
-		inline double read_64(std::istream& is, std::endian endian) { return std::bit_cast<double>(read_64<std::uint64_t>(is, endian)); }
-		inline double read_64_be(std::istream& is) { return std::bit_cast<double>(read_64_be<std::uint64_t>(is)); }
-		inline double read_64_le(std::istream& is) { return std::bit_cast<double>(read_64_le<std::uint64_t>(is)); }
-		inline double read_64_ne(std::istream& is) { return std::bit_cast<double>(read_64_ne<std::uint64_t>(is)); }
+		inline result<double, io_err> read_64(std::span<char const> src, std::endian endian) { auto const d = read<64, std::uint64_t>(src, endian); if (!d.has_value()) return make_err(d.error()); return make_ok(std::bit_cast<double>(d.value())); }
+		inline result<double, io_err> read_64_be(std::span<char const> src) { return read_64(src, std::endian::big); }
+		inline result<double, io_err> read_64_le(std::span<char const> src) { return read_64(src, std::endian::little); }
+		inline result<double, io_err> read_64_ne(std::span<char const> src) { return read_64(src, std::endian::native); }
 		
 	} // io
 

@@ -59,7 +59,7 @@ namespace ta
 
 
 	// todo:
-	
+	// ...
 
 	// to think about:
 	// do we need a sequence number / timestamp in the heartbeat message?
@@ -648,6 +648,11 @@ int main(int , char* [])
 }
 
 // TODO:
+
+	// set up test project
+	// add testing for binary io
+	// ...
+
 
 	// server code!
 
