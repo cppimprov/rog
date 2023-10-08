@@ -497,6 +497,7 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			join_dir(freetype.code_dir, 'include'),
+			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
 			glew.code_dir,
 			stb.code_dir,
@@ -518,6 +519,7 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			join_dir(freetype.code_dir, 'include'),
+			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
 			glew.code_dir,
 			stb.code_dir,
@@ -674,7 +676,7 @@ class PlatformMSVC:
 
 		# include all the test files (.test.cpp extension) in a source file so the linker doesn't
 		# think they are unreferenced and remove them
-		test_files = get_test_files(rog.code_dir)
+		test_files = get_test_files(bump.code_dir)
 		with open(join_file(get_code_dir('test'), 'test.cpp'), 'w') as test_src_file:
 			test_src_file.write('/* auto-generated: see build.py */\n\n')
 			for f in test_files:
@@ -695,7 +697,8 @@ class PlatformMSVC:
 			join_dir(sdl.code_dir, 'include'),
 			sdlmixer.code_dir,
 			ta.code_dir,
-		]
+			bump.code_dir,
+		] + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		test.libs = [
 			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),

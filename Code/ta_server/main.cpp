@@ -649,7 +649,6 @@ int main(int , char* [])
 
 // TODO:
 
-	// set up test project
 	// add testing for binary io
 	// ...
 

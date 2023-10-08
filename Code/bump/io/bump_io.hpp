@@ -16,7 +16,7 @@ namespace bump
 			output_buffer_too_small = 1,
 		};
 
-		inline result<void, io_err> copy_span(std::span<char> dst, std::span<char const> src)
+		inline result<void, io_err> copy_span(std::span<char const> src, std::span<char> dst)
 		{
 			if (dst.size() < src.size())
 				return make_err(io_err::output_buffer_too_small);
@@ -44,7 +44,7 @@ namespace bump
 				if (e != std::endian::native)
 					bytes = std::byteswap(bytes);
 
-				return copy_span(dst, { reinterpret_cast<char const*>(&bytes), sizeof(bytes) });
+				return copy_span({ reinterpret_cast<char const*>(&bytes), sizeof(bytes) }, dst);
 			}
 
 			template<std::size_t Bits, class T>
@@ -57,7 +57,7 @@ namespace bump
 				auto copy_result = copy_span(src, { reinterpret_cast<char*>(&bytes), sizeof(bytes) });
 
 				if (!copy_result.has_value())
-					return make_err(copy_result.err());
+					return make_err(copy_result.error());
 
 				if (e != std::endian::native)
 					bytes = std::byteswap(bytes);
@@ -82,7 +82,7 @@ namespace bump
 		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_32_le(std::span<char> dst, T value) { return write_32(dst, value, std::endian::little); }
 		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_32_ne(std::span<char> dst, T value) { return write_32(dst, value, std::endian::native); }
 
-		inline result<void, io_err> write_32(std::span<char> dst, float value, std::endian endian) { return write_32(dst, std::bit_cast<std::uint32_t>(value), endian); }
+		inline result<void, io_err> write_32(std::span<char> dst, float value, std::endian endian) { return write<32>(dst, std::bit_cast<std::uint32_t>(value), endian); }
 		inline result<void, io_err> write_32_be(std::span<char> dst, float value) { return write_32(dst, value, std::endian::big); }
 		inline result<void, io_err> write_32_le(std::span<char> dst, float value) { return write_32(dst, value, std::endian::little); }
 		inline result<void, io_err> write_32_ne(std::span<char> dst, float value) { return write_32(dst, value, std::endian::native); }
@@ -92,7 +92,7 @@ namespace bump
 		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_64_le(std::span<char> dst, T value) { return write_64(dst, value, std::endian::little); }
 		template<class T, std::enable_if_t<std::is_integral_v<T>, void>> result<void, io_err> write_64_ne(std::span<char> dst, T value) { return write_64(dst, value, std::endian::native); }
 
-		inline result<void, io_err> write_64(std::span<char> dst, double value, std::endian endian) { return write_64(dst, std::bit_cast<std::uint64_t>(value), endian); }
+		inline result<void, io_err> write_64(std::span<char> dst, double value, std::endian endian) { return write<64>(dst, std::bit_cast<std::uint64_t>(value), endian); }
 		inline result<void, io_err> write_64_be(std::span<char> dst, double value) { return write_64(dst, value, std::endian::big); }
 		inline result<void, io_err> write_64_le(std::span<char> dst, double value) { return write_64(dst, value, std::endian::little); }
 		inline result<void, io_err> write_64_ne(std::span<char> dst, double value) { return write_64(dst, value, std::endian::native); }
