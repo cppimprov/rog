@@ -1,10 +1,7 @@
 #pragma once
 
-#include "bump_result.hpp"
-
 #include <bit>
 #include <iostream>
-#include <span>
 
 namespace bump
 {
@@ -67,108 +64,52 @@ namespace bump
 		} // unnamed
 
 		template<class T>
-		void write_8(std::ostream& os, T value, std::endian endian)
-		{
-			if constexpr (std::is_same_v<T, bool>)
-				return detail::write<8>(os, std::uint8_t{ value }, endian);
-			else
-				return detail::write<8>(os, value, endian);
-		}
+		struct read_impl;
 
-		template<class T> void write_8_be(std::ostream& os, T value) { return write_8(os, value, std::endian::big); }
-		template<class T> void write_8_le(std::ostream& os, T value) { return write_8(os, value, std::endian::little); }
-		template<class T> void write_8_ne(std::ostream& os, T value) { return write_8(os, value, std::endian::native); }
-
-		template<class T>
-		void write_16(std::ostream& os, T value, std::endian endian)
-		{
-			return detail::write<16>(os, value, endian);
-		}
-
-		template<class T> void write_16_be(std::ostream& os, T value) { return write_16(os, value, std::endian::big); }
-		template<class T> void write_16_le(std::ostream& os, T value) { return write_16(os, value, std::endian::little); }
-		template<class T> void write_16_ne(std::ostream& os, T value) { return write_16(os, value, std::endian::native); }
+		template<> struct read_impl<bool> { static bool read(std::istream& is, std::endian endian) { return static_cast<bool>(detail::read<8, std::uint8_t>(is, endian)); } };
+		template<> struct read_impl<std::int8_t> { static std::int8_t read(std::istream& is, std::endian endian) { return detail::read<8, std::int8_t>(is, endian); } };
+		template<> struct read_impl<std::int16_t> { static std::int16_t read(std::istream& is, std::endian endian) { return detail::read<16, std::int16_t>(is, endian); } };
+		template<> struct read_impl<std::int32_t> { static std::int32_t read(std::istream& is, std::endian endian) { return detail::read<32, std::int32_t>(is, endian); } };
+		template<> struct read_impl<std::int64_t> { static std::int64_t read(std::istream& is, std::endian endian) { return detail::read<64, std::int64_t>(is, endian); } };
+		template<> struct read_impl<std::uint8_t> { static std::uint8_t read(std::istream& is, std::endian endian) { return detail::read<8, std::uint8_t>(is, endian); } };
+		template<> struct read_impl<std::uint16_t> { static std::uint16_t read(std::istream& is, std::endian endian) { return detail::read<16, std::uint16_t>(is, endian); } };
+		template<> struct read_impl<std::uint32_t> { static std::uint32_t read(std::istream& is, std::endian endian) { return detail::read<32, std::uint32_t>(is, endian); } };
+		template<> struct read_impl<std::uint64_t> { static std::uint64_t read(std::istream& is, std::endian endian) { return detail::read<64, std::uint64_t>(is, endian); } };
+		template<> struct read_impl<float> { static float read(std::istream& is, std::endian endian) { return std::bit_cast<float>(detail::read<32, std::uint32_t>(is, endian)); } };
+		template<> struct read_impl<double> { static double read(std::istream& is, std::endian endian) { return std::bit_cast<double>(detail::read<64, std::uint64_t>(is, endian)); } };
+		template<> struct read_impl<char8_t> { static char8_t read(std::istream& is, std::endian endian) { return detail::read<8, char8_t>(is, endian); } };
+		template<> struct read_impl<char16_t> { static char16_t read(std::istream& is, std::endian endian) { return detail::read<16, char16_t>(is, endian); } };
+		template<> struct read_impl<char32_t> { static char32_t read(std::istream& is, std::endian endian) { return detail::read<32, char32_t>(is, endian); } };
 
 		template<class T>
-		void write_32(std::ostream& os, T value, std::endian endian)
+		T read(std::istream& is, std::endian value)
 		{
-			if constexpr (std::is_same_v<T, float>)
-				return detail::write<32>(os, std::bit_cast<std::uint32_t>(value), endian);
-			else
-				return detail::write<32>(os, value, endian);
+			return read_impl<T>::read(is, value);
 		}
-
-		template<class T> void write_32_be(std::ostream& os, T value) { return write_32(os, value, std::endian::big); }
-		template<class T> void write_32_le(std::ostream& os, T value) { return write_32(os, value, std::endian::little); }
-		template<class T> void write_32_ne(std::ostream& os, T value) { return write_32(os, value, std::endian::native); }
 
 		template<class T>
-		void write_64(std::ostream& os, T value, std::endian endian)
-		{
-			if constexpr (std::is_same_v<T, double>)
-				return detail::write<64>(os, std::bit_cast<std::uint64_t>(value), endian);
-			else
-				return detail::write<64>(os, value, endian);
-		}
+		struct write_impl;
 
-		template<class T> void write_64_be(std::ostream& os, T value) { return write_64(os, value, std::endian::big); }
-		template<class T> void write_64_le(std::ostream& os, T value) { return write_64(os, value, std::endian::little); }
-		template<class T> void write_64_ne(std::ostream& os, T value) { return write_64(os, value, std::endian::native); }
-
-		template<class T>
-		T read_8(std::istream& is, std::endian endian)
-		{
-			if constexpr (std::is_same_v<T, bool>)
-				return detail::read<8, std::uint8_t>(is, endian);
-			else
-				return detail::read<8, T>(is, endian);
-		}
-
-		template<class T> T read_8_be(std::istream& is) { return read_8<T>(is, std::endian::big); }
-		template<class T> T read_8_le(std::istream& is) { return read_8<T>(is, std::endian::little); }
-		template<class T> T read_8_ne(std::istream& is) { return read_8<T>(is, std::endian::native); }
+		template<> struct write_impl<bool> { static void write(std::ostream& os, bool value, std::endian endian) { detail::write<8>(os, std::uint8_t{ value }, endian); } };
+		template<> struct write_impl<std::int8_t> { static void write(std::ostream& os, std::int8_t value, std::endian endian) { detail::write<8>(os, value, endian); } };
+		template<> struct write_impl<std::int16_t> { static void write(std::ostream& os, std::int16_t value, std::endian endian) { detail::write<16>(os, value, endian); } };
+		template<> struct write_impl<std::int32_t> { static void write(std::ostream& os, std::int32_t value, std::endian endian) { detail::write<32>(os, value, endian); } };
+		template<> struct write_impl<std::int64_t> { static void write(std::ostream& os, std::int64_t value, std::endian endian) { detail::write<64>(os, value, endian); } };
+		template<> struct write_impl<std::uint8_t> { static void write(std::ostream& os, std::uint8_t value, std::endian endian) { detail::write<8>(os, value, endian); } };
+		template<> struct write_impl<std::uint16_t> { static void write(std::ostream& os, std::uint16_t value, std::endian endian) { detail::write<16>(os, value, endian); } };
+		template<> struct write_impl<std::uint32_t> { static void write(std::ostream& os, std::uint32_t value, std::endian endian) { detail::write<32>(os, value, endian); } };
+		template<> struct write_impl<std::uint64_t> { static void write(std::ostream& os, std::uint64_t value, std::endian endian) { detail::write<64>(os, value, endian); } };
+		template<> struct write_impl<float> { static void write(std::ostream& os, float value, std::endian endian) { detail::write<32>(os, std::bit_cast<std::uint32_t>(value), endian); } };
+		template<> struct write_impl<double> { static void write(std::ostream& os, double value, std::endian endian) { detail::write<64>(os, std::bit_cast<std::uint64_t>(value), endian); } };
+		template<> struct write_impl<char8_t> { static void write(std::ostream& os, char8_t value, std::endian endian) { detail::write<8>(os, value, endian); } };
+		template<> struct write_impl<char16_t> { static void write(std::ostream& os, char16_t value, std::endian endian) { detail::write<16>(os, value, endian); } };
+		template<> struct write_impl<char32_t> { static void write(std::ostream& os, char32_t value, std::endian endian) { detail::write<32>(os, value, endian); } };
 
 		template<class T>
-		T read_16(std::istream& is, std::endian endian)
+		void write(std::ostream& os, T value, std::endian endian)
 		{
-			return detail::read<16, T>(is, endian);
+			return write_impl<T>::write(os, value, endian);
 		}
-
-		template<class T> T read_16_be(std::istream& is) { return read_16<T>(is, std::endian::big); }
-		template<class T> T read_16_le(std::istream& is) { return read_16<T>(is, std::endian::little); }
-		template<class T> T read_16_ne(std::istream& is) { return read_16<T>(is, std::endian::native); }
-
-		template<class T>
-		T read_32(std::istream& is, std::endian endian)
-		{
-			if constexpr (std::is_same_v<T, float>)
-				return std::bit_cast<float>(detail::read<32, std::uint32_t>(is, endian));
-			else
-				return detail::read<32, T>(is, endian);
-		}
-
-		template<class T> T read_32_be(std::istream& is) { return read_32<T>(is, std::endian::big); }
-		template<class T> T read_32_le(std::istream& is) { return read_32<T>(is, std::endian::little); }
-		template<class T> T read_32_ne(std::istream& is) { return read_32<T>(is, std::endian::native); }
-
-		template<class T>
-		T read_64(std::istream& is, std::endian endian)
-		{
-			if constexpr (std::is_same_v<T, double>)
-				return std::bit_cast<double>(detail::read<64, std::uint64_t>(is, endian));
-			else
-				return detail::read<64, T>(is, endian);
-		}
-
-		template<class T> T read_64_be(std::istream& is) { return read_64<T>(is, std::endian::big); }
-		template<class T> T read_64_le(std::istream& is) { return read_64<T>(is, std::endian::little); }
-		template<class T> T read_64_ne(std::istream& is) { return read_64<T>(is, std::endian::native); }
-
-		template<class T> struct write_impl;
-		template<class T> void write_struct(std::ostream& os, T const& value, std::endian endian) { return write_impl<T>::write(os, value, endian); }
-
-		template<class T> struct read_impl;
-		template<class T> T read_struct(std::istream& is, std::endian endian) { return read_impl<T>::read(is, endian); }
 
 	} // io
 
