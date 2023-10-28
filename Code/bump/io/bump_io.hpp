@@ -107,7 +107,7 @@ namespace bump
 			return read_impl<T>::read(is);
 		}
 
-		template<class T, class U = void>
+		template<class T>
 		struct write_impl;
 
 		template<> struct write_impl<bool> { static void write(std::ostream& os, bool value) { detail::write<8>(os, std::uint8_t{ value }); } };
