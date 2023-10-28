@@ -47,10 +47,10 @@ namespace bump
 		TEST(Test_bump_io_read_write, bool)
 		{
 			auto os = std::ostringstream();
-			os << setendian(std::endian::big);
+			set_endian(os, std::endian::big);
 			write(os, true);
 			write(os, false);
-			os << setendian(std::endian::little);
+			set_endian(os, std::endian::little);
 			write(os, true);
 			write(os, false);
 
@@ -60,10 +60,10 @@ namespace bump
 			EXPECT_EQ(s, (std::string{ '\x01', '\x00', '\x01', '\x00' }));
 
 			auto is = std::istringstream(std::move(s));
-			is >> setendian(std::endian::big);
+			set_endian(is, std::endian::big);
 			EXPECT_EQ(read<bool>(is), true);
 			EXPECT_EQ(read<bool>(is), false);
-			is >> setendian(std::endian::little);
+			set_endian(is, std::endian::little);
 			EXPECT_EQ(read<bool>(is), true);
 			EXPECT_EQ(read<bool>(is), false);
 		}

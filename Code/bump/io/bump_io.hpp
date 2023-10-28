@@ -14,39 +14,17 @@ namespace bump
 
 			extern int endian_index;
 
-			template<class Arg>
-			struct stream_manipulator
-			{
-				stream_manipulator(void(*fn)(std::ios_base&, Arg), Arg arg):
-					m_fn(fn),
-					m_arg(arg)
-				{ }
-				
-				template<class Elem, class Traits>
-				friend std::basic_istream<Elem, Traits>& operator>>(std::basic_istream<Elem, Traits>& is, stream_manipulator const& m)
-				{
-					m.m_fn(is, m.m_arg);
-					return is;
-				}
-
-				template<class Elem, class Traits>
-				friend std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& os, stream_manipulator const& m)
-				{
-					m.m_fn(os, m.m_arg);
-					return os;
-				}
-
-				void(*m_fn)(std::ios_base&, Arg);
-				Arg m_arg;
-			};
-			
-			void setendian_impl(std::ios_base& s, std::endian endian);
-			std::endian getendian_impl(std::ios_base& s);
-
 		} // detail
 
-		detail::stream_manipulator<std::endian> setendian(std::endian endian);
-		std::endian getendian(std::ios_base& s);
+		inline void set_endian(std::ios_base& s, std::endian endian)
+		{
+			s.iword(detail::endian_index) = (endian == std::endian::little ? 1L : 0L);
+		}
+
+		inline std::endian get_endian(std::ios_base& s)
+		{
+			return (s.iword(detail::endian_index) == 1L ? std::endian::little : std::endian::big);
+		}
 
 		namespace detail
 		{
@@ -57,7 +35,7 @@ namespace bump
 				static_assert(std::is_unsigned_v<U>, "type U is not an unsigned type");
 				static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little, "mixed endian systems are not supported");
 
-				if (getendian(os) != std::endian::native)
+				if (get_endian(os) != std::endian::native)
 					value = std::byteswap(value);
 				
 				os.write(reinterpret_cast<char const*>(&value), sizeof(value));
@@ -72,7 +50,7 @@ namespace bump
 				U bytes;
 				is.read(reinterpret_cast<char*>(&bytes), sizeof(bytes));
 
-				if (getendian(is) != std::endian::native)
+				if (get_endian(is) != std::endian::native)
 					bytes = std::byteswap(bytes);
 				
 				return bytes;
