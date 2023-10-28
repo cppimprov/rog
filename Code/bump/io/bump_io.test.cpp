@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <iomanip>
+
 namespace bump
 {
 
@@ -12,14 +14,45 @@ namespace bump
 		// break on platforms with different sized fundamental types. If this 
 		// happens, the tests should be adjusted for those platforms (see wchar_t
 		// for an example).
+		
+		// todo:
+		// check that default stream endianness is big endian
+		// check that we can change the endianness per stream
+		// check that changing the endianness actually works... 
+
+// 		TEST(Test_bump_io_read_write, endian)
+// 		{
+// 			auto os = std::ostringstream();
+// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::big);
+// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::little);
+// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::native);
+
+// 			auto s = std::move(os.str());
+
+// 			EXPECT_EQ(s.size(), 6);
+// 			EXPECT_EQ(s.substr(0, 4), (std::string{ '\x12', '\x34', '\x34', '\x12' }));
+
+// 			if constexpr(std::endian::native == std::endian::big)
+// 				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x12', '\x34' }));
+// 			else
+// 				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x34', '\x12' }));
+
+// 			auto is = std::istringstream(std::move(s));
+// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::big), (std::uint16_t{ 0x1234 }));
+// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::little), (std::uint16_t{ 0x1234 }));
+// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::native), (std::uint16_t{ 0x1234 }));
+// 		}
+		
 
 		TEST(Test_bump_io_read_write, bool)
 		{
 			auto os = std::ostringstream();
-			write(os, true, std::endian::big);
-			write(os, false, std::endian::big);
-			write(os, true, std::endian::little);
-			write(os, false, std::endian::little);
+			os << setendian(std::endian::big);
+			write(os, true);
+			write(os, false);
+			os << setendian(std::endian::little);
+			write(os, true);
+			write(os, false);
 
 			auto s = std::move(os.str());
 
@@ -27,10 +60,12 @@ namespace bump
 			EXPECT_EQ(s, (std::string{ '\x01', '\x00', '\x01', '\x00' }));
 
 			auto is = std::istringstream(std::move(s));
-			EXPECT_EQ(read<bool>(is, std::endian::big), true);
-			EXPECT_EQ(read<bool>(is, std::endian::big), false);
-			EXPECT_EQ(read<bool>(is, std::endian::little), true);
-			EXPECT_EQ(read<bool>(is, std::endian::little), false);
+			is >> setendian(std::endian::big);
+			EXPECT_EQ(read<bool>(is), true);
+			EXPECT_EQ(read<bool>(is), false);
+			is >> setendian(std::endian::little);
+			EXPECT_EQ(read<bool>(is), true);
+			EXPECT_EQ(read<bool>(is), false);
 		}
 
 // 		TEST(Test_bump_io_read_write, char)
@@ -662,29 +697,6 @@ namespace bump
 // 			EXPECT_EQ(read_64_le<double>(is), (double{ 0.15625 }));
 // 		}
 
-// 		TEST(Test_bump_io_read_write, endian)
-// 		{
-// 			auto os = std::ostringstream();
-// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::big);
-// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::little);
-// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::native);
-
-// 			auto s = std::move(os.str());
-
-// 			EXPECT_EQ(s.size(), 6);
-// 			EXPECT_EQ(s.substr(0, 4), (std::string{ '\x12', '\x34', '\x34', '\x12' }));
-
-// 			if constexpr(std::endian::native == std::endian::big)
-// 				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x12', '\x34' }));
-// 			else
-// 				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x34', '\x12' }));
-
-// 			auto is = std::istringstream(std::move(s));
-// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::big), (std::uint16_t{ 0x1234 }));
-// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::little), (std::uint16_t{ 0x1234 }));
-// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::native), (std::uint16_t{ 0x1234 }));
-// 		}
-		
 		struct test_struct
 		{
 			std::uint32_t a;
@@ -699,28 +711,28 @@ namespace bump
 		template<>
 		struct write_impl<test_struct>
 		{
-			static void write(std::ostream& os, test_struct const& value, std::endian endian)
+			static void write(std::ostream& os, test_struct const& value)
 			{
-				io::write(os, value.a, endian);
-				io::write(os, value.b, endian);
-				io::write(os, value.c, endian);
-				io::write(os, value.d, endian);
-				io::write(os, value.e, endian);
+				io::write(os, value.a);
+				io::write(os, value.b);
+				io::write(os, value.c);
+				io::write(os, value.d);
+				io::write(os, value.e);
 			}
 		};
 
 		template<>
 		struct read_impl<test_struct>
 		{
-			static test_struct read(std::istream& is, std::endian endian)
+			static test_struct read(std::istream& is)
 			{
 				auto result = test_struct();
 
-				result.a = io::read<decltype(result.a)>(is, endian);
-				result.b = io::read<decltype(result.b)>(is, endian);
-				result.c = io::read<decltype(result.c)>(is, endian);
-				result.d = io::read<decltype(result.d)>(is, endian);
-				result.e = io::read<decltype(result.e)>(is, endian);
+				result.a = io::read<decltype(result.a)>(is);
+				result.b = io::read<decltype(result.b)>(is);
+				result.c = io::read<decltype(result.c)>(is);
+				result.d = io::read<decltype(result.d)>(is);
+				result.e = io::read<decltype(result.e)>(is);
 
 				return result;
 			}
@@ -735,11 +747,11 @@ namespace bump
 
 			auto os = std::ostringstream(std::move(s));
 
-			write(os, d, std::endian::big);
+			write(os, d);
 
 			auto is = std::istringstream(std::move(os.str()));
 
-			auto const e = read<test_struct>(is, std::endian::big);
+			auto const e = read<test_struct>(is);
 
 			EXPECT_EQ(d, e);
 		}
@@ -748,6 +760,9 @@ namespace bump
 		// 2. std container support
 		// 2.5 test std container support
 		// 3. glm support (other bump data structure support?)
+
+		// todo:
+		// does this work properly with adl / namespaces?
 
 	} // io
 
