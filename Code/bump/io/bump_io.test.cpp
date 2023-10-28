@@ -18,31 +18,56 @@ namespace bump
 		// todo:
 		// check that default stream endianness is big endian
 		// check that we can change the endianness per stream
-		// check that changing the endianness actually works... 
+		// check that changing the endianness actually works...
 
-// 		TEST(Test_bump_io_read_write, endian)
-// 		{
-// 			auto os = std::ostringstream();
-// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::big);
-// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::little);
-// 			write_16(os, std::uint16_t{ 0x1234 }, std::endian::native);
+		TEST(Test_bump_io_stream_endian, default_is_big)
+		{
+			auto os = std::ostringstream();
+			EXPECT_EQ(get_endian(os), std::endian::big);
+			auto is = std::istringstream();
+			EXPECT_EQ(get_endian(is), std::endian::big);
+		}
 
-// 			auto s = std::move(os.str());
+		TEST(Test_bump_io_stream_endian, change_per_stream)
+		{
+			auto os = std::ostringstream();
+			set_endian(os, std::endian::little);
+			EXPECT_EQ(get_endian(os), std::endian::little);
+			auto is = std::istringstream();
+			EXPECT_EQ(get_endian(is), std::endian::big);
+			set_endian(is, std::endian::big);
+			EXPECT_EQ(get_endian(os), std::endian::little);
+			EXPECT_EQ(get_endian(is), std::endian::big);
+		}
 
-// 			EXPECT_EQ(s.size(), 6);
-// 			EXPECT_EQ(s.substr(0, 4), (std::string{ '\x12', '\x34', '\x34', '\x12' }));
+		TEST(Test_bump_io_read_write, endian)
+		{
+			auto os = std::ostringstream();
+			set_endian(os, std::endian::big);
+			write(os, std::uint16_t{ 0x1234 });
+			set_endian(os, std::endian::little);
+			write(os, std::uint16_t{ 0x1234 });
+			set_endian(os, std::endian::native);
+			write(os, std::uint16_t{ 0x1234 });
 
-// 			if constexpr(std::endian::native == std::endian::big)
-// 				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x12', '\x34' }));
-// 			else
-// 				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x34', '\x12' }));
+			auto s = std::move(os.str());
 
-// 			auto is = std::istringstream(std::move(s));
-// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::big), (std::uint16_t{ 0x1234 }));
-// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::little), (std::uint16_t{ 0x1234 }));
-// 			EXPECT_EQ(read_16<std::uint16_t>(is, std::endian::native), (std::uint16_t{ 0x1234 }));
-// 		}
-		
+			EXPECT_EQ(s.size(), 6);
+			EXPECT_EQ(s.substr(0, 4), (std::string{ '\x12', '\x34', '\x34', '\x12' }));
+
+			if constexpr(std::endian::native == std::endian::big)
+				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x12', '\x34' }));
+			else
+				EXPECT_EQ(s.substr(4, 2), (std::string{ '\x34', '\x12' }));
+
+			auto is = std::istringstream(std::move(s));
+			set_endian(is, std::endian::big);
+			EXPECT_EQ(read<std::uint16_t>(is), (std::uint16_t{ 0x1234 }));
+			set_endian(is, std::endian::little);
+			EXPECT_EQ(read<std::uint16_t>(is), (std::uint16_t{ 0x1234 }));
+			set_endian(is, std::endian::native);
+			EXPECT_EQ(read<std::uint16_t>(is), (std::uint16_t{ 0x1234 }));
+		}
 
 		TEST(Test_bump_io_read_write, bool)
 		{
@@ -68,25 +93,29 @@ namespace bump
 			EXPECT_EQ(read<bool>(is), false);
 		}
 
-// 		TEST(Test_bump_io_read_write, char)
-// 		{
-// 			auto os = std::ostringstream();
-// 			write_8_be(os, 'a');
-// 			write_8_be(os, '_');
-// 			write_8_le(os, '\x00');
-// 			write_8_le(os, '\xff');
+		TEST(Test_bump_io_read_write, char)
+		{
+			auto os = std::ostringstream();
+			set_endian(os, std::endian::big);
+			write(os, 'a');
+			write(os, '_');
+			set_endian(os, std::endian::little);
+			write(os, '\x00');
+			write(os, '\xff');
 
-// 			auto s = std::move(os.str());
+			auto s = std::move(os.str());
 
-// 			EXPECT_EQ(s.size(), 4);
-// 			EXPECT_EQ(s, (std::string{ 'a', '_', '\x00', '\xff' }));
+			EXPECT_EQ(s.size(), 4);
+			EXPECT_EQ(s, (std::string{ 'a', '_', '\x00', '\xff' }));
 
-// 			auto is = std::istringstream(std::move(s));
-// 			EXPECT_EQ(read_8_be<char>(is), 'a');
-// 			EXPECT_EQ(read_8_be<char>(is), '_');
-// 			EXPECT_EQ(read_8_le<char>(is), '\x00');
-// 			EXPECT_EQ(read_8_le<char>(is), '\xff');
-// 		}
+			auto is = std::istringstream(std::move(s));
+			set_endian(os, std::endian::big);
+			EXPECT_EQ(read<char>(is), 'a');
+			EXPECT_EQ(read<char>(is), '_');
+			set_endian(os, std::endian::little);
+			EXPECT_EQ(read<char>(is), '\x00');
+			EXPECT_EQ(read<char>(is), '\xff');
+		}
 
 // 		TEST(Test_bump_io_read_write, unsigned_char)
 // 		{
@@ -760,9 +789,6 @@ namespace bump
 		// 2. std container support
 		// 2.5 test std container support
 		// 3. glm support (other bump data structure support?)
-
-		// todo:
-		// does this work properly with adl / namespaces?
 
 	} // io
 
