@@ -19,20 +19,20 @@ namespace bump
 		template<class T1, class T2>
 		struct write_impl<std::pair<T1, T2>>
 		{
-			static void write(std::ostream& os, std::pair<T1, T2> const& value, std::endian endian)
+			static void write(std::ostream& os, std::pair<T1, T2> const& value)
 			{
-				write<T1>(os, value.first, endian);
-				write<T2>(os, value.second, endian);
+				io::write<T1>(os, value.first);
+				io::write<T2>(os, value.second);
 			}
 		};
 
 		template<class T1, class T2>
 		struct read_impl<std::pair<T1, T2>>
 		{
-			static std::pair<T1, T2> read(std::istream& is, std::endian endian)
+			static std::pair<T1, T2> read(std::istream& is)
 			{
-				auto first = read<T1>(is, endian);
-				auto second = read<T2>(is, endian);
+				auto first = io::read<T1>(is);
+				auto second = io::read<T2>(is);
 				return { std::move(first), std::move(second) };
 			}
 		};
@@ -44,21 +44,21 @@ namespace bump
 		template<class Key, class T, class Comp, class Alloc>
 		struct write_impl<std::map<Key, T, Comp, Alloc>>
 		{
-			static void write(std::ostream& os, std::map<Key, T, Comp, Alloc> const& value, std::endian endian)
+			static void write(std::ostream& os, std::map<Key, T, Comp, Alloc> const& value)
 			{
-				write<std::uint64_t>(os, value.size(), endian);
+				io::write<std::uint64_t>(os, value.size());
 
 				for (auto const& p : value)
-					write<std::map<Key, T, Comp, Alloc>::value_type>(os, p, endian);
+					io::write<std::map<Key, T, Comp, Alloc>::value_type>(os, p);
 			}
 		};
 
 		template<class Key, class T, class Comp, class Alloc>
 		struct read_impl<std::map<Key, T, Comp, Alloc>>
 		{
-			static std::map<Key, T, Comp, Alloc> read(std::istream& is, std::endian endian)
+			static std::map<Key, T, Comp, Alloc> read(std::istream& is)
 			{
-				auto const size = read<std::uint64_t>(is, endian);
+				auto const size = io::read<std::uint64_t>(is);
 
 				if (size > std::map<Key, T, Comp, Alloc>::max_size())
 				{
@@ -71,7 +71,7 @@ namespace bump
 
 				for (auto i : range(0, size))
 				{
-					auto p = read<std::map<Key, T, Comp, Alloc>::value_type>(is, endian);
+					auto p = io::read<std::map<Key, T, Comp, Alloc>::value_type>(is);
 					auto const it = result.insert(std::move(p));
 
 					if (!it.second)
@@ -93,21 +93,21 @@ namespace bump
 		template<class CharT, class Traits, class Alloc>
 		struct write_impl<std::basic_string<CharT, Traits, Alloc>>
 		{
-			static void write(std::ostream& os, std::basic_string<CharT, Traits, Alloc> const& value, std::endian endian)
+			static void write(std::ostream& os, std::basic_string<CharT, Traits, Alloc> const& value)
 			{
-				write<std::uint64_t>(os, value.size(), endian);
+				io::write<std::uint64_t>(os, value.size());
 
 				for (auto const& item : value)
-					write<CharT>(os, item, endian);
+					io::write<CharT>(os, item);
 			}
 		};
 
 		template<class CharT, class Traits, class Alloc>
 		struct read_impl<std::basic_string<CharT, Traits, Alloc>>
 		{
-			static std::basic_string<CharT, Traits, Alloc> read(std::istream& is, std::endian endian)
+			static std::basic_string<CharT, Traits, Alloc> read(std::istream& is)
 			{
-				auto const size = read<std::uint64_t>(is, endian);
+				auto const size = io::read<std::uint64_t>(is);
 
 				if (size > std::basic_string<CharT, Traits, Alloc>::max_size())
 				{
@@ -120,7 +120,7 @@ namespace bump
 				result.reserve(size);
 
 				for (auto i : range(0, size))
-					result.push_back(read<CharT>(is, endian));
+					result.push_back(io::read<CharT>(is));
 
 				return result;
 			}
@@ -133,21 +133,21 @@ namespace bump
 		template<class T, class Alloc>
 		struct write_impl<std::vector<T, Alloc>>
 		{
-			static void write(std::ostream& os, std::vector<T, Alloc> const& value, std::endian endian)
+			static void write(std::ostream& os, std::vector<T, Alloc> const& value)
 			{
-				write<std::uint64_t>(os, value.size(), endian); 
+				io::write<std::uint64_t>(os, value.size());
 
 				for (auto const& item : value)
-					write<T>(os, item, endian);
+					io::write<T>(os, item);
 			}
 		};
 
 		template<class T, class Alloc>
 		struct read_impl<std::vector<T, Alloc>>
 		{
-			static std::vector<T, Alloc> read(std::istream& is, std::endian endian)
+			static std::vector<T, Alloc> read(std::istream& is)
 			{
-				auto const size = read<std::uint64_t>(is, endian);
+				auto const size = io::read<std::uint64_t>(is);
 
 				if (size > std::vector<T, Alloc>::max_size())
 				{
@@ -160,7 +160,7 @@ namespace bump
 				result.reserve(size);
 
 				for (auto i : range(0, size))
-					result.push_back(read<T>(is, endian));
+					result.push_back(io::read<T>(is));
 
 				return result;
 			}
