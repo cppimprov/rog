@@ -62,7 +62,7 @@ namespace bump
 
 				if (size > std::map<Key, T, Comp, Alloc>::max_size())
 				{
-					log::error("bump::io::read_impl<std::map<Key, T, Comp, Alloc>>::read() failed: map size too large for this platform!");
+					log_error("bump::io::read_impl<std::map<Key, T, Comp, Alloc>>::read() failed: map size too large for this platform!");
 					is.setstate(std::ios::failbit);
 					return { };
 				}
@@ -76,7 +76,7 @@ namespace bump
 
 					if (!it.second)
 					{
-						log::error("bump::io::read_impl<std::map<Key, T, Comp, Alloc>>::read() failed: duplicate map key!");
+						log_error("bump::io::read_impl<std::map<Key, T, Comp, Alloc>>::read() failed: duplicate map key!");
 						is.setstate(std::ios::failbit);
 						return { };
 					}
@@ -111,7 +111,7 @@ namespace bump
 
 				if (size > std::basic_string<CharT, Traits, Alloc>::max_size())
 				{
-					log::error("bump::io::read_impl<std::basic_string<CharT, Traits, Alloc>>::read() failed: string size too large for this platform!");
+					log_error("bump::io::read_impl<std::basic_string<CharT, Traits, Alloc>>::read() failed: string size too large for this platform!");
 					is.setstate(std::ios::failbit);
 					return { };
 				}
@@ -151,7 +151,7 @@ namespace bump
 
 				if (size > std::vector<T, Alloc>::max_size())
 				{
-					log::error("bump::io::read_impl<std::vector<T, Alloc>>::read() failed: vector size too large for this platform!");
+					log_error("bump::io::read_impl<std::vector<T, Alloc>>::read() failed: vector size too large for this platform!");
 					is.setstate(std::ios::failbit);
 					return { };
 				}

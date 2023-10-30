@@ -1,6 +1,4 @@
-#include "bump_io.hpp"
-
-#include "bump_die.hpp"
+#include "bump_io_read_write.hpp"
 
 namespace bump
 {
