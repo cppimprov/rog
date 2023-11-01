@@ -59,17 +59,17 @@ namespace bump
 			static std::map<Key, T, Comp, Alloc> read(std::istream& is)
 			{
 				auto const size = io::read<std::uint64_t>(is);
+				
+				auto result = std::map<Key, T, Comp, Alloc>();
 
-				if (size > std::map<Key, T, Comp, Alloc>::max_size())
+				if (size > result.max_size())
 				{
 					log_error("bump::io::read_impl<std::map<Key, T, Comp, Alloc>>::read() failed: map size too large for this platform!");
 					is.setstate(std::ios::failbit);
 					return { };
 				}
 
-				auto result = std::map<Key, T, Comp, Alloc>();
-
-				for (auto i : range(0, size))
+				for ([[maybe_unused]] auto _ : range(0, size))
 				{
 					auto p = io::read<std::map<Key, T, Comp, Alloc>::value_type>(is);
 					auto const it = result.insert(std::move(p));

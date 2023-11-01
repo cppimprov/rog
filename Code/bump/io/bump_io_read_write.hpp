@@ -87,7 +87,7 @@ namespace bump
 		template<class T>
 		T read(std::istream& is)
 		{
-			return read_impl<T>::read(is);
+			return read_impl<std::decay_t<T>>::read(is);
 		}
 
 		template<class T> struct write_impl;
@@ -95,7 +95,7 @@ namespace bump
 		template<class T>
 		void write(std::ostream& os, T value)
 		{
-			return write_impl<T>::write(os, value);
+			return write_impl<std::decay_t<T>>::write(os, value);
 		}
 
 	} // io
