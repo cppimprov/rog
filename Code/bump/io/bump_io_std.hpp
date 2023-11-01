@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace bump
@@ -58,9 +59,9 @@ namespace bump
 		{
 			static std::map<Key, T, Comp, Alloc> read(std::istream& is)
 			{
-				auto const size = io::read<std::uint64_t>(is);
-				
 				auto result = std::map<Key, T, Comp, Alloc>();
+
+				auto const size = io::read<std::uint64_t>(is);
 
 				if (size > result.max_size())
 				{
@@ -102,24 +103,37 @@ namespace bump
 			}
 		};
 
+		template<class CharT, class Traits>
+		struct write_impl<std::basic_string_view<CharT, Traits>>
+		{
+			static void write(std::ostream& os, std::basic_string_view<CharT, Traits> const& value)
+			{
+				io::write<std::uint64_t>(os, value.size());
+
+				for (auto const& item : value)
+					io::write<CharT>(os, item);
+			}
+		};
+
 		template<class CharT, class Traits, class Alloc>
 		struct read_impl<std::basic_string<CharT, Traits, Alloc>>
 		{
 			static std::basic_string<CharT, Traits, Alloc> read(std::istream& is)
 			{
+				auto result = std::basic_string<CharT, Traits, Alloc>();
+
 				auto const size = io::read<std::uint64_t>(is);
 
-				if (size > std::basic_string<CharT, Traits, Alloc>::max_size())
+				if (size > result.max_size())
 				{
 					log_error("bump::io::read_impl<std::basic_string<CharT, Traits, Alloc>>::read() failed: string size too large for this platform!");
 					is.setstate(std::ios::failbit);
 					return { };
 				}
 
-				auto result = std::basic_string<CharT, Traits, Alloc>();
 				result.reserve(size);
 
-				for (auto i : range(0, size))
+				for ([[maybe_unused]] auto _ : range(0, size))
 					result.push_back(io::read<CharT>(is));
 
 				return result;
@@ -147,19 +161,20 @@ namespace bump
 		{
 			static std::vector<T, Alloc> read(std::istream& is)
 			{
+				auto result = std::vector<T, Alloc>();
+
 				auto const size = io::read<std::uint64_t>(is);
 
-				if (size > std::vector<T, Alloc>::max_size())
+				if (size > result.max_size())
 				{
 					log_error("bump::io::read_impl<std::vector<T, Alloc>>::read() failed: vector size too large for this platform!");
 					is.setstate(std::ios::failbit);
 					return { };
 				}
 
-				auto result = std::vector<T, Alloc>();
 				result.reserve(size);
 
-				for (auto i : range(0, size))
+				for ([[maybe_unused]] auto _ : range(0, size))
 					result.push_back(io::read<T>(is));
 
 				return result;
