@@ -142,14 +142,14 @@ int main()
 		
 		die_if(!info.has_value());
 
-		auto requester = net::make_tcp_connector_socket(info.value().m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
+		connection = net::make_tcp_stream(info.value().m_endpoints.at(0), net::blocking_mode::NON_BLOCKING).unwrap();
 
 		while (true)
 		{
-			if (requester.check())
-				connection = std::move(requester);
+			if (connection.select().unwrap().writeable)
+				break;
 
-			if (!requester.is_open())
+			if (!connection.is_open())
 				break;
 		}
 

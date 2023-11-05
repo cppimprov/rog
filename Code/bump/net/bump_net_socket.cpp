@@ -69,20 +69,7 @@ namespace bump
 				auto const result = ::connect(s.get_handle(), reinterpret_cast<::sockaddr const*>(&endpoint.get_address_storage()), endpoint.get_address_length());
 
 				if (result != 0)
-				{
-					auto const err = get_last_error();
-					auto const err_value = err.code().value();
-
-#if defined(BUMP_NET_WS2)
-					if (err_value == WSAEWOULDBLOCK || err_value == WSAECONNRESET)
-						return make_ok();
-#else
-					if (err_value == EAGAIN || err_value == EINPROGRESS)
-						return make_ok();
-#endif
-
-					return make_err(err);
-				}
+					return make_err(get_last_error());
 
 				return make_ok();
 			}
@@ -104,26 +91,17 @@ namespace bump
 				auto const result = ::accept(s.get_handle(), reinterpret_cast<::sockaddr*>(&addr), &addr_len);
 
 				if (result == invalid_socket_handle)
-				{
-					auto const err = get_last_error();
-					auto const err_value = err.code().value();
-
-#if defined(BUMP_NET_WS2)
-					if (err_value == WSAEWOULDBLOCK || err_value == WSAECONNRESET)
-						return make_ok(std::make_tuple(socket(), endpoint()));
-#else
-					if (err_value == EAGAIN || err_value == EWOULDBLOCK || err_value == ECONNABORTED)
-						return make_ok(std::make_tuple(socket(), endpoint()));
-#endif
-
-					return make_err(err);
-				}
+					return make_err(get_last_error());
 
 				return make_ok(std::make_tuple(socket(result), net::endpoint(addr, addr_len)));
 			}
 
-			result<std::optional<bool>, std::system_error> check(socket const& s)
+			result<select_result, std::system_error> select(socket const& s)
 			{
+				auto read_fds = fd_set();
+				FD_ZERO(&read_fds);
+				FD_SET(s.get_handle(), &read_fds);
+				
 				auto write_fds = fd_set();
 				FD_ZERO(&write_fds);
 				FD_SET(s.get_handle(), &write_fds);
@@ -135,21 +113,20 @@ namespace bump
 				auto timeout = timeval{ 0, 0 };
 				auto n_fds = static_cast<int>(s.get_handle()) + 1;
 
-				auto const result = ::select(n_fds, nullptr, &write_fds, &except_fds, &timeout);
+				auto const result = ::select(n_fds, &read_fds, &write_fds, &except_fds, &timeout);
 
 				if (result == socket_error)
 					return make_err(get_last_error());
 
 				if (result == 0)
-					return make_ok(std::optional<bool>(std::nullopt)); // not ready
+					return make_ok(select_result{ false, false, false });
 
-				if (FD_ISSET(s.get_handle(), &except_fds))
-					return make_ok(std::optional<bool>(false)); // connection failed
-					
-				if (FD_ISSET(s.get_handle(), &write_fds))
-					return make_ok(std::optional<bool>(true)); // connection succeeded
-
-				die(); // unreachable (hopefully)
+				return make_ok(select_result
+				{ 
+					static_cast<bool>(FD_ISSET(s.get_handle(), &read_fds)),
+					static_cast<bool>(FD_ISSET(s.get_handle(), &write_fds)),
+					static_cast<bool>(FD_ISSET(s.get_handle(), &except_fds))
+				});
 			}
 
 			result<std::size_t, std::system_error> send(socket const& s, std::span<const std::uint8_t> data)
@@ -157,20 +134,7 @@ namespace bump
 				auto const result = ::send(s.get_handle(), reinterpret_cast<char const*>(data.data()), static_cast<int>(data.size()), 0);
 
 				if (result == socket_error)
-				{
-					auto const err = get_last_error();
-					auto const err_value = err.code().value();
-
-#if defined(BUMP_NET_WS2)
-					if (err_value == WSAEWOULDBLOCK)
-						return make_ok(std::size_t{ 0 });
-#else
-					if (err_value == EAGAIN || err_value == EWOULDBLOCK)
-						return make_ok(std::size_t{ 0 });
-#endif
-
-					return make_err(err);
-				}
+					return make_err(get_last_error());
 
 				return make_ok(narrow_cast<std::size_t>(result));
 			}
@@ -180,76 +144,61 @@ namespace bump
 				auto const result = ::sendto(s.get_handle(), reinterpret_cast<char const*>(data.data()), static_cast<int>(data.size()), 0, reinterpret_cast<::sockaddr const*>(&remote.get_address_storage()), remote.get_address_length());
 
 				if (result == socket_error)
-				{
-					auto const err = get_last_error();
-					auto const err_value = err.code().value();
-
-#if defined(BUMP_NET_WS2)
-					if (err_value == WSAEWOULDBLOCK)
-						return make_ok(std::size_t{ 0 });
-#else
-					if (err_value == EAGAIN || err_value == EWOULDBLOCK)
-						return make_ok(std::size_t{ 0 });
-#endif
-
-					return make_err(err);
-				}
+					return make_err(get_last_error());
 
 				return make_ok(narrow_cast<std::size_t>(result));
 			}
 
-			result<std::optional<std::size_t>, std::system_error> receive(socket const& s, std::span<std::uint8_t> buffer)
+			result<std::size_t, std::system_error> receive(socket const& s, std::span<std::uint8_t> buffer)
 			{
-				auto const result = ::recv(s.get_handle(), reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), 0);
 
-				if (result == 0 && buffer.size() != 0)
-					return make_ok(std::optional<std::size_t>(std::nullopt)); // connection closed!
-
-				if (result == socket_error)
-				{
-					auto const err = get_last_error();
-					auto const err_value = err.code().value();
+				// note:
+				// on Windows we get WSAEMSGSIZE if the buffer is too small
+				// on Linux, we pass MSG_TRUNC, so recvfrom will return the actual size of the packet
+				// we can then check if the packet has been truncated, and manually return an error
 
 #if defined(BUMP_NET_WS2)
-					if (err_value == WSAEWOULDBLOCK)
-						return make_ok(std::optional<std::size_t>(std::size_t{ 0 }));
+				auto flags = 0;
 #else
-					if (err_value == EAGAIN || err_value == EWOULDBLOCK)
-						return make_ok(std::optional<std::size_t>(std::size_t{ 0 }));
+				auto flags = MSG_TRUNC;
 #endif
 
-					return make_err(err);
-				}
+				auto const result = ::recv(s.get_handle(), reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), flags);
 
-				return make_ok(std::optional<std::size_t>(narrow_cast<std::size_t>(result)));
+				if (result == socket_error)
+					return make_err(get_last_error());
+
+				if (result > buffer.size())
+					return make_err(std::system_error(make_error_code(std::errc::message_size), "received packet was truncated!"));
+
+				return make_ok(narrow_cast<std::size_t>(result));
 			}
 			
-			result<std::optional<std::tuple<endpoint, std::size_t>>, std::system_error> receive_from(socket const& s, std::span<std::uint8_t> buffer)
+			result<std::tuple<endpoint, std::size_t>, std::system_error> receive_from(socket const& s, std::span<std::uint8_t> buffer)
 			{
-				auto addr = ::sockaddr_storage();
-				auto addr_len = socklen_t{ sizeof(::sockaddr_storage) };
-				auto const result = ::recvfrom(s.get_handle(), reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), 0, reinterpret_cast<sockaddr*>(&addr), &addr_len);
 
-				if (result == 0 && buffer.size() != 0)
-					return make_ok(std::optional<std::tuple<endpoint, std::size_t>>(std::nullopt)); // connection closed!
-
-				if (result == socket_error)
-				{
-					auto const err = get_last_error();
-					auto const err_value = err.code().value();
+				// note:
+				// on Windows we get WSAEMSGSIZE if the buffer is too small
+				// on Linux, we pass MSG_TRUNC, so recvfrom will return the actual size of the packet
+				// we can then check if the packet has been truncated, and manually return an error
 
 #if defined(BUMP_NET_WS2)
-					if (err_value == WSAEWOULDBLOCK)
-						return make_ok(std::optional<std::tuple<endpoint, std::size_t>>({ endpoint(), std::size_t{ 0 } }));
+				auto flags = 0;
 #else
-					if (err_value == EAGAIN || err_value == EWOULDBLOCK)
-						return make_ok(std::optional<std::tuple<endpoint, std::size_t>>({ endpoint(), std::size_t{ 0 } }));
+				auto flags = MSG_TRUNC;
 #endif
 
-					return make_err(err);
-				}
+				auto addr = ::sockaddr_storage();
+				auto addr_len = socklen_t{ sizeof(::sockaddr_storage) };
+				auto const result = ::recvfrom(s.get_handle(), reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), flags, reinterpret_cast<sockaddr*>(&addr), &addr_len);
 
-				return make_ok(std::optional<std::tuple<endpoint, std::size_t>>({ endpoint(addr, addr_len), narrow_cast<std::size_t>(result) }));
+				if (result == socket_error)
+					return make_err(get_last_error());
+
+				if (result > buffer.size())
+					return make_err(std::system_error(make_error_code(std::errc::message_size), "received packet was truncated!"));
+
+				return make_ok(std::tuple<endpoint, std::size_t>{ endpoint(addr, addr_len), narrow_cast<std::size_t>(result) });
 			}
 
 		} // platform
@@ -282,108 +231,6 @@ namespace bump
 			close();
 		}
 
-		result<void, std::system_error> socket::set_blocking_mode(blocking_mode mode) const
-		{
-			return platform::set_blocking_mode(*this, mode);
-		}
-
-		result<void, std::system_error> socket::bind(endpoint const& local) const
-		{
-			return platform::bind(*this, local);
-		}
-
-		result<void, std::system_error> socket::connect(endpoint const& remote) const
-		{
-			return platform::connect(*this, remote);
-		}
-
-		result<void, std::system_error> socket::listen() const
-		{
-			return platform::listen(*this);
-		}
-
-		result<std::tuple<socket, endpoint>, std::system_error> socket::accept() const
-		{
-			return platform::accept(*this);
-		}
-
-		result<bool, std::system_error> socket::check()
-		{
-			auto const result = platform::check(*this);
-
-			if (!result.has_value())
-				return make_err(result.error()); // error while checking!
-			
-			if (!result.value().has_value())
-				return make_ok(false); // still waiting...
-			
-			if (!result.value().value())
-			{
-				close();
-				return make_ok(false); // connection failed
-			}
-
-			return make_ok(true); // success!
-		}
-
-		result<std::size_t, std::system_error> socket::send(std::span<const std::uint8_t> data)
-		{
-			auto const result = platform::send(*this, data);
-
-			if (!result.has_value()) // error
-				close();
-
-			return result;
-		}
-
-		result<std::size_t, std::system_error> socket::send_to(endpoint const& remote, std::span<const std::uint8_t> data)
-		{
-			auto const result = platform::send_to(*this, remote, data);
-
-			if (!result.has_value()) // error
-				close();
-
-			return result;
-		}
-
-		result<std::size_t, std::system_error> socket::receive(std::span<std::uint8_t> buffer)
-		{
-			auto const result = platform::receive(*this, buffer);
-
-			if (!result.has_value()) // error
-			{
-				close();
-				return make_err(result.error());
-			}
-
-			if (!result.value().has_value()) // connection closed
-			{
-				close();
-				return make_ok(std::size_t{ 0 });
-			}
-			
-			return make_ok(result.value().value()); // received some data
-		}
-
-		result<std::tuple<endpoint, std::size_t>, std::system_error> socket::receive_from(std::span<std::uint8_t> buffer)
-		{
-			auto const result = platform::receive_from(*this, buffer);
-
-			if (!result.has_value()) // error
-			{
-				close();
-				return make_err(result.error());
-			}
-
-			if (!result.value().has_value()) // connection closed
-			{
-				close();
-				return make_ok(std::tuple<endpoint, std::size_t>{ endpoint(), std::size_t{ 0 } });
-			}
-			
-			return make_ok(std::tuple<endpoint, std::size_t>{ std::get<0>(result.value().value()), std::get<1>(result.value().value()) }); // received some data
-		}
-
 		bool socket::is_open() const
 		{
 			return (m_handle != platform::invalid_socket_handle);
@@ -413,8 +260,82 @@ namespace bump
 		{
 			return platform::open_socket(address_family, protocol);
 		}
+
+		result<void, std::system_error> socket::set_blocking_mode(blocking_mode mode) const
+		{
+			return platform::set_blocking_mode(*this, mode);
+		}
+
+		result<void, std::system_error> socket::bind(endpoint const& local) const
+		{
+			return platform::bind(*this, local);
+		}
+
+		result<void, std::system_error> socket::listen() const
+		{
+			return platform::listen(*this);
+		}
+
+		result<void, std::system_error> socket::connect(endpoint const& remote) const
+		{
+			return platform::connect(*this, remote);
+		}
 		
-		result<socket, std::system_error> make_tcp_listener_socket(endpoint const& local, blocking_mode mode)
+		result<std::tuple<socket, endpoint>, std::system_error> socket::accept() const
+		{
+			return platform::accept(*this);
+		}
+
+		result<select_result, std::system_error> socket::select() const
+		{
+			return platform::select(*this);
+		}
+
+		result<std::size_t, std::system_error> socket::send(std::span<const std::uint8_t> data) const
+		{
+			return platform::send(*this, data);
+		}
+
+		result<std::size_t, std::system_error> socket::send_to(endpoint const& remote, std::span<const std::uint8_t> data) const
+		{
+			return platform::send_to(*this, remote, data);
+		}
+
+		result<std::size_t, std::system_error> socket::receive(std::span<std::uint8_t> buffer) const
+		{
+			return platform::receive(*this, buffer);
+		}
+
+		result<std::tuple<endpoint, std::size_t>, std::system_error> socket::receive_from(std::span<std::uint8_t> buffer) const
+		{
+			return platform::receive_from(*this, buffer);
+		}
+
+		result<socket, std::system_error> make_tcp_stream(endpoint const& remote, blocking_mode mode)
+		{
+			auto socket_result = make_socket(remote.get_address_family(), ip_protocol::TCP);
+
+			if (!socket_result.has_value())
+				return make_err(socket_result.error());
+			
+			auto socket = socket_result.unwrap();
+
+			auto blocking_mode_result = socket.set_blocking_mode(mode);
+
+			if (!blocking_mode_result)
+				return make_err(blocking_mode_result.error());
+
+			auto connect_result = socket.connect(remote);
+
+			if (connect_result.has_error() && 
+			    connect_result.error().code() != std::errc::operation_would_block &&
+			    connect_result.error().code() != std::errc::resource_unavailable_try_again)
+				return make_err(connect_result.error());
+
+			return make_ok(std::move(socket));
+		}
+		
+		result<socket, std::system_error> make_tcp_listener(endpoint const& local, blocking_mode mode)
 		{
 			auto socket_result = make_socket(local.get_address_family(), ip_protocol::TCP);
 
@@ -440,29 +361,7 @@ namespace bump
 			
 			return make_ok(std::move(socket));
 		}
-		
-		result<socket, std::system_error> make_tcp_connector_socket(endpoint const& remote, blocking_mode mode)
-		{
-			auto socket_result = make_socket(remote.get_address_family(), ip_protocol::TCP);
 
-			if (!socket_result.has_value())
-				return make_err(socket_result.error());
-			
-			auto socket = socket_result.unwrap();
-
-			auto blocking_mode_result = socket.set_blocking_mode(mode);
-
-			if (!blocking_mode_result)
-				return make_err(blocking_mode_result.error());
-
-			auto connect_result = socket.connect(remote);
-
-			if (!connect_result.has_value())
-				return make_err(connect_result.error());
-			
-			return make_ok(std::move(socket));
-		}
-		
 		result<socket, std::system_error> make_udp_socket(endpoint const& local, blocking_mode mode)
 		{
 			auto socket_result = make_socket(local.get_address_family(), ip_protocol::UDP);
@@ -481,33 +380,6 @@ namespace bump
 
 			if (!bind_result.has_value())
 				return make_err(bind_result.error());
-			
-			return make_ok(std::move(socket));
-		}
-		
-		result<socket, std::system_error> make_udp_connected_socket(endpoint const& local, endpoint const& remote, blocking_mode mode)
-		{
-			auto socket_result = make_socket(local.get_address_family(), ip_protocol::UDP);
-
-			if (!socket_result.has_value())
-				return make_err(socket_result.error());
-			
-			auto socket = socket_result.unwrap();
-
-			auto blocking_mode_result = socket.set_blocking_mode(mode);
-
-			if (!blocking_mode_result.has_value())
-				return make_err(blocking_mode_result.error());
-			
-			auto bind_result = socket.bind(local);
-
-			if (!bind_result.has_value())
-				return make_err(bind_result.error());
-			
-			auto connect_result = socket.connect(remote);
-
-			if (!connect_result.has_value())
-				return make_err(connect_result.error());
 			
 			return make_ok(std::move(socket));
 		}

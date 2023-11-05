@@ -33,6 +33,7 @@ namespace bump
 		result& operator=(result&& other) = default;
 
 		bool has_value() const { return m_value.index() == 0; }
+		bool has_error() const { return !has_value(); }
 		explicit operator bool() const { return has_value(); }
 
 		value_type& value() { die_if(!has_value()); return std::get<0>(m_value); }
@@ -71,6 +72,7 @@ namespace bump
 		result& operator=(result&& other) = default;
 
 		bool has_value() const { return (m_value.index() == 0); }
+		bool has_error() const { return !has_value(); }
 		explicit operator bool() const { return has_value(); }
 
 		void value() { die_if(!has_value()); }

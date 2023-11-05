@@ -4,10 +4,12 @@
 
 #include <bump_app.hpp>
 #include <bump_gamestate.hpp>
+#include <bump_io.hpp>
 #include <bump_log.hpp>
 #include <bump_net.hpp>
 #include <bump_transform.hpp>
 
+#include <algorithm>
 #include <random>
 
 namespace ta
@@ -68,6 +70,7 @@ namespace ta
 
 
 	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr);
+	bump::gamestate waiting_for_players(bump::app& app, std::unique_ptr<ta::world> world_ptr);
 
 	bump::gamestate loading(bump::app& app)
 	{
@@ -102,10 +105,10 @@ namespace ta
 		load_test_map(*world);
 		set_world_bounds(world->m_b2_world, glm::vec2(world->m_tiles.extents()) * globals::tile_radius * 2.f);
 
-		return { [&, world = std::move(world)] (bump::app& app) mutable { return main_loop(app, std::move(world)); } };
+		return { [&, world = std::move(world)] (bump::app& app) mutable { return waiting_for_players(app, std::move(world)); } };
 	}
 
-	bump::gamestate waiting_for_players(bump::app& , std::unique_ptr<ta::world> world_ptr)
+	bump::gamestate waiting_for_players(bump::app& , std::unique_ptr<ta::world> )
 	{
 		namespace net = bump::net;
 
@@ -127,31 +130,42 @@ namespace ta
 
 		bump::die_if(!listener.is_open());
 
-		// struct connection
-		// {
-		// 	net::socket m_socket;
-		// 	net::endpoint m_endpoint;
-		// 	std::size_t m_id;
-		// };
+		struct connection
+		{
+			net::socket m_socket;
+			net::endpoint m_endpoint;
+			std::size_t m_id;
+		};
 
-		// auto next_client_id = std::size_t{ 0 };
-		// auto connections = std::vector<connection>();
-		// auto read_buffer = std::vector<std::uint8_t>(4096, '\0'); // TODO: what's the max expected message size?
+		auto constexpr max_message_size = 508; // todo: what should this really be?
 
-		// // receive messages from new clients... should get hello as the first message, then heartbeats
-		// // send hello back to new clients
-		// // send world state to new clients
+		//auto next_client_id = std::size_t{ 0 };
+		//auto connections = std::vector<connection>();
+		auto read_buffer = std::vector<std::uint8_t>(max_message_size, '\0');
 
-		// while (true)
-		// {
-		// 	auto [endpoint, bytes_read] = listener.receive_from(read_buffer).unwrap(); // TODO: test sending 0 bytes to this... we don't actually want the listener to close!
+		// receive messages from new clients... should get hello as the first message, then heartbeats
+		// send hello back to new clients
+		// send world state to new clients
 
-		// 	// if it's a new endpoint... expect a hello message
-		// 	// if it's a known endpoint, expect a heartbeat or goodbye message
+		while (true)
+		{
+			// TODO:
+			// (excess bytes are discarded, but how do we detect that?)
+			// on windows we get WSAEMSGSIZE
+			// on linux, we should pass MSG_TRUNC to recvfrom() and check the returned size?
 
-		// }
+			auto [endpoint, bytes_read] = listener.receive_from(read_buffer).unwrap();
 
-		
+			// we really don't want messages that are too large to be errors!!!
+			// because we're using unwrap... which shouldn't be triggerable from the client side...
+
+			// if no bytes read, disconnect client! (bool in connection struct?)
+			// if buffer too small, how do we detect that? disconnect client!
+			// if something unexpected read, disconnect client!
+
+			// if it's a new endpoint... expect a hello message
+			// if it's a known endpoint, expect a heartbeat or goodbye message
+		}
 
 		// ... wait for (4) players to connect (handle disconnections)
 		// ... move to main_loop state
@@ -649,12 +663,7 @@ int main(int , char* [])
 
 // TODO:
 
-	// add testing for binary io
-	// ...
-
-
 	// server code!
-
 
 
 
