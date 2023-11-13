@@ -21,12 +21,6 @@
 
 // todo (sometime):
 
-	// ditch the various tcp_* and udp_* classes?
-	// we lose the type-safety, but eh...
-	// we can do whatever with a socket, but we'll get errors if we do something weird.
-	// and perhaps we need free functions that take the socket, and extract platform handles, etc. (a layer between socket and platform)
-	// then we just need the make_* functions, and i guess the check / accept stuff?
-
 	// socket options (e.g. getting SO_ERROR)?
 	// setters for endpoint?
 	// set endpoint ports directly in get_address_info, instead of converting to string and back?

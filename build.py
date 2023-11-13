@@ -240,6 +240,11 @@ class PlatformMSVC:
 		box2d = ProjectStaticLib.from_name('box2d', self, build_type)
 		box2d.inc_dirs = [ join_dir(box2d.code_dir, 'include'), join_dir(box2d.code_dir, 'src') ]
 		self.write_static_lib(n, build_type, box2d, '3')
+
+		enet = ProjectStaticLib.from_name('enet', self, build_type)
+		enet.defines = [ '_WINSOCK_DEPRECATED_NO_WARNINGS' ]
+		enet.inc_dirs = [ join_dir(enet.code_dir, 'include') ]
+		self.write_static_lib(n, build_type, enet, '3')
 		
 		freetype = ProjectStaticLib.from_name('freetype', self, build_type)
 		freetype.defines = [ '_LIB', '_CRT_SECURE_NO_WARNINGS', 'FT2_BUILD_LIBRARY', 'FT_CONFIG_OPTION_ERROR_STRINGS' ]

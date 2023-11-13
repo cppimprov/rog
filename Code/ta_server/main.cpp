@@ -15,13 +15,13 @@
 namespace ta
 {
 
-	// enum class msg_type
-	// {
-	// 	HELLO,
-	// 	GOODBYE,
-	// 	ACK,
-	// 	HEARTBEAT,
-	// };
+	enum class msg_type
+	{
+		HELLO,
+		GOODBYE,
+		ACK,
+		HEARTBEAT,
+	};
 
 	// struct msg
 	// { 
@@ -80,7 +80,8 @@ namespace ta
 		{
 			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },
 
-			.m_tile_textures = { // TODO: these are map specific? should be done in load_test_map()?
+			.m_tile_textures = // TODO: these are map specific? should be done in load_test_map()?
+			{ 
 				&app.m_assets.m_textures_2d["grass"],
 				&app.m_assets.m_textures_2d["road_ew"],
 				&app.m_assets.m_textures_2d["road_ns"],
@@ -110,65 +111,127 @@ namespace ta
 
 	bump::gamestate waiting_for_players(bump::app& , std::unique_ptr<ta::world> )
 	{
+
+		// todo:
+		// abstract connections / connection management into a server class
+		// how to handle message parsing in a coherent way?
+
 		namespace net = bump::net;
 
 		bump::log_info("waiting_for_players()");
 
 		//auto& world = *world_ptr;
 
-		auto const endpoints = net::get_address_info_any(net::ip_address_family::V6, net::ip_protocol::UDP).unwrap();
+		auto const port = std::uint16_t{ 13245 };
+		auto const endpoints = net::get_address_info_any(net::ip_address_family::V6, net::ip_protocol::UDP, port).unwrap();
 		
-		auto listener = net::socket();
+		auto socket = net::socket();
 
 		for (auto const& ep : endpoints.m_endpoints)
 		{
-			listener = net::make_udp_socket(ep, net::blocking_mode::NON_BLOCKING).unwrap();
+			socket = net::make_udp_socket(ep, net::blocking_mode::NON_BLOCKING).unwrap();
 
-			if (listener.is_open())
+			if (socket.is_open())
 				break;
 		}
 
-		bump::die_if(!listener.is_open());
+		bump::die_if(!socket.is_open());
 
 		struct connection
 		{
-			net::socket m_socket;
 			net::endpoint m_endpoint;
 			std::size_t m_id;
+			std::chrono::steady_clock::time_point m_last_heartbeat;
 		};
 
 		auto constexpr max_message_size = 508; // todo: what should this really be?
 
-		//auto next_client_id = std::size_t{ 0 };
-		//auto connections = std::vector<connection>();
+		auto next_client_id = std::size_t{ 0 };
+		auto connections = std::vector<connection>();
 		auto read_buffer = std::vector<std::uint8_t>(max_message_size, '\0');
-
-		// receive messages from new clients... should get hello as the first message, then heartbeats
-		// send hello back to new clients
-		// send world state to new clients
 
 		while (true)
 		{
-			// TODO:
-			// (excess bytes are discarded, but how do we detect that?)
-			// on windows we get WSAEMSGSIZE
-			// on linux, we should pass MSG_TRUNC to recvfrom() and check the returned size?
+			if (connections.size() == 4)
+			{
+				std::cout << "4 clients connected!" << std::endl;
+				return { }; // todo: move to main loop state
+			}
 
-			auto [endpoint, bytes_read] = listener.receive_from(read_buffer).unwrap();
+			auto recv_result = socket.receive_from(read_buffer);
 
-			// we really don't want messages that are too large to be errors!!!
-			// because we're using unwrap... which shouldn't be triggerable from the client side...
+			if (recv_result.has_error())
+			{
+				if (recv_result.error().code() == std::errc::resource_unavailable_try_again ||
+				    recv_result.error().code() == std::errc::operation_would_block)
+					continue;
+				
+				// todo: ideally we'd disconnect misbehaving clients here...
+				// but we don't get the endpoint in the error, so we can't...
+				
+				bump::log_error("receive_from() error: " + std::string(recv_result.error().what()));
+				continue;
+			}
 
-			// if no bytes read, disconnect client! (bool in connection struct?)
-			// if buffer too small, how do we detect that? disconnect client!
-			// if something unexpected read, disconnect client!
+			auto const& [endpoint, bytes_read] = recv_result.value();
 
-			// if it's a new endpoint... expect a hello message
-			// if it's a known endpoint, expect a heartbeat or goodbye message
+			auto entry = std::find_if(connections.begin(), connections.end(),
+				[&] (connection const& c) { return c.m_endpoint == endpoint; });
+			
+			if (entry == connections.end())
+			{
+				if (bytes_read == 0)
+					continue;
+
+				auto const message_type = static_cast<msg_type>(read_buffer.front());
+
+				if (message_type != msg_type::HELLO)
+					continue;
+				
+				bump::log_info("new client connected: " + net::to_string(endpoint.get_address()));
+
+				auto const hello = std::array<std::uint8_t, 1>{ static_cast<std::uint8_t>(msg_type::HELLO) };
+				auto send_result = socket.send_to(endpoint, std::span{ hello });
+
+				if (!send_result.has_value())
+				{
+					bump::log_error("send_to() error: " + std::string(send_result.error().what()));
+					continue;
+				}
+
+				if (send_result.value() != hello.size())
+				{
+					bump::log_error("send_to() error: sent " + std::to_string(send_result.value()) + " bytes, expected " + std::to_string(hello.size()));
+					continue;
+				}
+
+				// todo: send world state!
+
+				connections.push_back({ endpoint, next_client_id++, std::chrono::steady_clock::now() });
+			}
+			else
+			{
+				auto const message_type = static_cast<msg_type>(read_buffer.front());
+
+				if (message_type == msg_type::HELLO) // ignore extra hellos
+					continue;
+
+				if (message_type == msg_type::GOODBYE)
+				{
+					bump::log_info("client disconnected: " + net::to_string(endpoint.get_address()));
+					connections.erase(entry);
+					continue;
+				}
+
+				if (message_type == msg_type::HEARTBEAT)
+				{
+					entry->m_last_heartbeat = std::chrono::steady_clock::now();
+					continue;
+				}
+
+				bump::log_error("unknown message type: " + std::to_string(static_cast<std::uint8_t>(message_type)) + " from client: " + net::to_string(endpoint.get_address()));
+			}
 		}
-
-		// ... wait for (4) players to connect (handle disconnections)
-		// ... move to main_loop state
 
 		return { };
 	}

@@ -62,7 +62,6 @@ namespace bump
 				return str;
 			}
 
-
 			static static_string<IP_MAX6> address_to_static_string(::in6_addr const& address)
 			{
 				auto str = static_string<IP_MAX6>(IP_MAX6, '\0');

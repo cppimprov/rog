@@ -5,57 +5,22 @@
 #include <bump_app.hpp>
 #include <bump_gamestate.hpp>
 #include <bump_log.hpp>
+#include <bump_net.hpp>
 #include <bump_transform.hpp>
 
-#include <random>
 #include <iostream>
+#include <random>
+#include <string>
 
 namespace ta
 {
-	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr);
-
-	bump::gamestate loading(bump::app& app)
+	enum class msg_type
 	{
-		bump::log_info("loading()");
-
-		auto world = std::unique_ptr<ta::world>(new ta::world
-		{
-			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },
-
-			.m_tile_textures = {
-				&app.m_assets.m_textures_2d["grass"],
-				&app.m_assets.m_textures_2d["road_ew"],
-				&app.m_assets.m_textures_2d["road_ns"],
-				&app.m_assets.m_textures_2d["road_cross"],
-				&app.m_assets.m_textures_2d["building"],
-				&app.m_assets.m_textures_2d["rubble"],
-				&app.m_assets.m_textures_2d["water"],
-			},
-
-			.m_tile_renderable = ta::tile_renderable(app.m_assets.m_shaders["sprite"]),
-			.m_tank_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]),
-			.m_tank_renderable_diagonal = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]),
-			.m_bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]),
-			.m_powerup_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]),
-		});
-
-		//ecs.m_players.push_back(create_player(ecs.m_registry, world.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
-
-		//auto player_entity = entt::entity{ ecs.m_players.back() };
-		//ecs.m_registry.emplace<c_player_input>(player_entity);
-
-		load_test_map(*world);
-		set_world_bounds(world->m_b2_world, glm::vec2(world->m_tiles.extents()) * globals::tile_radius * 2.f);
-
-		return { [&, world = std::move(world)] (bump::app& app) mutable { return main_loop(app, std::move(world)); } };
-	}
-
-	// bump::gamestate connect_to_server(bump::app& app)
-	// {
-	// 	bump::log_info("connect_to_server()");
-
-	// 	// ...
-	// }
+		HELLO,
+		GOODBYE,
+		ACK,
+		HEARTBEAT,
+	};
 
 	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr)
 	{
@@ -512,6 +477,133 @@ namespace ta
 
 			timer.tick();
 		}
+	}
+	
+	bump::gamestate connect_to_server(bump::app& app, std::unique_ptr<ta::world> world_ptr)
+	{
+		namespace net = bump::net;
+
+		bump::log_info("connect_to_server()");
+
+		auto const server_endpoints = net::get_address_info_loopback(net::ip_address_family::V6, net::ip_protocol::TCP).unwrap();
+		auto const local_endpoint = net::get_address_info_any(net::ip_address_family::V6, net::ip_protocol::TCP).unwrap();
+
+		auto socket = net::socket();
+		auto server_endpoint = net::endpoint();
+
+		for (auto const& ep : server_endpoints.m_endpoints)
+		{
+			socket = net::make_udp_socket(ep, net::blocking_mode::NON_BLOCKING).unwrap();
+
+			if (socket.is_open())
+			{
+				server_endpoint = ep;
+				break;
+			}
+		}
+
+		auto constexpr max_message_size = 508;
+		auto read_buffer = std::vector<std::uint8_t>(max_message_size, '\0');
+
+		// send hello to server
+		while (true)
+		{
+			auto recv_result = socket.receive_from(read_buffer);
+
+			if (recv_result.has_error())
+			{
+				if (recv_result.error().code() == std::errc::resource_unavailable_try_again ||
+				    recv_result.error().code() == std::errc::operation_would_block)
+					continue;
+				
+				bump::log_error("receive_from() error: " + std::string(recv_result.error().what()));
+				continue;
+			}
+
+			auto const& [endpoint, bytes_read] = recv_result.value();
+
+			if (endpoint != server_endpoint)
+			{
+				bump::log_error("receive_from() error: received message from unknown endpoint");
+				continue;
+			}
+
+			// we should make this a separate fucntion... we don't actually want to "continue" here...
+			// we want to send the hellos even if the receive fails
+			if (bytes_read == 0)
+				continue;
+			
+			auto const message_type = static_cast<msg_type>(read_buffer.front());
+
+			// todo: what if other server messages arrive before the hello?
+			// need to implement a reliable protocol...
+			if (message_type != msg_type::HELLO)
+			{
+				bump::log_error("receive_from() error: received message with invalid type");
+				continue;
+			}
+
+			// todo: send only a set number of times / at a set frequency!
+
+			auto const hello = std::array<std::uint8_t, 1>{ static_cast<std::uint8_t>(msg_type::HELLO) };
+			auto send_result = socket.send_to(server_endpoint, std::span(hello));
+
+			if (send_result.has_error())
+			{
+				if (send_result.error().code() == std::errc::resource_unavailable_try_again ||
+				    send_result.error().code() == std::errc::operation_would_block)
+					continue;
+				
+				bump::log_error("send_to() failed: " + std::string(send_result.error().what()));
+				continue;
+			}
+
+			if (send_result.value() != hello.size())
+			{
+				bump::log_error("send_to() failed: sent " + std::to_string(send_result.value()) + " bytes, expected " + std::to_string(hello.size()));
+				continue;
+			}
+
+		}
+
+		return { };
+	}
+	
+	bump::gamestate loading(bump::app& app)
+	{
+		bump::log_info("loading()");
+
+		auto world = std::unique_ptr<ta::world>(new ta::world
+		{
+			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },
+
+			.m_tile_textures =
+			{
+				&app.m_assets.m_textures_2d["grass"],
+				&app.m_assets.m_textures_2d["road_ew"],
+				&app.m_assets.m_textures_2d["road_ns"],
+				&app.m_assets.m_textures_2d["road_cross"],
+				&app.m_assets.m_textures_2d["building"],
+				&app.m_assets.m_textures_2d["rubble"],
+				&app.m_assets.m_textures_2d["water"],
+			},
+
+			.m_tile_renderable = ta::tile_renderable(app.m_assets.m_shaders["sprite"]),
+			.m_tank_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank"], app.m_assets.m_textures_2d["tank_accent"]),
+			.m_tank_renderable_diagonal = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["tank_diagonal"], app.m_assets.m_textures_2d["tank_accent_diagonal"]),
+			.m_bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]),
+			.m_powerup_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]),
+		});
+
+		//ecs.m_players.push_back(create_player(ecs.m_registry, world.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
+
+		//auto player_entity = entt::entity{ ecs.m_players.back() };
+		//ecs.m_registry.emplace<c_player_input>(player_entity);
+
+		load_test_map(*world);
+		set_world_bounds(world->m_b2_world, glm::vec2(world->m_tiles.extents()) * globals::tile_radius * 2.f);
+
+		return { [&, world = std::move(world)] (bump::app& app) mutable { return connect_to_server(app, std::move(world)); } };
 	}
 
 } // ta
