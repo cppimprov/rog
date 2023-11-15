@@ -8,6 +8,7 @@
 #include <bump_timer.hpp>
 
 #include <entt.hpp>
+#include <enet/enet.h>
 
 namespace ta
 {
@@ -130,9 +131,21 @@ namespace ta
 
 	entt::entity create_tile(entt::registry& registry, b2World& b2_world, tile_type type, glm::vec2 position_px, glm::vec2 radius_px);
 
+	// PLAYER SLOT:
+	struct player_slot
+	{
+		glm::vec3 m_color = glm::vec3(1.f);
+		glm::vec2 m_start_pos_px = glm::vec2(0.f);
+		entt::entity m_entity = entt::null;
+		ENetPeer* m_peer = nullptr;
+	};
+
 	// WORLD:
 	struct world
 	{
+		// init:
+		std::vector<player_slot> m_player_slots;
+
 		// ecs:
 		entt::registry m_registry;
 

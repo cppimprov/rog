@@ -611,6 +611,7 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			join_dir(box2d.code_dir, 'include'),
+			join_dir(enet.code_dir, 'include'),
 			glew.code_dir,
 			glm.code_dir,
 		]
@@ -623,6 +624,7 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			join_dir(box2d.code_dir, 'include'),
+			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
 			glew.code_dir,
@@ -635,6 +637,7 @@ class PlatformMSVC:
 		ta_server.inc_dirs = ta_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		ta_server.libs = [
 			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
+			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
@@ -654,6 +657,7 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			join_dir(box2d.code_dir, 'include'),
+			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
 			glew.code_dir,
@@ -666,6 +670,7 @@ class PlatformMSVC:
 		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		ta_client.libs = [
 			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
+			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),

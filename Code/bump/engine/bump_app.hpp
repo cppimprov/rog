@@ -37,8 +37,6 @@ namespace bump
 		glew_context m_glew_context;
 		gl::renderer m_renderer;
 
-		net::context m_net_context;
-
 		assets m_assets;
 	};
 

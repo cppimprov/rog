@@ -4,23 +4,26 @@
 
 #include <bump_app.hpp>
 #include <bump_gamestate.hpp>
+#include <bump_io.hpp>
 #include <bump_log.hpp>
 #include <bump_net.hpp>
 #include <bump_transform.hpp>
 
+#include <enet/enet.h>
+
 #include <iostream>
 #include <random>
+#include <span>
+#include <spanstream>
 #include <string>
 
 namespace ta
 {
-	enum class msg_type
-	{
-		HELLO,
-		GOODBYE,
-		ACK,
-		HEARTBEAT,
-	};
+
+	enum class net_event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
+
+	using host_ptr = std::unique_ptr<ENetHost, decltype(&enet_host_destroy)>;
+	using peer_ptr = std::unique_ptr<ENetPeer, decltype(&enet_peer_reset)>;
 
 	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr)
 	{
@@ -375,7 +378,7 @@ namespace ta
 					}
 				}
 			}
- 
+
 			// render
 			{
 				app.m_renderer.clear_color_buffers({ 0.39215f, 0.58431f, 0.92941f, 1.f });
@@ -481,89 +484,317 @@ namespace ta
 	
 	bump::gamestate connect_to_server(bump::app& app, std::unique_ptr<ta::world> world_ptr)
 	{
-		namespace net = bump::net;
+		auto& world = *world_ptr;
 
-		bump::log_info("connect_to_server()");
+		auto app_events = std::queue<bump::input::app_event>();
+		auto input_events = std::queue<bump::input::input_event>();
 
-		auto const server_endpoints = net::get_address_info_loopback(net::ip_address_family::V6, net::ip_protocol::TCP).unwrap();
-		auto const local_endpoint = net::get_address_info_any(net::ip_address_family::V6, net::ip_protocol::TCP).unwrap();
+		auto client = host_ptr(enet_host_create(nullptr, 1, 2, 0, 0), &enet_host_destroy);
 
-		auto socket = net::socket();
-		auto server_endpoint = net::endpoint();
-
-		for (auto const& ep : server_endpoints.m_endpoints)
+		if (!client)
 		{
-			socket = net::make_udp_socket(ep, net::blocking_mode::NON_BLOCKING).unwrap();
-
-			if (socket.is_open())
-			{
-				server_endpoint = ep;
-				break;
-			}
+			bump::log_error("failed to create enet client!");
+			return { };
 		}
 
-		auto constexpr max_message_size = 508;
-		auto read_buffer = std::vector<std::uint8_t>(max_message_size, '\0');
+		auto const e_port = std::uint16_t{ 6543 };
+		auto e_address = ENetAddress{ ENET_HOST_ANY, e_port };
+		enet_address_set_host(&e_address, "localhost");
 
-		// send hello to server
+		auto peer = peer_ptr(enet_host_connect(client.get(), &e_address, 2, 0), &enet_peer_reset);
+
+		if (!peer)
+		{
+			bump::log_error("failed to connect to server!");
+			return { };
+		}
+
 		while (true)
 		{
-			auto recv_result = socket.receive_from(read_buffer);
-
-			if (recv_result.has_error())
+			// input
 			{
-				if (recv_result.error().code() == std::errc::resource_unavailable_try_again ||
-				    recv_result.error().code() == std::errc::operation_would_block)
-					continue;
+				app.m_input_handler.poll(app_events, input_events);
+
+				while (!app_events.empty())
+				{
+					auto event = std::move(app_events.front());
+					app_events.pop();
+
+					namespace ae = bump::input::app_events;
+
+					if (std::holds_alternative<ae::quit>(event))
+						return { };	// quit
+				}
+
+				while (!input_events.empty())
+				{
+					auto event = std::move(input_events.front());
+					input_events.pop();
+
+					namespace ie = bump::input::input_events;
+
+					if (std::holds_alternative<ie::keyboard_key>(event))
+					{
+						auto const& k = std::get<ie::keyboard_key>(event);
+
+						using kt = bump::input::keyboard_key;
+
+						if (k.m_key == kt::ESCAPE && k.m_value)
+							return { }; // quit
+					}
+				}
+			}
+
+			// network
+			{
+				auto event = ENetEvent{ };
+
+				while (enet_host_service(client.get(), &event, 0) > 0)
+				{
+					switch (event.type)
+					{
+						case ENET_EVENT_TYPE_CONNECT:
+						{
+							bump::log_info("connected to server!");
+
+							break;
+						}
+						case ENET_EVENT_TYPE_RECEIVE:
+						{
+							bump::log_info("packet received!");
+
+							auto const& packet = *event.packet;
+
+							if (!packet.data || packet.dataLength == 0)
+							{
+								bump::log_error("empty packet received!");
+								enet_packet_destroy(event.packet);
+								break;
+							}
+
+							auto const span = std::span(reinterpret_cast<char const*>(packet.data), packet.dataLength);
+							auto packet_stream = std::ispanstream(span);
+							auto const packet_type = static_cast<net_event_type>(bump::io::read<std::uint8_t>(packet_stream));
+
+							if (packet_type == net_event_type::SPAWN)
+							{
+								if (packet.dataLength != 3)
+								{
+									bump::log_error("invalid spawn packet length!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								auto const slot_index = bump::io::read<std::uint8_t>(packet_stream);
+								auto const local_player = bump::io::read<bool>(packet_stream);
+
+								if (slot_index >= world.m_player_slots.size())
+								{
+									bump::log_error("invalid slot index in spawn packet!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								// find the specified slot
+								auto& slot = world.m_player_slots[slot_index];
+
+								if (slot.m_entity != entt::null)
+								{
+									bump::log_error("slot already occupied!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								// create player
+								world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, slot.m_start_pos_px, slot.m_color));
+
+								// spawn input component for local player
+								if (local_player)
+									world.m_registry.emplace<c_player_input>(world.m_players.back());
+
+								// occupy player slot
+								slot.m_entity = world.m_players.back();
+							}
+							else if (packet_type == net_event_type::DESPAWN)
+							{
+								// read the despawn packet
+								if (packet.dataLength != 2)
+								{
+									bump::log_error("invalid despawn packet length!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								auto const slot_index = bump::io::read<std::uint8_t>(packet_stream);
+
+								if (slot_index >= world.m_player_slots.size())
+								{
+									bump::log_error("invalid slot index in despawn packet!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								// find the player slot
+								auto& slot = world.m_player_slots[slot_index];
+
+								auto const entity = slot.m_entity;
+
+								if (entity == entt::null)
+								{
+									bump::log_error("slot already empty!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								// remove player's bullets from registry
+								auto const bullet_view = world.m_registry.view<c_bullet_owner_id>();
+
+								auto expired = std::partition(world.m_bullets.begin(), world.m_bullets.end(),
+									[&] (auto const& b) { return bullet_view.get<c_bullet_owner_id>(b).m_owner_id != entity; });
+
+								for (auto const b : std::ranges::subrange(expired, world.m_bullets.end()))
+									destroy_bullet(world.m_registry, world.m_b2_world, b);
+
+								// remove player's bullets from world
+								world.m_bullets.erase(expired, world.m_bullets.end());
+
+								// remove player from registry
+								destroy_player(world.m_registry, world.m_b2_world, entity);
+
+								// clear player slot
+								slot.m_entity = entt::null;
+								slot.m_peer = nullptr;
+							}
+							else if (packet_type == net_event_type::READY)
+							{
+								if (packet.dataLength != 1)
+								{
+									bump::log_error("invalid ready packet length!");
+									enet_packet_destroy(event.packet);
+									break;
+								}
+
+								return { [&, world = std::move(world_ptr)] (bump::app& app) mutable { return main_loop(app, std::move(world)); } };
+							}
+							else
+							{
+								bump::log_error("unknown packet type received!");
+								enet_packet_destroy(event.packet);
+								break;
+							}
+
+							enet_packet_destroy(event.packet);
+
+							break;
+						}
+						case ENET_EVENT_TYPE_DISCONNECT:
+						{
+							bump::log_info("disconnected from server!");
+
+							return { };
+						}
+					}
+				}
+			}
+
+			// render
+			{
+				app.m_renderer.clear_color_buffers({ 0.39215f, 0.58431f, 0.92941f, 1.f });
+				app.m_renderer.clear_depth_buffers();
+
+				app.m_renderer.set_viewport({ 0, 0 }, glm::uvec2(app.m_window.get_size()));
+
+				auto camera = bump::orthographic_camera();
+				camera.m_projection.m_size = glm::vec2(app.m_window.get_size());
+				camera.m_viewport.m_size = glm::vec2(app.m_window.get_size());
 				
-				bump::log_error("receive_from() error: " + std::string(recv_result.error().what()));
-				continue;
-			}
+				auto const matrices = bump::camera_matrices(camera);
 
-			auto const& [endpoint, bytes_read] = recv_result.value();
+				app.m_renderer.set_blending(bump::gl::renderer::blending::BLEND);
 
-			if (endpoint != server_endpoint)
-			{
-				bump::log_error("receive_from() error: received message from unknown endpoint");
-				continue;
-			}
+				// render tiles
+				{
+					auto const tile_view = world.m_registry.view<c_tile_type>();
 
-			// we should make this a separate fucntion... we don't actually want to "continue" here...
-			// we want to send the hellos even if the receive fails
-			if (bytes_read == 0)
-				continue;
-			
-			auto const message_type = static_cast<msg_type>(read_buffer.front());
+					for (auto y : bump::range(0, world.m_tiles.extents()[1]))
+					{
+						for (auto x : bump::range(0, world.m_tiles.extents()[0]))
+						{
+							auto const entity = world.m_tiles.at({ x, y });
+							auto const& tt = tile_view.get<c_tile_type>(entity);
 
-			// todo: what if other server messages arrive before the hello?
-			// need to implement a reliable protocol...
-			if (message_type != msg_type::HELLO)
-			{
-				bump::log_error("receive_from() error: received message with invalid type");
-				continue;
-			}
+							auto const tile_index = static_cast<std::size_t>(tt.m_type);
+							auto const tile_texture = world.m_tile_textures[tile_index];
 
-			// todo: send only a set number of times / at a set frequency!
+							auto const position_px = globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(x, y);
 
-			auto const hello = std::array<std::uint8_t, 1>{ static_cast<std::uint8_t>(msg_type::HELLO) };
-			auto send_result = socket.send_to(server_endpoint, std::span(hello));
+							auto model_matrix = glm::mat4(1.f);
+							bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
 
-			if (send_result.has_error())
-			{
-				if (send_result.error().code() == std::errc::resource_unavailable_try_again ||
-				    send_result.error().code() == std::errc::operation_would_block)
-					continue;
+							world.m_tile_renderable.render(app.m_renderer, *tile_texture, matrices, model_matrix, globals::tile_radius * 2.f);
+						}
+					}
+				}
+
+				// render players
+				{
+					auto const player_view = world.m_registry.view<c_player_physics, c_player_movement, c_player_graphics>();
+
+					for (auto const p : player_view)
+					{
+						auto [pp, pm, pg] = player_view.get<c_player_physics, c_player_movement, c_player_graphics>(p);
+
+						auto const rotation_angle = dir_to_angle(pm.m_direction);
+						auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
+
+						auto model_matrix = glm::mat4(1.f);
+						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+						bump::set_rotation(model_matrix, glm::angleAxis(glm::radians(rotation_angle), glm::vec3(0.f, 0.f, 1.f)));
+
+						auto& renderable = is_diagonal(pm.m_direction) ? world.m_tank_renderable_diagonal : world.m_tank_renderable;
+						renderable.render(app.m_renderer, matrices, model_matrix, globals::player_radius * 2.f, pg.m_color);
+					}
+				}
+
+				// render bullets
+				{
+					auto const player_color_view = world.m_registry.view<c_player_graphics>();
+					auto const bullet_view = world.m_registry.view<c_bullet_owner_id, c_bullet_physics>();
+
+					for (auto const b : bullet_view)
+					{
+						auto const& [bid, bp] = bullet_view.get<c_bullet_owner_id, c_bullet_physics>(b);
+						auto const& pg = player_color_view.get<c_player_graphics>(bid.m_owner_id);
+
+						auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(bp.m_b2_body->GetPosition());
+
+						auto model_matrix = glm::mat4(1.f);
+						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+						world.m_bullet_renderable.render(app.m_renderer, matrices, model_matrix, globals::bullet_radius * 2.f, pg.m_color);
+					}
+				}
+
+				// render powerups
+				{
+					auto const powerup_view = world.m_registry.view<c_powerup_type, c_powerup_physics>();
+					
+					for (auto const p : powerup_view)
+					{
+						auto const& [pt, pp] = powerup_view.get<c_powerup_type, c_powerup_physics>(p);
+
+						auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
+						auto const color = get_powerup_color(pt.m_type);
+
+						auto model_matrix = glm::mat4(1.f);
+						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+						world.m_powerup_renderable.render(app.m_renderer, matrices, model_matrix, globals::powerup_radius * 2.f, color);
+					}
+				}
 				
-				bump::log_error("send_to() failed: " + std::string(send_result.error().what()));
-				continue;
-			}
+				app.m_renderer.set_blending(bump::gl::renderer::blending::NONE);
 
-			if (send_result.value() != hello.size())
-			{
-				bump::log_error("send_to() failed: sent " + std::to_string(send_result.value()) + " bytes, expected " + std::to_string(hello.size()));
-				continue;
+				app.m_window.swap_buffers();
 			}
-
 		}
 
 		return { };
@@ -575,6 +806,14 @@ namespace ta
 
 		auto world = std::unique_ptr<ta::world>(new ta::world
 		{
+			.m_player_slots =
+			{
+				{ glm::vec3(1.f, 0.8f, 0.3f), globals::player_radius * glm::vec2{ 1.f, 8.f }, entt::null, nullptr },
+				{ glm::vec3(1.f, 0.f, 0.f), globals::player_radius * glm::vec2{ 5.f, 3.f }, entt::null, nullptr },
+				{ glm::vec3(0.f, 0.9f, 0.f), globals::player_radius * glm::vec2{ 7.f, 3.f }, entt::null, nullptr },
+				{ glm::vec3(0.2f, 0.2f, 1.f), globals::player_radius * glm::vec2{ 9.f, 3.f }, entt::null, nullptr },
+			},
+
 			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },
 
 			.m_tile_textures =
@@ -594,11 +833,6 @@ namespace ta
 			.m_bullet_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["bullet"], app.m_assets.m_textures_2d["bullet_accent"]),
 			.m_powerup_renderable = ta::object_renderable(app.m_assets.m_shaders["sprite_accent"], app.m_assets.m_textures_2d["powerup"], app.m_assets.m_textures_2d["powerup_accent"]),
 		});
-
-		//ecs.m_players.push_back(create_player(ecs.m_registry, world.m_b2_world, globals::player_radius * glm::vec2{ 1.f, 8.f }, glm::vec3(1.f, 0.8f, 0.3f)));
-
-		//auto player_entity = entt::entity{ ecs.m_players.back() };
-		//ecs.m_registry.emplace<c_player_input>(player_entity);
 
 		load_test_map(*world);
 		set_world_bounds(world->m_b2_world, glm::vec2(world->m_tiles.extents()) * globals::tile_radius * 2.f);
@@ -667,6 +901,14 @@ int main(int, char* [])
 
 		auto app = bump::app(metadata, { 1024, 768 }, "ta_client", bump::sdl::window::display_mode::WINDOWED);
 		app.m_gl_context.set_swap_interval(bump::sdl::gl_context::swap_interval_mode::ADAPTIVE_VSYNC);
+
+		// temp:
+		if (enet_initialize() != 0)
+		{
+			bump::log_error("failed to initialize enet!");
+			return EXIT_FAILURE;
+		}
+
 		bump::run_state({ [] (bump::app& app) { return ta::loading(app); } }, app);
 	}
 
@@ -677,5 +919,4 @@ int main(int, char* [])
 
 // TODO:
 
-	// add connect_to_server state
-	// then go to main loop...
+	// ...
