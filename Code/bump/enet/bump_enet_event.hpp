@@ -25,6 +25,8 @@ namespace bump
 			event(event&&) = default;
 			event& operator=(event&&) = default;
 
+			~packet();
+
 			enum class type { none, connect, disconnect, receive };
 			type get_type() const { return static_cast<type>(m_event.type); }
 
@@ -33,8 +35,7 @@ namespace bump
 			std::uint8_t get_channel_id() const { return m_event.channelID; }
 			std::uint32_t get_data() const { return m_event.data; }
 
-			// todo: this class should own the contained packet...
-			packet get_packet() const { return packet(m_event.packet); }
+			packet get_packet() { return packet(m_event.packet); }
 
 		private:
 

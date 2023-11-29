@@ -11,15 +11,18 @@ namespace bump
 	namespace enet
 	{
 
-		// todo: non-owning version?
-		// events own packets.
-		// but we might create a packet that owns itself...
+		// two different mechanics for handling packets:
+		// 1. manually create them, and then pass them to enet host.
+		// 2. get them from enet events and manually delete them.
+
+		// either way we want an owning pointer...
 
 		class packet
 		{
 		public:
 
 			packet();
+			explicit packet(ENetPacket* packet);
 			packet(std::uint8_t const* data, std::size_t data_size);
 			packet(std::uint8_t const* data, std::size_t data_size, std::uint8_t flags);
 
