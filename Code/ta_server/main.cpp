@@ -17,6 +17,62 @@
 namespace ta
 {
 
+	namespace net
+	{
+
+		enum class event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
+
+		namespace events
+		{
+
+			struct spawn { std::uint8_t m_slot_index; bool m_self; };
+			struct despawn { std::uint8_t m_slot_index; };
+			struct ready { };
+
+		} // events
+
+		using event = std::variant
+		<
+			events::spawn,
+			events::despawn,
+			events::ready
+		>;
+
+		class server
+		{
+		public:
+
+			explicit server(std::uint16_t port);
+
+			server(server const&) = delete;
+			server& operator=(server const&) = delete;
+			server(server&&) = default;
+			server& operator=(server&&) = default;
+
+			~server()
+			{
+				// disconnect all peers (possibly a better client experience?)
+				for (auto peer = m_host->peers; peer != m_host->peers + m_host->peerCount; ++peer)
+					enet_peer_disconnect_now(peer, 0);
+			}
+
+			// we need connections, disconnections, and packets, not just "events"
+			// we need to wrap peers / network info somewhat...
+			// we probably need to wrap enet a bit... similar to what we did for sdl
+			// we can use those wrappers "raw" for a bit before making a ta::server class
+
+			void poll(std::queue<net::event>& events);
+
+			// send (event to peer)
+			// broadcast (event to all peers)
+
+		private:
+
+			host_ptr m_host;
+		};
+
+	} // net
+
 	enum class net_event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
 
 	using host_ptr = std::unique_ptr<ENetHost, decltype(&enet_host_destroy)>;
@@ -859,5 +915,6 @@ int main(int , char* [])
 // TODO:
 
 	// todo: server / client classes for basic raii (call disconnect_now on quit)
+		// system similar to input queues to handle events?
 	// todo: share packet reading / writing code between server and client
 	// todo: share spawn / despawn functions between server and client
