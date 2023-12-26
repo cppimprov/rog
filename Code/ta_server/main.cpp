@@ -1,15 +1,16 @@
 
-#include "ta_world.hpp"
+
 #include "ta_globals.hpp"
+#include "ta_net_events.hpp"
+#include "ta_world.hpp"
 
 #include <bump_app.hpp>
+#include <bump_enet.hpp>
 #include <bump_gamestate.hpp>
 #include <bump_io.hpp>
 #include <bump_log.hpp>
 #include <bump_net.hpp>
 #include <bump_transform.hpp>
-
-#include <enet/enet.h>
 
 #include <algorithm>
 #include <random>
@@ -20,29 +21,12 @@ namespace ta
 	namespace net
 	{
 
-		enum class event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
-
-		namespace events
-		{
-
-			struct spawn { std::uint8_t m_slot_index; bool m_self; };
-			struct despawn { std::uint8_t m_slot_index; };
-			struct ready { };
-
-		} // events
-
-		using event = std::variant
-		<
-			events::spawn,
-			events::despawn,
-			events::ready
-		>;
-
 		class server
 		{
 		public:
 
-			explicit server(std::uint16_t port);
+			explicit server(std::size_t peers, std::uint8_t channels, std::uint16_t port):
+				m_host({ 0u, port }, peers, channels, 0u, 0u) { }
 
 			server(server const&) = delete;
 			server& operator=(server const&) = delete;
@@ -51,33 +35,23 @@ namespace ta
 
 			~server()
 			{
-				// disconnect all peers (possibly a better client experience?)
-				for (auto peer = m_host->peers; peer != m_host->peers + m_host->peerCount; ++peer)
-					enet_peer_disconnect_now(peer, 0);
+				for (auto p = m_host.peer_begin(); p != m_host.peer_end(); ++p)
+					p->disconnect_now(0);
 			}
-
-			// we need connections, disconnections, and packets, not just "events"
-			// we need to wrap peers / network info somewhat...
-			// we probably need to wrap enet a bit... similar to what we did for sdl
-			// we can use those wrappers "raw" for a bit before making a ta::server class
 
 			void poll(std::queue<net::event>& events);
 
-			// send (event to peer)
-			// broadcast (event to all peers)
+			void broadcast(net::event event);
+			void send(bump::enet::peer peer, net::event event);
 
 		private:
 
-			host_ptr m_host;
+			bump::enet::host m_host;
 		};
 
 	} // net
 
-	enum class net_event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
-
-	using host_ptr = std::unique_ptr<ENetHost, decltype(&enet_host_destroy)>;
-
-	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr, host_ptr server)
+	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr, bump::enet::host server)
 	{
 		bump::log_info("main_loop()");
 
@@ -503,11 +477,9 @@ namespace ta
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
 
-		auto const e_port = std::uint16_t{ 6543 };
-		auto const e_addr = ENetAddress{ ENET_HOST_ANY, e_port };
-		auto server = host_ptr(enet_host_create(&e_addr, 4, 2, 0, 0), &enet_host_destroy);
+		auto server = bump::enet::host({ 0u, 6543u }, 4, 2, 0, 0);
 
-		if (!server)
+		if (!server.is_valid())
 		{
 			bump::log_error("failed to create enet server!");
 			return { };
@@ -551,13 +523,16 @@ namespace ta
 
 			// network
 			{
-				auto event = ENetEvent{ };
-
-				while (enet_host_service(server.get(), &event, 0) > 0)
+				while (true)
 				{
-					switch (event.type)
+					auto event = server.service(0);
+
+					if (!event.is_valid())
+						break;
+					
+					switch (event.get_type())
 					{
-					case ENET_EVENT_TYPE_CONNECT:
+					case bump::enet::event::type::connect:
 					{
 						bump::log_info("client connected!");
 
@@ -568,7 +543,7 @@ namespace ta
 						if (new_slot == world.m_player_slots.end())
 						{
 							bump::log_info("no player slots available!");
-							enet_peer_disconnect_now(event.peer, 0);
+							event.get_peer().disconnect_now(0);
 							break;
 						}
 
@@ -577,22 +552,16 @@ namespace ta
 
 						// occupy player slot
 						new_slot->m_entity = world.m_players.back();
-						new_slot->m_peer = event.peer;
+						new_slot->m_peer = event.get_peer();
 
 						// send spawn event to everyone
 						auto const new_entity = world.m_players.back();
-						auto const new_slot_index = new_slot - world.m_player_slots.begin();
+						auto const new_slot_index = static_cast<std::uint8_t>(new_slot - world.m_player_slots.begin());
 
 						{
 							auto stream = std::ostringstream();
-							bump::io::write(stream, static_cast<std::uint8_t>(net_event_type::SPAWN));
-							bump::io::write(stream, static_cast<std::uint8_t>(new_slot_index));
-							bump::io::write(stream, true);
-
-							auto const& str = stream.str();
-							auto const packet = enet_packet_create(str.data(), str.size(), ENET_PACKET_FLAG_RELIABLE);
-
-							enet_host_broadcast(server.get(), 0, packet);
+							bump::io::write(stream, net::events::spawn{ new_slot_index, true });
+							server.broadcast(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
 						}
 						
 						// update new client by spawning other players
@@ -604,35 +573,26 @@ namespace ta
 								continue;
 
 							auto stream = std::ostringstream();
-							bump::io::write(stream, static_cast<std::uint8_t>(net_event_type::SPAWN));
-							bump::io::write(stream, static_cast<std::uint8_t>(slot_index));
-							bump::io::write(stream, false);
-
-							auto const& str = stream.str();
-							auto const packet = enet_packet_create(str.data(), str.size(), ENET_PACKET_FLAG_RELIABLE);
-
-							enet_peer_send(event.peer, 0, packet);
+							bump::io::write(stream, net::events::spawn{ static_cast<std::uint8_t>(slot_index), false });
+							event.get_peer().send(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
 						}
 
 						break;
 					}
-					case ENET_EVENT_TYPE_RECEIVE:
+					case bump::enet::event::type::receive:
 					{
 						bump::log_info("packet received!");
 
 						// note: server shouldn't be receiving any packets here!
-
-						enet_packet_destroy(event.packet);
-
 						break;
 					}
-					case ENET_EVENT_TYPE_DISCONNECT:
+					case bump::enet::event::type::disconnect:
 					{
 						bump::log_info("client disconnected!");
 
 						// find corresponding player slot
 						auto const slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-							[&] (auto const& s) { return s.m_peer == event.peer; });
+							[&] (auto const& s) { return s.m_peer == event.get_peer(); });
 						
 						if (slot == world.m_player_slots.end())
 						{
@@ -645,13 +605,8 @@ namespace ta
 						auto const slot_index = slot - world.m_player_slots.begin();
 
 						auto stream = std::ostringstream();
-						bump::io::write(stream, static_cast<std::uint8_t>(net_event_type::DESPAWN));
-						bump::io::write(stream, static_cast<std::uint8_t>(slot_index));
-
-						auto const& str = stream.str();
-						auto const packet = enet_packet_create(str.data(), str.size(), ENET_PACKET_FLAG_RELIABLE);
-
-						enet_host_broadcast(server.get(), 0, packet);
+						bump::io::write(stream, net::events::despawn{ static_cast<std::uint8_t>(slot_index) });
+						server.broadcast(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
 
 						// remove player's bullets from registry
 						auto const bullet_view = world.m_registry.view<c_bullet_owner_id>();
@@ -670,7 +625,7 @@ namespace ta
 
 						// clear player slot
 						slot->m_entity = entt::null;
-						slot->m_peer = nullptr;
+						slot->m_peer = bump::enet::peer();
 
 						break;
 					}
@@ -678,15 +633,11 @@ namespace ta
 				}
 
 				// notify players to move to the main_loop
-				if (server->connectedPeers == 4)
+				if (server.get_connected_peer_count() == 4)
 				{
 					auto stream = std::ostringstream();
-					bump::io::write(stream, static_cast<std::uint8_t>(net_event_type::READY));
-
-					auto const& str = stream.str();
-					auto const packet = enet_packet_create(str.data(), str.size(), ENET_PACKET_FLAG_RELIABLE);
-
-					enet_host_broadcast(server.get(), 0, packet);
+					bump::io::write(stream, net::events::ready{ });
+					server.broadcast(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
 
 					return { [&, world = std::move(world_ptr), server = std::move(server)] (bump::app& app) mutable { return main_loop(app, std::move(world), std::move(server)); } };
 				}
@@ -803,10 +754,10 @@ namespace ta
 		{
 			.m_player_slots =
 			{
-				{ glm::vec3(1.f, 0.8f, 0.3f), globals::player_radius * glm::vec2{ 1.f, 8.f }, entt::null, nullptr },
-				{ glm::vec3(1.f, 0.f, 0.f), globals::player_radius * glm::vec2{ 5.f, 3.f }, entt::null, nullptr },
-				{ glm::vec3(0.f, 0.9f, 0.f), globals::player_radius * glm::vec2{ 7.f, 3.f }, entt::null, nullptr },
-				{ glm::vec3(0.2f, 0.2f, 1.f), globals::player_radius * glm::vec2{ 9.f, 3.f }, entt::null, nullptr },
+				{ glm::vec3(1.f, 0.8f, 0.3f), globals::player_radius * glm::vec2{ 1.f, 8.f }, entt::null, { } },
+				{ glm::vec3(1.f, 0.f, 0.f), globals::player_radius * glm::vec2{ 5.f, 3.f }, entt::null, { } },
+				{ glm::vec3(0.f, 0.9f, 0.f), globals::player_radius * glm::vec2{ 7.f, 3.f }, entt::null, { } },
+				{ glm::vec3(0.2f, 0.2f, 1.f), globals::player_radius * glm::vec2{ 9.f, 3.f }, entt::null, { } },
 			},
 
 			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },

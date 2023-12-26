@@ -493,14 +493,15 @@ class PlatformMSVC:
 		]
 		self.write_static_lib(n, build_type, sdlmixer, '3')
 
-		bump_dirs = [ 'debug', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'util' ]
+		bump_dirs = [ 'debug', 'enet', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'util' ]
 		bump_core_dirs = [ 'debug', 'io', 'math', 'net', 'util' ]
 
 		bump = ProjectStaticLib.from_name('bump', self, build_type)
-		bump.defines = entt.defines + freetype.defines + harfbuzz.defines + glew.defines + json.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
+		bump.defines = entt.defines + enet.defines + freetype.defines + harfbuzz.defines + glew.defines + json.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
 		bump.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),

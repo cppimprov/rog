@@ -4,11 +4,11 @@
 #include "ta_physics.hpp"
 #include "ta_renderable.hpp"
 
+#include <bump_enet.hpp>
 #include <bump_grid.hpp>
 #include <bump_timer.hpp>
 
 #include <entt.hpp>
-#include <enet/enet.h>
 
 namespace ta
 {
@@ -137,7 +137,7 @@ namespace ta
 		glm::vec3 m_color = glm::vec3(1.f);
 		glm::vec2 m_start_pos_px = glm::vec2(0.f);
 		entt::entity m_entity = entt::null;
-		ENetPeer* m_peer = nullptr;
+		bump::enet::peer m_peer = bump::enet::peer();
 	};
 
 	// WORLD:

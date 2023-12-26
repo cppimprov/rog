@@ -1,15 +1,15 @@
 
-#include "ta_world.hpp"
 #include "ta_globals.hpp"
+#include "ta_net_events.hpp"
+#include "ta_world.hpp"
 
 #include <bump_app.hpp>
+#include <bump_enet.hpp>
 #include <bump_gamestate.hpp>
 #include <bump_io.hpp>
 #include <bump_log.hpp>
 #include <bump_net.hpp>
 #include <bump_transform.hpp>
-
-#include <enet/enet.h>
 
 #include <iostream>
 #include <random>
@@ -19,11 +19,6 @@
 
 namespace ta
 {
-
-	enum class net_event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
-
-	using host_ptr = std::unique_ptr<ENetHost, decltype(&enet_host_destroy)>;
-	using peer_ptr = std::unique_ptr<ENetPeer, decltype(&enet_peer_reset)>;
 
 	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr)
 	{
@@ -489,21 +484,17 @@ namespace ta
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
 
-		auto client = host_ptr(enet_host_create(nullptr, 1, 2, 0, 0), &enet_host_destroy);
+		auto client = bump::enet::host(1, 2, 0, 0);
 
-		if (!client)
+		if (!client.is_valid())
 		{
 			bump::log_error("failed to create enet client!");
 			return { };
 		}
 
-		auto const e_port = std::uint16_t{ 6543 };
-		auto e_address = ENetAddress{ ENET_HOST_ANY, e_port };
-		enet_address_set_host(&e_address, "localhost");
+		auto peer = client.connect(bump::enet::address("localhost", 6543u), 2, 0);
 
-		auto peer = peer_ptr(enet_host_connect(client.get(), &e_address, 2, 0), &enet_peer_reset);
-
-		if (!peer)
+		if (!peer.is_valid())
 		{
 			bump::log_error("failed to connect to server!");
 			return { };
@@ -523,7 +514,10 @@ namespace ta
 					namespace ae = bump::input::app_events;
 
 					if (std::holds_alternative<ae::quit>(event))
+					{
+						peer.disconnect_now(0);
 						return { };	// quit
+					}
 				}
 
 				while (!input_events.empty())
@@ -540,68 +534,75 @@ namespace ta
 						using kt = bump::input::keyboard_key;
 
 						if (k.m_key == kt::ESCAPE && k.m_value)
+						{
+							peer.disconnect_now(0);
 							return { }; // quit
+						}
 					}
 				}
 			}
 
 			// network
 			{
-				auto event = ENetEvent{ };
-
-				while (enet_host_service(client.get(), &event, 0) > 0)
+				while (true)
 				{
-					switch (event.type)
+					auto event = client.service(0);
+
+					if (!event.is_valid())
+						break;
+					
+					switch (event.get_type())
 					{
-						case ENET_EVENT_TYPE_CONNECT:
+						case bump::enet::event::type::connect:
 						{
 							bump::log_info("connected to server!");
 
 							break;
 						}
-						case ENET_EVENT_TYPE_RECEIVE:
+						case bump::enet::event::type::receive:
 						{
 							bump::log_info("packet received!");
 
-							auto const& packet = *event.packet;
+							auto const packet = event.take_packet();
 
-							if (!packet.data || packet.dataLength == 0)
+							if (!packet.is_valid() || packet.size() == 0)
 							{
 								bump::log_error("empty packet received!");
-								enet_packet_destroy(event.packet);
 								break;
 							}
 
-							auto const span = std::span(reinterpret_cast<char const*>(packet.data), packet.dataLength);
+							auto const span = std::span(reinterpret_cast<char const*>(packet.data()), packet.size());
 							auto packet_stream = std::ispanstream(span);
-							auto const packet_type = static_cast<net_event_type>(bump::io::read<std::uint8_t>(packet_stream));
+							auto const packet_event = bump::io::read<net::event>(packet_stream);
 
-							if (packet_type == net_event_type::SPAWN)
+							if (!packet_stream.good())
 							{
-								if (packet.dataLength != 3)
-								{
-									bump::log_error("invalid spawn packet length!");
-									enet_packet_destroy(event.packet);
-									break;
-								}
+								bump::log_error("failed to read packet!");
+								break;
+							}
 
-								auto const slot_index = bump::io::read<std::uint8_t>(packet_stream);
-								auto const local_player = bump::io::read<bool>(packet_stream);
+							if (std::holds_alternative<std::monostate>(packet_event))
+							{
+								bump::log_error("invalid packet received!");
+								break;
+							}
 
-								if (slot_index >= world.m_player_slots.size())
+							if (std::holds_alternative<net::events::spawn>(packet_event))
+							{
+								auto const& e = std::get<net::events::spawn>(packet_event);
+
+								if (e.m_slot_index >= world.m_player_slots.size())
 								{
 									bump::log_error("invalid slot index in spawn packet!");
-									enet_packet_destroy(event.packet);
 									break;
 								}
 
 								// find the specified slot
-								auto& slot = world.m_player_slots[slot_index];
+								auto& slot = world.m_player_slots[e.m_slot_index];
 
 								if (slot.m_entity != entt::null)
 								{
 									bump::log_error("slot already occupied!");
-									enet_packet_destroy(event.packet);
 									break;
 								}
 
@@ -609,40 +610,30 @@ namespace ta
 								world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, slot.m_start_pos_px, slot.m_color));
 
 								// spawn input component for local player
-								if (local_player)
+								if (e.m_self)
 									world.m_registry.emplace<c_player_input>(world.m_players.back());
 
 								// occupy player slot
 								slot.m_entity = world.m_players.back();
 							}
-							else if (packet_type == net_event_type::DESPAWN)
+							else if (std::holds_alternative<net::events::despawn>(packet_event))
 							{
-								// read the despawn packet
-								if (packet.dataLength != 2)
-								{
-									bump::log_error("invalid despawn packet length!");
-									enet_packet_destroy(event.packet);
-									break;
-								}
+								auto const& e = std::get<net::events::despawn>(packet_event);
 
-								auto const slot_index = bump::io::read<std::uint8_t>(packet_stream);
-
-								if (slot_index >= world.m_player_slots.size())
+								if (e.m_slot_index >= world.m_player_slots.size())
 								{
 									bump::log_error("invalid slot index in despawn packet!");
-									enet_packet_destroy(event.packet);
 									break;
 								}
 
 								// find the player slot
-								auto& slot = world.m_player_slots[slot_index];
+								auto& slot = world.m_player_slots[e.m_slot_index];
 
 								auto const entity = slot.m_entity;
 
 								if (entity == entt::null)
 								{
 									bump::log_error("slot already empty!");
-									enet_packet_destroy(event.packet);
 									break;
 								}
 
@@ -663,31 +654,21 @@ namespace ta
 
 								// clear player slot
 								slot.m_entity = entt::null;
-								slot.m_peer = nullptr;
+								slot.m_peer = bump::enet::peer();
 							}
-							else if (packet_type == net_event_type::READY)
+							else if (std::holds_alternative<net::events::ready>(packet_event))
 							{
-								if (packet.dataLength != 1)
-								{
-									bump::log_error("invalid ready packet length!");
-									enet_packet_destroy(event.packet);
-									break;
-								}
-
 								return { [&, world = std::move(world_ptr)] (bump::app& app) mutable { return main_loop(app, std::move(world)); } };
 							}
 							else
 							{
 								bump::log_error("unknown packet type received!");
-								enet_packet_destroy(event.packet);
 								break;
 							}
 
-							enet_packet_destroy(event.packet);
-
 							break;
 						}
-						case ENET_EVENT_TYPE_DISCONNECT:
+						case bump::enet::event::type::disconnect:
 						{
 							bump::log_info("disconnected from server!");
 
@@ -808,10 +789,10 @@ namespace ta
 		{
 			.m_player_slots =
 			{
-				{ glm::vec3(1.f, 0.8f, 0.3f), globals::player_radius * glm::vec2{ 1.f, 8.f }, entt::null, nullptr },
-				{ glm::vec3(1.f, 0.f, 0.f), globals::player_radius * glm::vec2{ 5.f, 3.f }, entt::null, nullptr },
-				{ glm::vec3(0.f, 0.9f, 0.f), globals::player_radius * glm::vec2{ 7.f, 3.f }, entt::null, nullptr },
-				{ glm::vec3(0.2f, 0.2f, 1.f), globals::player_radius * glm::vec2{ 9.f, 3.f }, entt::null, nullptr },
+				{ glm::vec3(1.f, 0.8f, 0.3f), globals::player_radius * glm::vec2{ 1.f, 8.f }, entt::null, { } },
+				{ glm::vec3(1.f, 0.f, 0.f), globals::player_radius * glm::vec2{ 5.f, 3.f }, entt::null, { } },
+				{ glm::vec3(0.f, 0.9f, 0.f), globals::player_radius * glm::vec2{ 7.f, 3.f }, entt::null, { } },
+				{ glm::vec3(0.2f, 0.2f, 1.f), globals::player_radius * glm::vec2{ 9.f, 3.f }, entt::null, { } },
 			},
 
 			.m_b2_world = b2World{ b2Vec2{ 0.f, 0.f } },
