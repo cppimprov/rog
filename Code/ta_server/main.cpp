@@ -2,6 +2,7 @@
 
 #include "ta_globals.hpp"
 #include "ta_net_events.hpp"
+#include "ta_net_server.hpp"
 #include "ta_world.hpp"
 
 #include <bump_app.hpp>
@@ -18,40 +19,7 @@
 namespace ta
 {
 
-	namespace net
-	{
-
-		class server
-		{
-		public:
-
-			explicit server(std::size_t peers, std::uint8_t channels, std::uint16_t port):
-				m_host({ 0u, port }, peers, channels, 0u, 0u) { }
-
-			server(server const&) = delete;
-			server& operator=(server const&) = delete;
-			server(server&&) = default;
-			server& operator=(server&&) = default;
-
-			~server()
-			{
-				for (auto p = m_host.peer_begin(); p != m_host.peer_end(); ++p)
-					p->disconnect_now(0);
-			}
-
-			void poll(std::queue<net::event>& events);
-
-			void broadcast(net::event event);
-			void send(bump::enet::peer peer, net::event event);
-
-		private:
-
-			bump::enet::host m_host;
-		};
-
-	} // net
-
-	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr, bump::enet::host server)
+	bump::gamestate main_loop(bump::app& app, std::unique_ptr<ta::world> world_ptr, ta::net::server server)
 	{
 		bump::log_info("main_loop()");
 
@@ -476,10 +444,12 @@ namespace ta
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
+		auto net_events = std::queue<ta::net::net_event>();
+		auto game_events = std::queue<ta::net::game_event>();
 
-		auto server = bump::enet::host({ 0u, 6543u }, 4, 2, 0, 0);
+		auto server = ta::net::server(4, 2, 6543);
 
-		if (!server.is_valid())
+		if (!server.m_host.is_valid())
 		{
 			bump::log_error("failed to create enet server!");
 			return { };
@@ -523,18 +493,20 @@ namespace ta
 
 			// network
 			{
-				while (true)
-				{
-					auto event = server.service(0);
+				server.poll(net_events, game_events);
 
-					if (!event.is_valid())
-						break;
-					
-					switch (event.get_type())
-					{
-					case bump::enet::event::type::connect:
+				while (!net_events.empty())
+				{
+					auto event = std::move(net_events.front());
+					net_events.pop();
+
+					namespace ne = ta::net::net_events;
+
+					if (std::holds_alternative<ne::connect>(event))
 					{
 						bump::log_info("client connected!");
+
+						auto& e = std::get<ne::connect>(event);
 
 						// find an empty player slot
 						auto const new_slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
@@ -543,8 +515,8 @@ namespace ta
 						if (new_slot == world.m_player_slots.end())
 						{
 							bump::log_info("no player slots available!");
-							event.get_peer().disconnect_now(0);
-							break;
+							e.m_peer.disconnect_now(0);
+							continue;
 						}
 
 						// create player 
@@ -552,17 +524,12 @@ namespace ta
 
 						// occupy player slot
 						new_slot->m_entity = world.m_players.back();
-						new_slot->m_peer = event.get_peer();
+						new_slot->m_peer = e.m_peer;
 
 						// send spawn event to everyone
 						auto const new_entity = world.m_players.back();
 						auto const new_slot_index = static_cast<std::uint8_t>(new_slot - world.m_player_slots.begin());
-
-						{
-							auto stream = std::ostringstream();
-							bump::io::write(stream, net::events::spawn{ new_slot_index, true });
-							server.broadcast(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
-						}
+						server.broadcast(0, net::game_events::spawn{ new_slot_index, true }, ENET_PACKET_FLAG_RELIABLE);
 						
 						// update new client by spawning other players
 						for (auto slot_index = std::size_t{ 0 }; slot_index != world.m_player_slots.size(); ++slot_index)
@@ -571,42 +538,33 @@ namespace ta
 
 							if (slot.m_entity == entt::null || slot.m_entity == new_entity)
 								continue;
-
-							auto stream = std::ostringstream();
-							bump::io::write(stream, net::events::spawn{ static_cast<std::uint8_t>(slot_index), false });
-							event.get_peer().send(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
+							
+							server.send(e.m_peer, 0, net::game_events::spawn{ static_cast<std::uint8_t>(slot_index), false }, ENET_PACKET_FLAG_RELIABLE);
 						}
 
-						break;
+						continue;
 					}
-					case bump::enet::event::type::receive:
-					{
-						bump::log_info("packet received!");
 
-						// note: server shouldn't be receiving any packets here!
-						break;
-					}
-					case bump::enet::event::type::disconnect:
+					if (std::holds_alternative<ne::disconnect>(event))
 					{
 						bump::log_info("client disconnected!");
 
+						auto& e = std::get<ne::disconnect>(event);
+
 						// find corresponding player slot
 						auto const slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-							[&] (auto const& s) { return s.m_peer == event.get_peer(); });
+							[&] (auto const& s) { return s.m_peer == e.m_peer; });
 						
 						if (slot == world.m_player_slots.end())
 						{
 							bump::log_info("client not found!");
-							break;
+							continue;
 						}
 
 						// send despawn event to everyone
 						auto const entity = slot->m_entity;
 						auto const slot_index = slot - world.m_player_slots.begin();
-
-						auto stream = std::ostringstream();
-						bump::io::write(stream, net::events::despawn{ static_cast<std::uint8_t>(slot_index) });
-						server.broadcast(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
+						server.broadcast(0, net::game_events::despawn{ static_cast<std::uint8_t>(slot_index) }, ENET_PACKET_FLAG_RELIABLE);
 
 						// remove player's bullets from registry
 						auto const bullet_view = world.m_registry.view<c_bullet_owner_id>();
@@ -627,17 +585,21 @@ namespace ta
 						slot->m_entity = entt::null;
 						slot->m_peer = bump::enet::peer();
 
-						break;
-					}
+						continue;
 					}
 				}
 
-				// notify players to move to the main_loop
-				if (server.get_connected_peer_count() == 4)
+				while (!game_events.empty())
 				{
-					auto stream = std::ostringstream();
-					bump::io::write(stream, net::events::ready{ });
-					server.broadcast(0, bump::enet::packet(stream.str(), ENET_PACKET_FLAG_RELIABLE));
+					bump::log_info("game event received!");
+
+					// note: we shouldn't be receiving any game events here!
+				}
+
+				// notify players to move to the main_loop
+				if (server.m_host.get_connected_peer_count() == 4)
+				{
+					server.broadcast(0, net::game_events::ready{ }, ENET_PACKET_FLAG_RELIABLE);
 
 					return { [&, world = std::move(world_ptr), server = std::move(server)] (bump::app& app) mutable { return main_loop(app, std::move(world), std::move(server)); } };
 				}
@@ -863,9 +825,14 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// TODO:
+// todo: add net::client class
+// todo: move gamestates into separate files
+// todo: split gamestates into smaller functions as necessary
 
-	// todo: server / client classes for basic raii (call disconnect_now on quit)
-		// system similar to input queues to handle events?
-	// todo: share packet reading / writing code between server and client
-	// todo: share spawn / despawn functions between server and client
+// todo: add net code to the main_loop
+	// pass in server
+	// send input to server
+	// get player positions from server
+	// interpolate / extrapolate player positions
+
+// todo: share spawn / despawn functions between server and client
