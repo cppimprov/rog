@@ -13,8 +13,16 @@ namespace ta::net
 
 	server::~server()
 	{
+		if (!m_host.is_valid())
+			return;
+
 		for (auto p = m_host.peer_begin(); p != m_host.peer_end(); ++p)
+		{
+			if (!p->is_valid())
+				continue;
+
 			p->disconnect_now(0);
+		}
 	}
 
 	void server::poll(std::queue<net::net_event>& net_events, std::queue<net::game_event>& game_events)

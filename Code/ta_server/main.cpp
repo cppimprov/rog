@@ -825,7 +825,9 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: add net::client class
+// todo: fix bug with peer iteration (don't use UB!!!)
+// todo: method to get ENetPeerState (or wrapper equivalent) from bump::enet::peer
+// todo: abstract spawn / despawn logic? (where to put it?)
 // todo: move gamestates into separate files
 // todo: split gamestates into smaller functions as necessary
 
@@ -834,5 +836,3 @@ int main(int , char* [])
 	// send input to server
 	// get player positions from server
 	// interpolate / extrapolate player positions
-
-// todo: share spawn / despawn functions between server and client
