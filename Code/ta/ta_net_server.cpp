@@ -15,13 +15,15 @@ namespace ta::net
 	{
 		if (!m_host.is_valid())
 			return;
-
-		for (auto p = m_host.peer_begin(); p != m_host.peer_end(); ++p)
+		
+		for (auto i = std::size_t{ 0 }; i != m_host.get_peer_count(); ++i)
 		{
-			if (!p->is_valid())
+			auto peer = m_host.get_peer(i);
+
+			if (!peer.is_valid())
 				continue;
 
-			p->disconnect_now(0);
+			peer.disconnect_now(0);
 		}
 	}
 

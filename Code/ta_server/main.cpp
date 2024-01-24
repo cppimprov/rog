@@ -825,8 +825,6 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: fix bug with peer iteration (don't use UB!!!)
-// todo: method to get ENetPeerState (or wrapper equivalent) from bump::enet::peer
 // todo: abstract spawn / despawn logic? (where to put it?)
 // todo: move gamestates into separate files
 // todo: split gamestates into smaller functions as necessary

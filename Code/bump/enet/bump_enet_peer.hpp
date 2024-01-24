@@ -52,6 +52,9 @@ namespace bump
 			std::uint32_t get_packets_lost() const { die_if(!m_peer); return m_peer->packetsLost; }
 			std::uint32_t get_mean_round_trip_time_ms() const { die_if(!m_peer); return m_peer->roundTripTime; }
 
+			enum class peer_state { disconnected, connecting, acknowleging_connect, connection_pending, connection_succeeded, connected, disconnect_later, disconnecting, acknowleging_disconnect, zombie };
+			peer_state get_peer_state() const { die_if(!m_peer); return static_cast<peer_state>(m_peer->state); }
+
 			bool is_valid() const { return m_peer != nullptr; }
 			ENetPeer* get_enet_peer() const { return m_peer; }
 

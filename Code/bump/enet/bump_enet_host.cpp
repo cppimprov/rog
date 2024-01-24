@@ -38,30 +38,6 @@ namespace bump
 			destroy();
 		}
 
-		peer const* host::peer_begin() const
-		{
-			die_if(!m_host);
-			return reinterpret_cast<peer const*>(m_host->peers);
-		}
-
-		peer* host::peer_begin()
-		{
-			die_if(!m_host);
-			return reinterpret_cast<peer*>(m_host->peers);
-		}
-
-		peer const* host::peer_end() const
-		{
-			die_if(!m_host);
-			return reinterpret_cast<peer const*>(m_host->peers + m_host->peerCount);
-		}
-
-		peer* host::peer_end()
-		{
-			die_if(!m_host);
-			return reinterpret_cast<peer*>(m_host->peers + m_host->peerCount);
-		}
-
 		void host::reset_totals()
 		{
 			die_if(!m_host);

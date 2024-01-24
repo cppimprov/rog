@@ -36,11 +36,8 @@ namespace bump
 			std::size_t get_peer_count() const { die_if(!m_host); return m_host->peerCount; }
 			std::size_t get_connected_peer_count() const { die_if(!m_host); return m_host->connectedPeers; }
 
-			peer const* peer_begin() const;
-			peer* peer_begin();
-			peer const* peer_end() const;
-			peer* peer_end();
-
+			peer get_peer(std::size_t index) const { die_if(!m_host); return peer(&m_host->peers[index]); }
+			
 			std::uint32_t get_total_data_sent() const { die_if(!m_host); return m_host->totalSentData; }
 			std::uint32_t get_total_data_received() const { die_if(!m_host); return m_host->totalReceivedData; }
 			std::uint32_t get_total_packets_sent() const { die_if(!m_host); return m_host->totalSentPackets; }
