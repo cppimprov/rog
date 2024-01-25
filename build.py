@@ -615,6 +615,7 @@ class PlatformMSVC:
 			join_dir(enet.code_dir, 'include'),
 			glew.code_dir,
 			glm.code_dir,
+			join_dir(sdl.code_dir, 'include'),
 		]
 		ta.inc_dirs = ta.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		self.write_static_lib(n, build_type, ta)

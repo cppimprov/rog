@@ -10,6 +10,9 @@
 
 #include <entt.hpp>
 
+namespace bump::sdl { class window; }
+namespace bump::gl { class renderer; }
+
 namespace ta
 {
 
@@ -169,5 +172,6 @@ namespace ta
 
 	void load_test_map(world& world);
 	void set_world_bounds(b2World& b2_world, glm::vec2 size_px);
+	void render_world(bump::sdl::window const& window, bump::gl::renderer& renderer, world& world);
 
 } // ta

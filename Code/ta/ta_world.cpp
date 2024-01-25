@@ -2,6 +2,10 @@
 
 #include "ta_globals.hpp"
 
+#include <bump_gl_renderer.hpp>
+#include <bump_sdl_window.hpp>
+#include <bump_transform.hpp>
+
 #include <ranges>
 
 namespace ta
@@ -356,6 +360,108 @@ namespace ta
 			auto shape = b2PolygonShape{};
 			shape.SetAsBox(half_size.x, boundsThickness, b2Vec2{ 0.f, -half_size.y - (boundsThickness * 0.5f) }, 0.f);
 			make_fixture(shape);
+		}
+	}
+
+	void render_world(bump::sdl::window const& window, bump::gl::renderer& renderer, ta::world& world)
+	{
+		// render
+		{
+			renderer.clear_color_buffers({ 0.39215f, 0.58431f, 0.92941f, 1.f });
+			renderer.clear_depth_buffers();
+
+			renderer.set_viewport({ 0, 0 }, glm::uvec2(window.get_size()));
+
+			auto camera = bump::orthographic_camera();
+			camera.m_projection.m_size = glm::vec2(window.get_size());
+			camera.m_viewport.m_size = glm::vec2(window.get_size());
+			
+			auto const matrices = bump::camera_matrices(camera);
+
+			renderer.set_blending(bump::gl::renderer::blending::BLEND);
+
+			// render tiles
+			{
+				auto const tile_view = world.m_registry.view<c_tile_type>();
+
+				for (auto y : bump::range(0, world.m_tiles.extents()[1]))
+				{
+					for (auto x : bump::range(0, world.m_tiles.extents()[0]))
+					{
+						auto const entity = world.m_tiles.at({ x, y });
+						auto const& tt = tile_view.get<c_tile_type>(entity);
+
+						auto const tile_index = static_cast<std::size_t>(tt.m_type);
+						auto const tile_texture = world.m_tile_textures[tile_index];
+
+						auto const position_px = globals::tile_radius + globals::tile_radius * 2.f * glm::vec2(x, y);
+
+						auto model_matrix = glm::mat4(1.f);
+						bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+
+						world.m_tile_renderable.render(renderer, *tile_texture, matrices, model_matrix, globals::tile_radius * 2.f);
+					}
+				}
+			}
+
+			// render players
+			{
+				auto const player_view = world.m_registry.view<c_player_physics, c_player_movement, c_player_graphics>();
+
+				for (auto const p : player_view)
+				{
+					auto [pp, pm, pg] = player_view.get<c_player_physics, c_player_movement, c_player_graphics>(p);
+
+					auto const rotation_angle = dir_to_angle(pm.m_direction);
+					auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
+
+					auto model_matrix = glm::mat4(1.f);
+					bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+					bump::set_rotation(model_matrix, glm::angleAxis(glm::radians(rotation_angle), glm::vec3(0.f, 0.f, 1.f)));
+
+					auto& renderable = is_diagonal(pm.m_direction) ? world.m_tank_renderable_diagonal : world.m_tank_renderable;
+					renderable.render(renderer, matrices, model_matrix, globals::player_radius * 2.f, pg.m_color);
+				}
+			}
+
+			// render bullets
+			{
+				auto const player_color_view = world.m_registry.view<c_player_graphics>();
+				auto const bullet_view = world.m_registry.view<c_bullet_owner_id, c_bullet_physics>();
+
+				for (auto const b : bullet_view)
+				{
+					auto const& [bid, bp] = bullet_view.get<c_bullet_owner_id, c_bullet_physics>(b);
+					auto const& pg = player_color_view.get<c_player_graphics>(bid.m_owner_id);
+
+					auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(bp.m_b2_body->GetPosition());
+
+					auto model_matrix = glm::mat4(1.f);
+					bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+					world.m_bullet_renderable.render(renderer, matrices, model_matrix, globals::bullet_radius * 2.f, pg.m_color);
+				}
+			}
+
+			// render powerups
+			{
+				auto const powerup_view = world.m_registry.view<c_powerup_type, c_powerup_physics>();
+				
+				for (auto const p : powerup_view)
+				{
+					auto const& [pt, pp] = powerup_view.get<c_powerup_type, c_powerup_physics>(p);
+
+					auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
+					auto const color = get_powerup_color(pt.m_type);
+
+					auto model_matrix = glm::mat4(1.f);
+					bump::set_position(model_matrix, glm::vec3(position_px, 0.f));
+					world.m_powerup_renderable.render(renderer, matrices, model_matrix, globals::powerup_radius * 2.f, color);
+				}
+			}
+			
+			renderer.set_blending(bump::gl::renderer::blending::NONE);
+
+			window.swap_buffers();
 		}
 	}
 
