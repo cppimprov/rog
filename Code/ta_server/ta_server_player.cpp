@@ -79,6 +79,9 @@ namespace ta
 		// remove player from registry
 		destroy_player(world.m_registry, world.m_b2_world, entity);
 
+		// remove player from world
+		std::erase(world.m_players, entity);
+
 		// clear player slot
 		slot->m_entity = entt::null;
 		slot->m_peer = bump::enet::peer();

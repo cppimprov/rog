@@ -106,10 +106,20 @@ namespace ta
 				{
 					bump::log_info("game event received!");
 
-					// ...
+					auto event = std::move(game_events.front());
+					game_events.pop();
+
+					namespace ge = ta::net::game_events;
+
+					// todo: ...
 				}
 
-				// todo: if we drop to 0 players, go back to waiting_for_players
+				if (server.m_host.get_connected_peer_count() == 0)
+				{
+					bump::log_info("0 players connected!");
+
+					return { [&] (bump::app& app) { return loading(app); } };
+				}
 			}
 			
 			// update

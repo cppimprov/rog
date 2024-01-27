@@ -26,6 +26,8 @@ namespace ta
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
+		auto net_events = std::queue<ta::net::net_event>();
+		auto game_events = std::queue<ta::net::game_event>();
 
 		auto rng = std::mt19937_64{ std::random_device{}() };
 		auto tile_list = std::vector<entt::entity>();
@@ -80,6 +82,45 @@ namespace ta
 				}
 			}
 			
+			// network
+			{
+				client.poll(net_events, game_events);
+
+				while (!net_events.empty())
+				{
+					auto event = std::move(net_events.front());
+					net_events.pop();
+
+					namespace ne = ta::net::net_events;
+
+					if (std::holds_alternative<ne::connect>(event))
+					{
+						// note: this should never happen...
+						bump::log_error("connected to server in main_loop!?");
+						continue;
+					}
+
+					if (std::holds_alternative<ne::disconnect>(event))
+					{
+						bump::log_info("disconnected from server!");
+						
+						return { [&] (bump::app& app) { return loading(app); } };
+					}
+				}
+
+				while (!game_events.empty())
+				{
+					bump::log_info("game event received!");
+
+					auto event = std::move(game_events.front());
+					game_events.pop();
+
+					namespace ge = ta::net::game_events;
+
+					// todo: ...
+				}
+			}
+
 			// update
 			{
 				auto const delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(timer.get_last_frame_time()).count();

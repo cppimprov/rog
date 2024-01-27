@@ -24,8 +24,8 @@ namespace bump
 			
 			peer(peer const&) = default;
 			peer& operator=(peer const&) = default;
-			peer(peer&&) = default;
-			peer& operator=(peer&&) = default;
+			peer(peer&&);
+			peer& operator=(peer&&);
 
 			address get_address() const { die_if(!m_peer); return address(m_peer->address); }
 

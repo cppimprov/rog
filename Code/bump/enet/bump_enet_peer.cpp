@@ -5,6 +5,19 @@ namespace bump
 
 	namespace enet
 	{
+
+		peer::peer(peer&& other):
+			m_peer(other.m_peer)
+		{
+			other.m_peer = nullptr;
+		}
+
+		peer& peer::operator=(peer&& other)
+		{
+			auto temp = std::move(other);
+			std::swap(m_peer, temp.m_peer);
+			return *this;
+		}
 	
 		void peer::send(std::uint8_t channel_id, packet packet)
 		{

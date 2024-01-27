@@ -17,7 +17,8 @@ namespace ta::net
 
 	client::~client()
 	{
-		m_peer.disconnect_now(0);
+		if (m_peer.is_valid())
+			m_peer.disconnect_now(0);
 	}
 
 	void client::poll(std::queue<net::net_event>& net_events, std::queue<net::game_event>& game_events)
@@ -80,6 +81,6 @@ namespace ta::net
 		auto stream = std::ostringstream();
 		bump::io::write(stream, event);
 		m_peer.send(channel_id, bump::enet::packet(stream.str(), packet_flags));
-	}	
+	}
 
 } // ta::net
