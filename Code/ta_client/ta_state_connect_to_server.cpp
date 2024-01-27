@@ -11,6 +11,78 @@
 namespace ta
 {
 
+	namespace
+	{
+
+		void spawn_player(ta::world& world, ta::net::game_events::spawn const& event)
+		{
+			if (event.m_slot_index >= world.m_player_slots.size())
+			{
+				bump::log_error("invalid slot index in spawn packet!");
+				return;
+			}
+
+			// find the specified slot
+			auto& slot = world.m_player_slots[event.m_slot_index];
+
+			if (slot.m_entity != entt::null)
+			{
+				bump::log_error("slot already occupied!");
+				return;
+			}
+
+			// create player
+			world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, slot.m_start_pos_px, slot.m_color));
+
+			// spawn input component for local player
+			if (event.m_self)
+				world.m_registry.emplace<c_player_input>(world.m_players.back());
+
+			// occupy player slot
+			slot.m_entity = world.m_players.back();
+		}
+
+		void despawn_player(ta::world& world, ta::net::game_events::despawn const& event)
+		{
+			if (event.m_slot_index >= world.m_player_slots.size())
+			{
+				bump::log_error("invalid slot index in despawn packet!");
+				return;
+			}
+
+			// find the player slot
+			auto& slot = world.m_player_slots[event.m_slot_index];
+
+			auto const entity = slot.m_entity;
+
+			if (entity == entt::null)
+			{
+				bump::log_error("slot already empty!");
+				return;
+			}
+
+			// remove player's bullets from registry
+			auto const bullet_view = world.m_registry.view<c_bullet_owner_id>();
+
+			auto expired = std::partition(world.m_bullets.begin(), world.m_bullets.end(),
+				[&] (auto const& b) { return bullet_view.get<c_bullet_owner_id>(b).m_owner_id != entity; });
+
+			for (auto const b : std::ranges::subrange(expired, world.m_bullets.end()))
+				destroy_bullet(world.m_registry, world.m_b2_world, b);
+
+			// remove player's bullets from world
+			world.m_bullets.erase(expired, world.m_bullets.end());
+
+			// remove player from registry
+			destroy_player(world.m_registry, world.m_b2_world, entity);
+
+			// clear player slot
+			slot.m_entity = entt::null;
+			slot.m_peer = bump::enet::peer();
+		}
+
+	} // unnamed
+
 	bump::gamestate connect_to_server(bump::app& app, std::unique_ptr<ta::world> world_ptr)
 	{
 		auto& world = *world_ptr;
@@ -105,86 +177,20 @@ namespace ta
 					if (std::holds_alternative<ge::spawn>(event))
 					{
 						bump::log_info("received spawn event!");
-						
-						auto const& e = std::get<ge::spawn>(event);
-
-						if (e.m_slot_index >= world.m_player_slots.size())
-						{
-							bump::log_error("invalid slot index in spawn packet!");
-							break;
-						}
-
-						// find the specified slot
-						auto& slot = world.m_player_slots[e.m_slot_index];
-
-						if (slot.m_entity != entt::null)
-						{
-							bump::log_error("slot already occupied!");
-							break;
-						}
-
-						// create player
-						world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, slot.m_start_pos_px, slot.m_color));
-
-						// spawn input component for local player
-						if (e.m_self)
-							world.m_registry.emplace<c_player_input>(world.m_players.back());
-
-						// occupy player slot
-						slot.m_entity = world.m_players.back();
-
+						spawn_player(world, std::get<ge::spawn>(event));
 						continue;
 					}
 
 					if (std::holds_alternative<ge::despawn>(event))
 					{
 						bump::log_info("received despawn event!");
-						
-						auto const& e = std::get<ge::despawn>(event);
-
-						if (e.m_slot_index >= world.m_player_slots.size())
-						{
-							bump::log_error("invalid slot index in despawn packet!");
-							break;
-						}
-
-						// find the player slot
-						auto& slot = world.m_player_slots[e.m_slot_index];
-
-						auto const entity = slot.m_entity;
-
-						if (entity == entt::null)
-						{
-							bump::log_error("slot already empty!");
-							break;
-						}
-
-						// remove player's bullets from registry
-						auto const bullet_view = world.m_registry.view<c_bullet_owner_id>();
-
-						auto expired = std::partition(world.m_bullets.begin(), world.m_bullets.end(),
-							[&] (auto const& b) { return bullet_view.get<c_bullet_owner_id>(b).m_owner_id != entity; });
-
-						for (auto const b : std::ranges::subrange(expired, world.m_bullets.end()))
-							destroy_bullet(world.m_registry, world.m_b2_world, b);
-
-						// remove player's bullets from world
-						world.m_bullets.erase(expired, world.m_bullets.end());
-
-						// remove player from registry
-						destroy_player(world.m_registry, world.m_b2_world, entity);
-
-						// clear player slot
-						slot.m_entity = entt::null;
-						slot.m_peer = bump::enet::peer();
-
+						despawn_player(world, std::get<ge::despawn>(event));
 						continue;
 					}
 
 					if (std::holds_alternative<ge::ready>(event))
 					{
 						bump::log_info("received ready event!");
-
 						return { [&, world = std::move(world_ptr), client = std::move(client)] (bump::app& app) mutable { return main_loop(app, std::move(world), std::move(client)); } };
 					}
 				}
