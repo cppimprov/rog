@@ -66,13 +66,6 @@ int main(int, char* [])
 		auto app = bump::app(metadata, { 1024, 768 }, "ta_client", bump::sdl::window::display_mode::WINDOWED);
 		app.m_gl_context.set_swap_interval(bump::sdl::gl_context::swap_interval_mode::ADAPTIVE_VSYNC);
 
-		// temp:
-		if (enet_initialize() != 0)
-		{
-			bump::log_error("failed to initialize enet!");
-			return EXIT_FAILURE;
-		}
-
 		bump::run_state({ [] (bump::app& app) { return ta::loading(app); } }, app);
 	}
 

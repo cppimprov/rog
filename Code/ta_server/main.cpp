@@ -66,13 +66,6 @@ int main(int , char* [])
 		auto app = bump::app(metadata, { 1024, 768 }, "ta_server", bump::sdl::window::display_mode::WINDOWED);
 		app.m_gl_context.set_swap_interval(bump::sdl::gl_context::swap_interval_mode::ADAPTIVE_VSYNC);
 
-		// temp:
-		if (enet_initialize() != 0)
-		{
-			bump::log_error("failed to initialize enet!");
-			return EXIT_FAILURE;
-		}
-
 		bump::run_state({ [] (bump::app& app) { return ta::loading(app); } }, app);
 	}
 
@@ -81,7 +74,6 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: move enet_initialize to a context class (or something)?
 // todo: abstract spawn / despawn logic? (where to put it?)
 // todo: split gamestates into smaller functions as necessary
 

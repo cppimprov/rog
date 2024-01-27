@@ -12,6 +12,7 @@ namespace bump
 		m_gl_context(m_window),
 		m_glew_context(),
 		m_renderer(),
+		m_enet_context(enet::initialize()),
 		m_assets(load_assets(*this, metadata))
 	{
 		m_window.set_min_size({ 640, 360 });

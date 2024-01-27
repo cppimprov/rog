@@ -524,6 +524,7 @@ class PlatformMSVC:
 		rog.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
+			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
@@ -535,6 +536,7 @@ class PlatformMSVC:
 		]
 		rog.inc_dirs = rog.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		rog.libs = [
+			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
@@ -557,6 +559,7 @@ class PlatformMSVC:
 		]
 		rog_ascii_gen.inc_dirs = rog_ascii_gen.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		rog_ascii_gen.libs = [
+			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
@@ -700,6 +703,7 @@ class PlatformMSVC:
 			entt.code_dir,
 			json.code_dir,
 			join_dir(box2d.code_dir, 'include'),
+			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
@@ -713,6 +717,7 @@ class PlatformMSVC:
 		] + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		test.libs = [
 			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
+			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(gtest.deploy_dir, self.get_lib_name(gtest.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
