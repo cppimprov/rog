@@ -1,19 +1,20 @@
 #include "ta_state.hpp"
 
+#include "ta_server.hpp"
+
+#include <ta_globals.hpp>
+#include <ta_net_server.hpp>
+#include <ta_world.hpp>
+
 #include <bump_app.hpp>
 #include <bump_gamestate.hpp>
 #include <bump_input.hpp>
 #include <bump_log.hpp>
 #include <bump_timer.hpp>
 
-#include <ta_globals.hpp>
-#include <ta_net_server.hpp>
-#include <ta_world.hpp>
-
 #include <entt.hpp>
 
 #include <random>
-
 
 namespace ta
 {
@@ -26,6 +27,8 @@ namespace ta
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
+		auto net_events = std::queue<ta::net::net_event>();
+		auto game_events = std::queue<ta::net::game_event>();
 
 		auto rng = std::mt19937_64{ std::random_device{}() };
 		auto tile_list = std::vector<entt::entity>();
@@ -67,6 +70,46 @@ namespace ta
 							return { }; // quit
 					}
 				}
+			}
+
+			// network
+			{
+				server.poll(net_events, game_events);
+
+				while (!net_events.empty())
+				{
+					auto event = std::move(net_events.front());
+					net_events.pop();
+
+					namespace ne = ta::net::net_events;
+
+					if (std::holds_alternative<ne::connect>(event))
+					{
+						bump::log_info("client connected!");
+
+						// todo: add enet feature to disallow connections?
+						auto& connect = std::get<ne::connect>(event);
+						connect.m_peer.disconnect_now(0);
+
+						continue;
+					}
+
+					if (std::holds_alternative<ne::disconnect>(event))
+					{
+						bump::log_info("client disconnected!");
+						despawn_player(world, std::get<ne::disconnect>(event), server);
+						continue;
+					}
+				}
+
+				while (!game_events.empty())
+				{
+					bump::log_info("game event received!");
+
+					// ...
+				}
+
+				// todo: if we drop to 0 players, go back to waiting_for_players
 			}
 			
 			// update

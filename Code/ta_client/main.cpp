@@ -78,4 +78,5 @@ int main(int, char* [])
 
 	// todo: add net code to main loop
 		// pass in client and peer
+		// handle disconnections
 		// send movement updates to server

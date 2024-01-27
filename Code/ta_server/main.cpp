@@ -74,14 +74,14 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: split gamestates into smaller functions as necessary
-
 // todo: add net code to the main_loop
-	// pass in server
+	// handle disconnections
 	// send input to server
 	// get player positions from server
 	// interpolate / extrapolate player positions
 
-// todo: not all apps need network code... (or other things)
+// todo: split gamestates into smaller functions as necessary
+
+// todo (sometime): not all apps need network code... (or other things)
 	// each program should have its own "app" class that includes the things it needs
 	// then we can remove the bump::app class
