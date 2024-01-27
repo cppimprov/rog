@@ -81,8 +81,8 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
+// todo: move enet_initialize to a context class (or something)?
 // todo: abstract spawn / despawn logic? (where to put it?)
-// todo: move gamestates into separate files
 // todo: split gamestates into smaller functions as necessary
 
 // todo: add net code to the main_loop
