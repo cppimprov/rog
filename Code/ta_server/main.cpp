@@ -74,8 +74,9 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: add net code to the main_loop
-	// handle disconnections
+// todo: use the fixed timestep in the waiting / connecting states...
+
+// todo: networking
 	// send input to server
 	// get player positions from server
 	// interpolate / extrapolate player positions

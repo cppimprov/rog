@@ -152,6 +152,7 @@ namespace ta
 		// ecs:
 		entt::registry m_registry;
 
+		entt::entity m_local_player;
 		std::vector<entt::entity> m_players;
 		std::vector<entt::entity> m_bullets;
 		std::vector<entt::entity> m_powerups;

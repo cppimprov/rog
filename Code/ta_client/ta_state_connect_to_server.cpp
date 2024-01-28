@@ -1,5 +1,6 @@
 #include "ta_state.hpp"
 
+#include <ta_globals.hpp>
 #include <ta_net_client.hpp>
 #include <ta_world.hpp>
 
@@ -36,7 +37,10 @@ namespace ta
 
 			// spawn input component for local player
 			if (event.m_self)
+			{
 				world.m_registry.emplace<c_player_input>(world.m_players.back());
+				world.m_local_player = world.m_players.back();
+			}
 
 			// occupy player slot
 			slot.m_entity = world.m_players.back();
@@ -78,6 +82,9 @@ namespace ta
 
 			// remove player from world
 			std::erase(world.m_players, entity);
+			
+			if (world.m_local_player == entity)
+				world.m_local_player = entt::null;
 
 			// clear player slot
 			slot.m_entity = entt::null;
@@ -110,91 +117,102 @@ namespace ta
 			return { };
 		}
 
+		auto timer = bump::frame_timer();
+		auto dt_accumulator = bump::high_res_duration_t{ 0 };
+
 		while (true)
 		{
-			// input
+			dt_accumulator += timer.get_last_frame_time();
+
+			while (dt_accumulator >= globals::client_update_tick_rate)
 			{
-				app.m_input_handler.poll(app_events, input_events);
+				dt_accumulator -= globals::client_update_tick_rate;
+				//auto const dt_f = globals::client_update_tick_rate_f;
 
-				while (!app_events.empty())
+				// input
 				{
-					auto event = std::move(app_events.front());
-					app_events.pop();
+					app.m_input_handler.poll(app_events, input_events);
 
-					namespace ae = bump::input::app_events;
-
-					if (std::holds_alternative<ae::quit>(event))
-						return { };	// quit
-				}
-
-				while (!input_events.empty())
-				{
-					auto event = std::move(input_events.front());
-					input_events.pop();
-
-					namespace ie = bump::input::input_events;
-
-					if (std::holds_alternative<ie::keyboard_key>(event))
+					while (!app_events.empty())
 					{
-						auto const& k = std::get<ie::keyboard_key>(event);
+						auto event = std::move(app_events.front());
+						app_events.pop();
 
-						using kt = bump::input::keyboard_key;
+						namespace ae = bump::input::app_events;
 
-						if (k.m_key == kt::ESCAPE && k.m_value)
-							return { }; // quit
-					}
-				}
-			}
-
-			// network
-			{
-				client.poll(net_events, game_events);
-
-				while (!net_events.empty())
-				{
-					auto event = std::move(net_events.front());
-					net_events.pop();
-
-					namespace ne = ta::net::net_events;
-
-					if (std::holds_alternative<ne::connect>(event))
-					{
-						bump::log_info("connected to server!");
-						continue;
+						if (std::holds_alternative<ae::quit>(event))
+							return { };	// quit
 					}
 
-					if (std::holds_alternative<ne::disconnect>(event))
+					while (!input_events.empty())
 					{
-						bump::log_info("disconnected from server!");
-						return { };
+						auto event = std::move(input_events.front());
+						input_events.pop();
+
+						namespace ie = bump::input::input_events;
+
+						if (std::holds_alternative<ie::keyboard_key>(event))
+						{
+							auto const& k = std::get<ie::keyboard_key>(event);
+
+							using kt = bump::input::keyboard_key;
+
+							if (k.m_key == kt::ESCAPE && k.m_value)
+								return { }; // quit
+						}
 					}
 				}
 
-				while (!game_events.empty())
+				// network
 				{
-					auto event = std::move(game_events.front());
-					game_events.pop();
+					client.poll(net_events, game_events);
 
-					namespace ge = ta::net::game_events;
-
-					if (std::holds_alternative<ge::spawn>(event))
+					while (!net_events.empty())
 					{
-						bump::log_info("received spawn event!");
-						spawn_player(world, std::get<ge::spawn>(event));
-						continue;
+						auto event = std::move(net_events.front());
+						net_events.pop();
+
+						namespace ne = ta::net::net_events;
+
+						if (std::holds_alternative<ne::connect>(event))
+						{
+							bump::log_info("connected to server!");
+							continue;
+						}
+
+						if (std::holds_alternative<ne::disconnect>(event))
+						{
+							bump::log_info("disconnected from server!");
+							return { };
+						}
 					}
 
-					if (std::holds_alternative<ge::despawn>(event))
+					while (!game_events.empty())
 					{
-						bump::log_info("received despawn event!");
-						despawn_player(world, std::get<ge::despawn>(event));
-						continue;
-					}
+						auto event = std::move(game_events.front());
+						game_events.pop();
 
-					if (std::holds_alternative<ge::ready>(event))
-					{
-						bump::log_info("received ready event!");
-						return { [&, world = std::move(world_ptr), client = std::move(client)] (bump::app& app) mutable { return main_loop(app, std::move(world), std::move(client)); } };
+						namespace ge = ta::net::game_events;
+
+						if (std::holds_alternative<ge::spawn>(event))
+						{
+							bump::log_info("received spawn event!");
+							spawn_player(world, std::get<ge::spawn>(event));
+							continue;
+						}
+
+						if (std::holds_alternative<ge::despawn>(event))
+						{
+							bump::log_info("received despawn event!");
+							despawn_player(world, std::get<ge::despawn>(event));
+							continue;
+						}
+
+						if (std::holds_alternative<ge::ready>(event))
+						{
+							bump::log_info("received ready event!");
+							return { [&, world = std::move(world_ptr), client = std::move(client)] (bump::app& app) mutable { return main_loop(app, std::move(world), std::move(client)); } };
+						}
 					}
 				}
 			}
