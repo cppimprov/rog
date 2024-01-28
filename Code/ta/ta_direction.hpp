@@ -8,7 +8,7 @@
 namespace ta
 {
 
-	enum class direction
+	enum class direction : std::uint8_t
 	{
 		up,
 		down,

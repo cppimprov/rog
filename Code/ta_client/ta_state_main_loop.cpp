@@ -33,6 +33,7 @@ namespace ta
 		auto tile_list = std::vector<entt::entity>();
 
 		auto timer = bump::frame_timer();
+		auto frame_count = std::uint64_t{ 0 };
 		auto dt_accumulator = bump::high_res_duration_t{ 0 };
 		auto powerup_spawn_timer = bump::timer();
 		
@@ -44,6 +45,8 @@ namespace ta
 
 			while (dt_accumulator >= globals::client_update_tick_rate)
 			{
+				auto const frame_time = frame_count * globals::client_update_tick_rate;
+
 				dt_accumulator -= globals::client_update_tick_rate;
 				auto const dt_f = globals::client_update_tick_rate_f;
 
@@ -130,39 +133,30 @@ namespace ta
 						// todo: ...
 					}
 
-					// send player input to server
-					{
-						// ...
-					}
 				}
 
 				// update
 				{
-					// update player input
+					// send player input
 					{
-						// if (player_entity != entt::null)
-						// {
-						// 	auto [pu, pp, pm, pi] = ecs.m_registry.get<c_player_powerups, c_player_physics, c_player_movement, c_player_input>(player_entity);
+						if (world.m_local_player != entt::null)
+						{
+							auto [pm, pi] = world.m_registry.get<c_player_movement, c_player_input>(world.m_local_player);
 
-						// 	auto const dir = ta::get_input_dir(pi.m_input_up, pi.m_input_down, pi.m_input_left, pi.m_input_right);
+							auto const dir = ta::get_input_dir(pi.m_input_up, pi.m_input_down, pi.m_input_left, pi.m_input_right);
+							auto const moving = dir.has_value();
+							auto const direction = dir.value_or(pm.m_direction);
+							auto const firing = pi.m_input_fire;
 
-						// 	pm.m_moving = dir.has_value();
-						// 	pm.m_direction = dir.value_or(pm.m_direction);
+							if (moving != pm.m_moving || direction != pm.m_direction || firing != pm.m_firing)
+							{
+								pm.m_moving = moving;
+								pm.m_direction = direction;
+								pm.m_firing = firing;
 
-						// 	if (pi.m_input_fire)
-						// 	{
-						// 		auto const reload_time = pu.m_timers.contains(powerup_type::player_reload_speed) ? globals::powerup_player_reload_speed : globals::reload_time;
-
-						// 		if (pi.m_reload_timer.get_elapsed_time() >= reload_time)
-						// 		{
-						// 			auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
-						// 			auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
-						// 			auto const group_index = pp.m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
-						// 			ecs.m_bullets.push_back(create_bullet(ecs.m_registry, world.m_b2_world, player_entity, group_index, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
-						// 			pi.m_reload_timer = bump::timer();
-						// 		}
-						// 	}
-						// }
+								client.send(0, net::game_events::input{ frame_time, moving, direction, firing }, ENET_PACKET_FLAG_RELIABLE);
+							}
+						}
 					}
 
 					// update player movement
@@ -185,6 +179,8 @@ namespace ta
 								pp.m_b2_body->SetLinearVelocity(b2_velocity);
 							}
 						}
+
+						// todo: ???
 					}
 
 					// update physics
@@ -289,6 +285,8 @@ namespace ta
 
 						// update physics
 						world.m_b2_world.Step(dt_f, 6, 2);
+
+						// todo: ??? lerp / extrapolate ???
 					}
 
 					// update bullet lifetimes
@@ -300,6 +298,8 @@ namespace ta
 							auto& bl = bullet_view.get<c_bullet_lifetime>(b);
 							bl.m_lifetime -= dt_f;
 						}
+
+						// todo: keep? use to set visibility on rendering only
 					}
 
 					// remove expired bullets
@@ -313,6 +313,8 @@ namespace ta
 							destroy_bullet(world.m_registry, world.m_b2_world, b);
 
 						world.m_bullets.erase(first_expired, world.m_bullets.end());
+
+						// todo: remove! (delete when the server tells us to)
 					}
 
 					// update player hp
@@ -331,6 +333,8 @@ namespace ta
 							ph.m_hp = std::min(ph.m_hp + globals::powerup_player_heal_hp, globals::player_hp);
 							hp_timer->second = 0.f;
 						}
+
+						// todo: remove! (boost hp when the server tells us to)
 					}
 
 					// update player powerup timers
@@ -347,6 +351,8 @@ namespace ta
 							std::erase_if(pp.m_timers,
 								[] (auto const& p) { return p.second <= 0.f; });
 						}
+
+						// todo: keep time update! remove erasing expired timers (let server tell us when)!
 					}
 
 					// update powerup lifetimes
@@ -358,6 +364,8 @@ namespace ta
 							auto& pl = powerup_view.get<c_powerup_lifetime>(p);
 							pl.m_lifetime -= dt_f;
 						}
+
+						// todo: keep!
 					}
 
 					// remove expired powerups
@@ -371,6 +379,8 @@ namespace ta
 							destroy_powerup(world.m_registry, world.m_b2_world, p);
 
 						world.m_powerups.erase(first_expired, world.m_powerups.end());
+
+						// todo: remove! (delete when the server tells us to)
 					}
 
 					// remove dead players
@@ -382,13 +392,26 @@ namespace ta
 
 						for (auto const p : std::ranges::subrange(first_dead, world.m_players.end()))
 						{
-							// if (p == player_entity)
-							// 	player_entity = entt::null;
-
 							destroy_player(world.m_registry, world.m_b2_world, p);
+
+							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
+								[&] (auto const& s) { return s.m_entity == p; });
+							
+							if (slot == world.m_player_slots.end())
+							{
+								bump::log_error("player slot not found!");
+								continue;
+							}
+
+							slot->m_entity = entt::null;
+
+							if (world.m_local_player == p)
+								world.m_local_player = entt::null;
 						}
 
 						world.m_players.erase(first_dead, world.m_players.end());
+
+						// todo: remove! (delete when the server tells us to)
 					}
 
 					// spawn powerups
@@ -424,9 +447,12 @@ namespace ta
 							world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, type, pos_px));
 							powerup_spawn_timer = bump::timer();
 						}
+
+						// todo: remove! (spawn when the server tells us to)
 					}
 				}
 
+				++frame_count;
 			}
 
 			render_world(app.m_window, app.m_renderer, world);

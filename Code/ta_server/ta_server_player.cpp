@@ -10,7 +10,7 @@
 namespace ta
 {
 
-	void spawn_player(ta::world& world, ta::net::net_events::connect& event, ta::net::server& server)
+	void spawn_player(ta::world& world, ta::net::server& server, bump::enet::peer peer)
 	{
 		// find an empty player slot
 		auto const new_slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
@@ -19,7 +19,7 @@ namespace ta
 		if (new_slot == world.m_player_slots.end())
 		{
 			bump::log_info("no player slots available!");
-			event.m_peer.disconnect_now(0);
+			peer.disconnect_now(0);
 			return;
 		}
 
@@ -28,7 +28,7 @@ namespace ta
 
 		// occupy player slot
 		new_slot->m_entity = world.m_players.back();
-		new_slot->m_peer = event.m_peer;
+		new_slot->m_peer = peer;
 
 		// send spawn event to everyone
 		auto const new_entity = world.m_players.back();
@@ -43,15 +43,15 @@ namespace ta
 			if (slot.m_entity == entt::null || slot.m_entity == new_entity)
 				continue;
 			
-			server.send(event.m_peer, 0, net::game_events::spawn{ static_cast<std::uint8_t>(slot_index), false }, ENET_PACKET_FLAG_RELIABLE);
+			server.send(peer, 0, net::game_events::spawn{ static_cast<std::uint8_t>(slot_index), false }, ENET_PACKET_FLAG_RELIABLE);
 		}
 	}
 
-	void despawn_player(ta::world& world, ta::net::net_events::disconnect& event, ta::net::server& server)
+	void despawn_player(ta::world& world, ta::net::server& server, bump::enet::peer peer)
 	{
 		// find corresponding player slot
 		auto const slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-			[&] (auto const& s) { return s.m_peer == event.m_peer; });
+			[&] (auto const& s) { return s.m_peer == peer; });
 		
 		if (slot == world.m_player_slots.end())
 		{

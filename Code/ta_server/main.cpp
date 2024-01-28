@@ -74,12 +74,8 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: use the fixed timestep in the waiting / connecting states...
-
 // todo: networking
-	// send input to server
-	// get player positions from server
-	// interpolate / extrapolate player positions
+	// go through both server and client code, and 'todo:' all the things that need to be done...
 
 // todo: split gamestates into smaller functions as necessary
 

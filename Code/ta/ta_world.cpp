@@ -53,6 +53,7 @@ namespace ta
 		registry.emplace<c_player_powerups>(entity);
 		registry.emplace<c_player_physics>(entity, body);
 		registry.emplace<c_player_movement>(entity);
+		registry.emplace<c_player_reload>(entity);
 
 		body->SetUserData(reinterpret_cast<void*>(entity));
 

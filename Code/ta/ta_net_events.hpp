@@ -1,7 +1,10 @@
 #pragma once
 
-#include "bump_io.hpp"
-#include "bump_enet.hpp"
+#include "ta_direction.hpp"
+
+#include <bump_io.hpp>
+#include <bump_enet.hpp>
+#include <bump_time.hpp>
 
 #include <cstdint>
 #include <variant>
@@ -17,8 +20,8 @@ namespace ta
 		namespace net_events
 		{
 
-			struct connect    { bump::enet::peer m_peer; };
-			struct disconnect { bump::enet::peer m_peer; };
+			struct connect    { };
+			struct disconnect { };
 
 		} // events
 
@@ -29,7 +32,13 @@ namespace ta
 			net_events::disconnect
 		>;
 
-		enum class game_event_type : std::uint8_t { SPAWN, DESPAWN, READY, };
+		struct peer_net_event
+		{
+			bump::enet::peer m_peer;
+			net_event m_event;
+		};
+
+		enum class game_event_type : std::uint8_t { SPAWN, DESPAWN, READY, INPUT };
 
 		namespace game_events
 		{
@@ -37,6 +46,7 @@ namespace ta
 			struct spawn   { std::uint8_t m_slot_index; bool m_self; };
 			struct despawn { std::uint8_t m_slot_index; };
 			struct ready   { };
+			struct input   { bump::high_res_duration_t m_timestamp; bool m_moving; ta::direction m_direction; bool m_firing; };
 
 		} // events
 
@@ -45,8 +55,15 @@ namespace ta
 			std::monostate, // invalid event type
 			game_events::spawn,
 			game_events::despawn,
-			game_events::ready
+			game_events::ready,
+			game_events::input
 		>;
+
+		struct peer_game_event
+		{
+			bump::enet::peer m_peer;
+			game_event m_event;
+		};
 
 	} // net
 
@@ -79,6 +96,24 @@ namespace bump
 			static ta::net::game_event_type read(std::istream& is)
 			{
 				return static_cast<ta::net::game_event_type>(io::read<std::uint8_t>(is));
+			}
+		};
+
+		template<>
+		struct write_impl<ta::direction>
+		{
+			static void write(std::ostream& os, ta::direction value)
+			{
+				io::write(os, static_cast<std::uint8_t>(value));
+			}
+		};
+
+		template<>
+		struct read_impl<ta::direction>
+		{
+			static ta::direction read(std::istream& is)
+			{
+				return static_cast<ta::direction>(io::read<std::uint8_t>(is));
 			}
 		};
 
@@ -141,6 +176,32 @@ namespace bump
 				return { };
 			}
 		};
+
+		template<>
+		struct write_impl<ta::net::game_events::input>
+		{
+			static void write(std::ostream& os, ta::net::game_events::input value)
+			{
+				io::write(os, ta::net::game_event_type::INPUT);
+				io::write(os, value.m_timestamp);
+				io::write(os, value.m_moving);
+				io::write(os, value.m_direction);
+				io::write(os, value.m_firing);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::input>
+		{
+			static ta::net::game_events::input read(std::istream& is)
+			{
+				auto const timestamp = io::read<bump::high_res_duration_t>(is);
+				auto const moving = io::read<bool>(is);
+				auto const direction = io::read<ta::direction>(is);
+				auto const firing = io::read<bool>(is);
+				return { timestamp, moving, direction, firing };
+			}
+		};
 	
 		template<>
 		struct write_impl<ta::net::game_event>
@@ -163,6 +224,7 @@ namespace bump
 				case ta::net::game_event_type::SPAWN: return { io::read<ta::net::game_events::spawn>(is) };
 				case ta::net::game_event_type::DESPAWN: return { io::read<ta::net::game_events::despawn>(is) };
 				case ta::net::game_event_type::READY: return { io::read<ta::net::game_events::ready>(is) };
+				case ta::net::game_event_type::INPUT: return { io::read<ta::net::game_events::input>(is) };
 				}
 
 				return { };

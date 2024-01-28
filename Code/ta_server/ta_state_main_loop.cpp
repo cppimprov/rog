@@ -27,8 +27,8 @@ namespace ta
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
-		auto net_events = std::queue<ta::net::net_event>();
-		auto game_events = std::queue<ta::net::game_event>();
+		auto net_events = std::queue<ta::net::peer_net_event>();
+		auto game_events = std::queue<ta::net::peer_game_event>();
 
 		auto rng = std::mt19937_64{ std::random_device{}() };
 		auto tile_list = std::vector<entt::entity>();
@@ -93,21 +93,20 @@ namespace ta
 
 						namespace ne = ta::net::net_events;
 
-						if (std::holds_alternative<ne::connect>(event))
+						if (std::holds_alternative<ne::connect>(event.m_event))
 						{
 							bump::log_info("client connected!");
 
 							// todo: add enet feature to disallow connections?
-							auto& connect = std::get<ne::connect>(event);
-							connect.m_peer.disconnect_now(0);
+							event.m_peer.disconnect_now(0);
 
 							continue;
 						}
 
-						if (std::holds_alternative<ne::disconnect>(event))
+						if (std::holds_alternative<ne::disconnect>(event.m_event))
 						{
 							bump::log_info("client disconnected!");
-							despawn_player(world, std::get<ne::disconnect>(event), server);
+							despawn_player(world, server, event.m_peer);
 							continue;
 						}
 					}
@@ -121,7 +120,34 @@ namespace ta
 
 						namespace ge = ta::net::game_events;
 
-						// todo: ...
+						if (std::holds_alternative<ge::input>(event.m_event))
+						{
+							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
+								[&] (auto const& s) { return s.m_peer == event.m_peer; });
+							
+							if (slot == world.m_player_slots.end())
+							{
+								bump::log_error("client not found!");
+								continue;
+							}
+
+							if (slot->m_entity == entt::null)
+							{
+								// player dead or disconnected
+								continue;
+							}
+
+							auto const& input = std::get<ge::input>(event.m_event);
+
+							// update player input
+							{
+								auto& pm = world.m_registry.get<c_player_movement>(slot->m_entity);
+
+								pm.m_moving = input.m_moving;
+								pm.m_direction = input.m_direction;
+								pm.m_firing = input.m_firing;
+							}
+						}
 					}
 
 					if (server.m_host.get_connected_peer_count() == 0)
@@ -136,7 +162,26 @@ namespace ta
 				{
 					// update player input
 					{
-						// ...
+						auto const player_view = world.m_registry.view<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>();
+
+						for (auto const p : player_view)
+						{
+							auto [pu, pp, pm, pr] = player_view.get<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>(p);
+
+							if (pm.m_firing)
+							{
+								auto const reload_time = pu.m_timers.contains(powerup_type::player_reload_speed) ? globals::powerup_player_reload_time : globals::reload_time;
+
+								if (pr.m_reload_timer.get_elapsed_time() >= reload_time)
+								{
+									auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
+									auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
+									auto const group_index = pp.m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
+									world.m_bullets.push_back(create_bullet(world.m_registry, world.m_b2_world, p, group_index, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
+									pr.m_reload_timer = bump::timer();
+								}
+							}
+						}
 					}
 
 					// update player movement
@@ -159,109 +204,114 @@ namespace ta
 								pp.m_b2_body->SetLinearVelocity(b2_velocity);
 							}
 						}
+
+						// todo: broadcast player positions!
 					}
 
-					// prepare collision callbacks
-					struct contact_listener : public b2ContactListener
-					{
-						contact_listener(entt::registry& registry, b2World& b2_world):
-							m_registry(registry),
-							m_b2_world(b2_world)
-						{ }
-
-						void BeginContact(b2Contact* contact) override
-						{
-							// check types and handle each one appropriately
-							auto const& fixture_a = *contact->GetFixtureA();
-							auto const& body_a = *fixture_a.GetBody();
-							auto const entity_a = static_cast<entt::entity>(body_a.GetUserData().pointer);
-							auto const& fixture_b = *contact->GetFixtureB();
-							auto const& body_b = *fixture_b.GetBody();
-							auto const entity_b = static_cast<entt::entity>(body_b.GetUserData().pointer);
-
-							auto const has_category = [] (b2Fixture const& fixture, collision_category category)
-							{
-								return (fixture.GetFilterData().categoryBits & category) != 0;
-							};
-
-							if (has_category(fixture_a, collision_category::player) && has_category(fixture_b, collision_category::bullet))
-								return player_bullet(entity_a, entity_b);
-							if (has_category(fixture_a, collision_category::bullet) && has_category(fixture_b, collision_category::player))
-								return player_bullet(entity_b, entity_a);
-
-							if (has_category(fixture_a, collision_category::player) && has_category(fixture_b, collision_category::powerup))
-								return player_powerup(entity_a, entity_b);
-							if (has_category(fixture_a, collision_category::powerup) && has_category(fixture_b, collision_category::player))
-								return player_powerup(entity_b, entity_a);
-
-							if (has_category(fixture_a, collision_category::bullet) && has_category(fixture_b, collision_category::tile_wall))
-								return bullet_tile(entity_a, entity_b);
-							if (has_category(fixture_a, collision_category::tile_wall) && has_category(fixture_b, collision_category::bullet))
-								return bullet_tile(entity_b, entity_a);
-							
-							if (has_category(fixture_a, collision_category::bullet) && has_category(fixture_b, collision_category::world_bounds))
-								return bullet_world_bounds(entity_a);
-							if (has_category(fixture_a, collision_category::world_bounds) && has_category(fixture_b, collision_category::bullet))
-								return bullet_world_bounds(entity_b);
-						}
-
-					private:
-
-						void player_bullet(entt::entity player_entity, entt::entity bullet_entity)
-						{
-							auto& ph = m_registry.get<c_player_hp>(player_entity);
-							auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-
-							if (bo.m_owner_id == player_entity)
-								return;
-
-							auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
-							auto const damage_multiplier = opu.m_timers.contains(powerup_type::bullet_damage) ? globals::powerup_bullet_damage_multiplier : 1.f;
-
-							ph.m_hp -= static_cast<std::uint32_t>(globals::bullet_damage * damage_multiplier);
-							bl.m_lifetime = 0.f;
-						}
-
-						void player_powerup(entt::entity player_entity, entt::entity powerup_entity)
-						{
-							auto& pp = m_registry.get<c_player_powerups>(player_entity);
-							auto [pt, pl] = m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
-
-							pp.m_timers[pt.m_type] = globals::powerup_duration;
-							pl.m_lifetime = 0.f;
-						}
-
-						void bullet_tile(entt::entity bullet_entity, entt::entity )
-						{
-							auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-							auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
-
-							if (opu.m_timers.contains(powerup_type::bullet_bounce))
-								return;
-							
-							bl.m_lifetime = 0.f;
-						}
-
-						void bullet_world_bounds(entt::entity bullet_entity)
-						{
-							auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-							auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
-
-							if (opu.m_timers.contains(powerup_type::bullet_bounce))
-								return;
-							
-							bl.m_lifetime = 0.f;
-						}
-
-						entt::registry& m_registry;
-						b2World& m_b2_world;
-					};
-
-					auto cl = contact_listener(world.m_registry, world.m_b2_world);
-					world.m_b2_world.SetContactListener(&cl);
-
 					// update physics
-					world.m_b2_world.Step(dt_f, 6, 2);
+					{
+						// prepare collision callbacks
+						struct contact_listener : public b2ContactListener
+						{
+							contact_listener(entt::registry& registry, b2World& b2_world):
+								m_registry(registry),
+								m_b2_world(b2_world)
+							{ }
+
+							void BeginContact(b2Contact* contact) override
+							{
+								// check types and handle each one appropriately
+								auto const& fixture_a = *contact->GetFixtureA();
+								auto const& body_a = *fixture_a.GetBody();
+								auto const entity_a = static_cast<entt::entity>(body_a.GetUserData().pointer);
+								auto const& fixture_b = *contact->GetFixtureB();
+								auto const& body_b = *fixture_b.GetBody();
+								auto const entity_b = static_cast<entt::entity>(body_b.GetUserData().pointer);
+
+								auto const has_category = [] (b2Fixture const& fixture, collision_category category)
+								{
+									return (fixture.GetFilterData().categoryBits & category) != 0;
+								};
+
+								if (has_category(fixture_a, collision_category::player) && has_category(fixture_b, collision_category::bullet))
+									return player_bullet(entity_a, entity_b);
+								if (has_category(fixture_a, collision_category::bullet) && has_category(fixture_b, collision_category::player))
+									return player_bullet(entity_b, entity_a);
+
+								if (has_category(fixture_a, collision_category::player) && has_category(fixture_b, collision_category::powerup))
+									return player_powerup(entity_a, entity_b);
+								if (has_category(fixture_a, collision_category::powerup) && has_category(fixture_b, collision_category::player))
+									return player_powerup(entity_b, entity_a);
+
+								if (has_category(fixture_a, collision_category::bullet) && has_category(fixture_b, collision_category::tile_wall))
+									return bullet_tile(entity_a, entity_b);
+								if (has_category(fixture_a, collision_category::tile_wall) && has_category(fixture_b, collision_category::bullet))
+									return bullet_tile(entity_b, entity_a);
+								
+								if (has_category(fixture_a, collision_category::bullet) && has_category(fixture_b, collision_category::world_bounds))
+									return bullet_world_bounds(entity_a);
+								if (has_category(fixture_a, collision_category::world_bounds) && has_category(fixture_b, collision_category::bullet))
+									return bullet_world_bounds(entity_b);
+							}
+
+						private:
+
+							void player_bullet(entt::entity player_entity, entt::entity bullet_entity)
+							{
+								auto& ph = m_registry.get<c_player_hp>(player_entity);
+								auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+
+								if (bo.m_owner_id == player_entity)
+									return;
+
+								auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
+								auto const damage_multiplier = opu.m_timers.contains(powerup_type::bullet_damage) ? globals::powerup_bullet_damage_multiplier : 1.f;
+
+								ph.m_hp -= static_cast<std::uint32_t>(globals::bullet_damage * damage_multiplier);
+								bl.m_lifetime = 0.f;
+							}
+
+							void player_powerup(entt::entity player_entity, entt::entity powerup_entity)
+							{
+								auto& pp = m_registry.get<c_player_powerups>(player_entity);
+								auto [pt, pl] = m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
+
+								pp.m_timers[pt.m_type] = globals::powerup_duration;
+								pl.m_lifetime = 0.f;
+							}
+
+							void bullet_tile(entt::entity bullet_entity, entt::entity )
+							{
+								auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+								auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
+
+								if (opu.m_timers.contains(powerup_type::bullet_bounce))
+									return;
+								
+								bl.m_lifetime = 0.f;
+							}
+
+							void bullet_world_bounds(entt::entity bullet_entity)
+							{
+								auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+								auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
+
+								if (opu.m_timers.contains(powerup_type::bullet_bounce))
+									return;
+								
+								bl.m_lifetime = 0.f;
+							}
+
+							entt::registry& m_registry;
+							b2World& m_b2_world;
+						};
+
+						auto cl = contact_listener(world.m_registry, world.m_b2_world);
+						world.m_b2_world.SetContactListener(&cl);
+
+						// update physics
+						world.m_b2_world.Step(dt_f, 6, 2);
+					}
 
 					// update bullet lifetimes
 					{
@@ -285,6 +335,8 @@ namespace ta
 							destroy_bullet(world.m_registry, world.m_b2_world, b);
 
 						world.m_bullets.erase(first_expired, world.m_bullets.end());
+
+						// todo: broadcast to players
 					}
 
 					// update player hp
@@ -303,6 +355,8 @@ namespace ta
 							ph.m_hp = std::min(ph.m_hp + globals::powerup_player_heal_hp, globals::player_hp);
 							hp_timer->second = 0.f;
 						}
+
+						// todo: broadcast to players
 					}
 
 					// update player powerup timers
@@ -319,6 +373,8 @@ namespace ta
 							std::erase_if(pp.m_timers,
 								[] (auto const& p) { return p.second <= 0.f; });
 						}
+
+						// todo: broadcast end of powerup timer? (but not simple updates?)
 					}
 
 					// update powerup lifetimes
@@ -343,6 +399,8 @@ namespace ta
 							destroy_powerup(world.m_registry, world.m_b2_world, p);
 
 						world.m_powerups.erase(first_expired, world.m_powerups.end());
+
+						// todo: broadcast to players
 					}
 
 					// remove dead players
@@ -353,9 +411,24 @@ namespace ta
 							[&] (auto const& p) { return player_view.get<c_player_hp>(p).m_hp > 0; });
 
 						for (auto const p : std::ranges::subrange(first_dead, world.m_players.end()))
+						{
 							destroy_player(world.m_registry, world.m_b2_world, p);
 
+							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
+								[&] (auto const& s) { return s.m_entity == p; });
+
+							if (slot == world.m_player_slots.end())
+							{
+								bump::log_error("player not found!");
+								continue;
+							}
+
+							slot->m_entity = entt::null;
+						}
+
 						world.m_players.erase(first_dead, world.m_players.end());
+
+						// todo: broadcast to players
 					}
 
 					// spawn powerups
@@ -391,6 +464,8 @@ namespace ta
 							world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, type, pos_px));
 							powerup_spawn_timer = bump::timer();
 						}
+
+						// todo: broadcast to players
 					}
 				}
 

@@ -23,7 +23,7 @@ namespace ta
 
 		auto const powerup_player_heal_hp = std::uint32_t{ 50 };
 		auto const powerup_player_speed_multiplier = 1.5f;
-		auto const powerup_player_reload_speed = std::chrono::milliseconds{ 100 };
+		auto const powerup_player_reload_time = std::chrono::milliseconds{ 100 };
 		auto const powerup_bullet_damage_multiplier = 2.f;
 		auto const powerup_bullet_speed_multiplier = 1.75f;
 

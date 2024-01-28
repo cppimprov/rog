@@ -41,6 +41,12 @@ namespace ta
 	{
 		bool m_moving = false;
 		direction m_direction = direction::right;
+		bool m_firing = false;
+	};
+
+	struct c_player_reload
+	{
+		bump::timer<> m_reload_timer;
 	};
 
 	struct c_player_input
@@ -50,7 +56,6 @@ namespace ta
 		bool m_input_left = false;
 		bool m_input_right = false;
 		bool m_input_fire = false;
-		bump::timer<> m_reload_timer;
 	};
 
 	entt::entity create_player(entt::registry& registry, b2World& b2_world, glm::vec2 position_px, glm::vec3 color);

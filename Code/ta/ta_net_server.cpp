@@ -27,7 +27,7 @@ namespace ta::net
 		}
 	}
 
-	void server::poll(std::queue<net::net_event>& net_events, std::queue<net::game_event>& game_events)
+	void server::poll(std::queue<net::peer_net_event>& net_events, std::queue<net::peer_game_event>& game_events)
 	{
 		while (true)
 		{
@@ -42,7 +42,7 @@ namespace ta::net
 
 			case bump::enet::event::type::connect:
 			{
-				net_events.push({ net_events::connect{ event.get_peer() } });
+				net_events.push({ event.get_peer(), net_events::connect{ } });
 				break;
 			}
 
@@ -72,13 +72,13 @@ namespace ta::net
 					break;
 				}
 
-				game_events.push(packet_event);
+				game_events.push({ event.get_peer(), packet_event });
 				break;
 			}
 
 			case bump::enet::event::type::disconnect:
 			{
-				net_events.push({ net_events::disconnect{ event.get_peer() } });
+				net_events.push({ event.get_peer(), net_events::disconnect{ } });
 				break;
 			}
 			

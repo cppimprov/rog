@@ -34,7 +34,7 @@ namespace ta::net
 			{
 			case bump::enet::event::type::connect:
 			{
-				net_events.push({ net_events::connect{ event.get_peer() } });
+				net_events.push(net_events::connect{ });
 				break;
 			}
 			case bump::enet::event::type::receive:
@@ -68,7 +68,7 @@ namespace ta::net
 			}
 			case bump::enet::event::type::disconnect:
 			{
-				net_events.push({ net_events::disconnect{ event.get_peer() } });
+				net_events.push(net_events::disconnect{ });
 				break;
 			}
 

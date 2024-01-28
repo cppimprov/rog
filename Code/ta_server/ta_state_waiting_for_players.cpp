@@ -21,8 +21,8 @@ namespace ta
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
-		auto net_events = std::queue<ta::net::net_event>();
-		auto game_events = std::queue<ta::net::game_event>();
+		auto net_events = std::queue<ta::net::peer_net_event>();
+		auto game_events = std::queue<ta::net::peer_game_event>();
 
 		auto server = ta::net::server(4, 2, 6543);
 
@@ -89,17 +89,17 @@ namespace ta
 
 						namespace ne = ta::net::net_events;
 
-						if (std::holds_alternative<ne::connect>(event))
+						if (std::holds_alternative<ne::connect>(event.m_event))
 						{
 							bump::log_info("client connected!");
-							spawn_player(world, std::get<ne::connect>(event), server);
+							spawn_player(world, server, event.m_peer);
 							continue;
 						}
 
-						if (std::holds_alternative<ne::disconnect>(event))
+						if (std::holds_alternative<ne::disconnect>(event.m_event))
 						{
 							bump::log_info("client disconnected!");
-							despawn_player(world, std::get<ne::disconnect>(event), server);
+							despawn_player(world, server, event.m_peer);
 							continue;
 						}
 					}

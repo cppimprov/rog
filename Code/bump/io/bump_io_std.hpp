@@ -4,6 +4,7 @@
 #include "bump_log.hpp"
 #include "bump_range.hpp"
 
+#include <chrono>
 #include <map>
 #include <string>
 #include <string_view>
@@ -178,6 +179,52 @@ namespace bump
 					result.push_back(io::read<T>(is));
 
 				return result;
+			}
+		};
+
+#pragma endregion
+
+#pragma region std::chrono
+
+		// note: different platforms can have different typedefs for these types,
+		// in which case this will break!! :(
+
+		// todo: make bump::high_resolution_clock (and others) fixed types,
+		// instead of using std::chrono:: typedefs
+
+		template<class Rep, class Period>
+		struct write_impl<std::chrono::duration<Rep, Period>>
+		{
+			static void write(std::ostream& os, std::chrono::duration<Rep, Period> const& value)
+			{
+				io::write<Rep>(os, value.count());
+			}
+		};
+
+		template<class Rep, class Period>
+		struct read_impl<std::chrono::duration<Rep, Period>>
+		{
+			static std::chrono::duration<Rep, Period> read(std::istream& is)
+			{
+				return std::chrono::duration<Rep, Period>(io::read<Rep>(is));
+			}
+		};
+
+		template<class Clock, class Duration>
+		struct write_impl<std::chrono::time_point<Clock, Duration>>
+		{
+			static void write(std::ostream& os, std::chrono::time_point<Clock, Duration> const& value)
+			{
+				io::write<Duration>(os, value.time_since_epoch());
+			}
+		};
+
+		template<class Clock, class Duration>
+		struct read_impl<std::chrono::time_point<Clock, Duration>>
+		{
+			static std::chrono::time_point<Clock, Duration> read(std::istream& is)
+			{
+				return std::chrono::time_point<Clock, Duration>(io::read<Duration>(is));
 			}
 		};
 
