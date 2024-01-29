@@ -131,6 +131,18 @@ namespace ta
 						namespace ge = ta::net::game_events;
 
 						// todo: ...
+
+						// events:
+							// dead bullets
+							// hit players
+							// dead players
+							// powerup timers expiring
+							// dead powerups
+							// new powerups
+						
+						// states:
+							// player position, velocity, direction, firing
+							// bullet position, velocity
 					}
 
 				}
@@ -180,7 +192,7 @@ namespace ta
 							}
 						}
 
-						// todo: ???
+						// todo: ??? lerp / extrapolate ???
 					}
 
 					// update physics
@@ -298,43 +310,6 @@ namespace ta
 							auto& bl = bullet_view.get<c_bullet_lifetime>(b);
 							bl.m_lifetime -= dt_f;
 						}
-
-						// todo: keep? use to set visibility on rendering only
-					}
-
-					// remove expired bullets
-					{
-						auto const bullet_view = world.m_registry.view<c_bullet_lifetime, c_bullet_physics>();
-
-						auto first_expired = std::partition(world.m_bullets.begin(), world.m_bullets.end(),
-							[&] (auto const& b) { return bullet_view.get<c_bullet_lifetime>(b).m_lifetime > 0.f; });
-
-						for (auto const b : std::ranges::subrange(first_expired, world.m_bullets.end()))
-							destroy_bullet(world.m_registry, world.m_b2_world, b);
-
-						world.m_bullets.erase(first_expired, world.m_bullets.end());
-
-						// todo: remove! (delete when the server tells us to)
-					}
-
-					// update player hp
-					{
-						auto const player_view = world.m_registry.view<c_player_hp, c_player_powerups>();
-
-						for (auto const p : player_view)
-						{
-							auto [ph, pp] = player_view.get<c_player_hp, c_player_powerups>(p);
-
-							auto hp_timer = pp.m_timers.find(powerup_type::player_heal);
-
-							if (hp_timer == pp.m_timers.end())
-								continue;
-
-							ph.m_hp = std::min(ph.m_hp + globals::powerup_player_heal_hp, globals::player_hp);
-							hp_timer->second = 0.f;
-						}
-
-						// todo: remove! (boost hp when the server tells us to)
 					}
 
 					// update player powerup timers
@@ -347,12 +322,7 @@ namespace ta
 
 							for (auto& [type, time] : pp.m_timers)
 								time -= dt_f;
-
-							std::erase_if(pp.m_timers,
-								[] (auto const& p) { return p.second <= 0.f; });
 						}
-
-						// todo: keep time update! remove erasing expired timers (let server tell us when)!
 					}
 
 					// update powerup lifetimes
@@ -364,91 +334,6 @@ namespace ta
 							auto& pl = powerup_view.get<c_powerup_lifetime>(p);
 							pl.m_lifetime -= dt_f;
 						}
-
-						// todo: keep!
-					}
-
-					// remove expired powerups
-					{
-						auto const powerup_view = world.m_registry.view<c_powerup_lifetime, c_powerup_physics>();
-
-						auto first_expired = std::partition(world.m_powerups.begin(), world.m_powerups.end(),
-							[&] (auto const& p) { return powerup_view.get<c_powerup_lifetime>(p).m_lifetime > 0.f; });
-
-						for (auto const p : std::ranges::subrange(first_expired, world.m_powerups.end()))
-							destroy_powerup(world.m_registry, world.m_b2_world, p);
-
-						world.m_powerups.erase(first_expired, world.m_powerups.end());
-
-						// todo: remove! (delete when the server tells us to)
-					}
-
-					// remove dead players
-					{
-						auto const player_view = world.m_registry.view<c_player_hp, c_player_physics>();
-
-						auto first_dead = std::partition(world.m_players.begin(), world.m_players.end(),
-							[&] (auto const& p) { return player_view.get<c_player_hp>(p).m_hp > 0; });
-
-						for (auto const p : std::ranges::subrange(first_dead, world.m_players.end()))
-						{
-							destroy_player(world.m_registry, world.m_b2_world, p);
-
-							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-								[&] (auto const& s) { return s.m_entity == p; });
-							
-							if (slot == world.m_player_slots.end())
-							{
-								bump::log_error("player slot not found!");
-								continue;
-							}
-
-							slot->m_entity = entt::null;
-
-							if (world.m_local_player == p)
-								world.m_local_player = entt::null;
-						}
-
-						world.m_players.erase(first_dead, world.m_players.end());
-
-						// todo: remove! (delete when the server tells us to)
-					}
-
-					// spawn powerups
-					{
-						if (powerup_spawn_timer.get_elapsed_time() >= globals::powerup_spawn_time)
-						{
-							auto dist = std::uniform_int_distribution<std::size_t>{ 0, static_cast<std::size_t>(ta::powerup_type::COUNT) - 1 };
-							auto const type = static_cast<ta::powerup_type>(dist(rng));
-
-							auto const tile_view = world.m_registry.view<c_tile_physics>();
-
-							tile_list.clear();
-							tile_list.insert(tile_list.end(), tile_view.begin(), tile_view.end());
-
-							auto const can_spawn = [&] (entt::entity tile)
-							{
-								auto tp = tile_view.get<c_tile_physics>(tile);
-
-								auto const& fixture = *tp.m_b2_body->GetFixtureList();
-								auto const& filter = fixture.GetFilterData();
-
-								return (filter.categoryBits & collision_category::tile_wall) == 0
-									&& (filter.categoryBits & collision_category::tile_void) == 0;
-							};
-							
-							auto const end = std::remove_if(tile_list.begin(), tile_list.end(), std::not_fn(can_spawn));
-
-							auto tile = entt::entity();
-							std::sample(tile_list.begin(), end, &tile, 1, rng);
-							
-							auto const pos_px = globals::b2_inv_scale_factor * to_glm_vec2(tile_view.get<c_tile_physics>(tile).m_b2_body->GetPosition());
-
-							world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, type, pos_px));
-							powerup_spawn_timer = bump::timer();
-						}
-
-						// todo: remove! (spawn when the server tells us to)
 					}
 				}
 

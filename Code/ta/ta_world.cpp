@@ -68,7 +68,7 @@ namespace ta
 	}
 
 	// BULLET:
-	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px)
+	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, std::uint32_t id, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px)
 	{
 		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
 		auto const b2_velocity = to_b2_vec2(globals::b2_scale_factor * velocity_px);
@@ -102,6 +102,7 @@ namespace ta
 
 		auto const entity = registry.create();
 
+		registry.emplace<c_bullet_id>(entity, id);
 		registry.emplace<c_bullet_owner_id>(entity, owner_id);
 		registry.emplace<c_bullet_lifetime>(entity, globals::bullet_lifetime);
 		registry.emplace<c_bullet_physics>(entity, body);
@@ -407,11 +408,14 @@ namespace ta
 
 			// render players
 			{
-				auto const player_view = world.m_registry.view<c_player_physics, c_player_movement, c_player_graphics>();
+				auto const player_view = world.m_registry.view<c_player_physics, c_player_movement, c_player_graphics, c_player_hp>();
 
 				for (auto const p : player_view)
 				{
-					auto [pp, pm, pg] = player_view.get<c_player_physics, c_player_movement, c_player_graphics>(p);
+					auto [pp, pm, pg, ph] = player_view.get<c_player_physics, c_player_movement, c_player_graphics, c_player_hp>(p);
+
+					if (ph.m_hp <= 0.f)
+						continue;
 
 					auto const rotation_angle = dir_to_angle(pm.m_direction);
 					auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
@@ -428,11 +432,15 @@ namespace ta
 			// render bullets
 			{
 				auto const player_color_view = world.m_registry.view<c_player_graphics>();
-				auto const bullet_view = world.m_registry.view<c_bullet_owner_id, c_bullet_physics>();
+				auto const bullet_view = world.m_registry.view<c_bullet_owner_id, c_bullet_physics, c_bullet_lifetime>();
 
 				for (auto const b : bullet_view)
 				{
-					auto const& [bid, bp] = bullet_view.get<c_bullet_owner_id, c_bullet_physics>(b);
+					auto const& [bid, bp, bl] = bullet_view.get<c_bullet_owner_id, c_bullet_physics, c_bullet_lifetime>(b);
+
+					if (bl.m_lifetime <= 0.f)
+						continue;
+
 					auto const& pg = player_color_view.get<c_player_graphics>(bid.m_owner_id);
 
 					auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(bp.m_b2_body->GetPosition());
@@ -445,11 +453,14 @@ namespace ta
 
 			// render powerups
 			{
-				auto const powerup_view = world.m_registry.view<c_powerup_type, c_powerup_physics>();
+				auto const powerup_view = world.m_registry.view<c_powerup_type, c_powerup_physics, c_powerup_lifetime>();
 				
 				for (auto const p : powerup_view)
 				{
-					auto const& [pt, pp] = powerup_view.get<c_powerup_type, c_powerup_physics>(p);
+					auto const& [pt, pp, pl] = powerup_view.get<c_powerup_type, c_powerup_physics, c_powerup_lifetime>(p);
+
+					if (pl.m_lifetime <= 0.f)
+						continue;
 
 					auto const position_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
 					auto const color = get_powerup_color(pt.m_type);

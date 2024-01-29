@@ -15,22 +15,22 @@ namespace bump
 		template<size_t S, class T, glm::qualifier Q>
 		struct write_impl<glm::vec<S, T, Q>>
 		{
-			static void write(std::ostream& os, glm::vec<S, T, Q> const& value, std::endian endian)
+			static void write(std::ostream& os, glm::vec<S, T, Q> const& value)
 			{
 				for (auto i : range(0, S))
-					write<T>(os, value[i], endian);
+					io::write<T>(os, value[i]);
 			}
 		};
 
 		template<size_t S, class T, glm::qualifier Q>
 		struct read_impl<glm::vec<S, T, Q>>
 		{
-			static glm::vec<S, T, Q> read(std::istream& is, std::endian endian)
+			static glm::vec<S, T, Q> read(std::istream& is)
 			{
 				auto value = glm::vec<S, T, Q>();
 
 				for (auto i : range(0, S))
-					value[i] = read<T>(is, endian);
+					value[i] = io::read<T>(is);
 				
 				return value;
 			}
@@ -43,22 +43,22 @@ namespace bump
 		template<class T, glm::qualifier Q>
 		struct write_impl<glm::qua<T, Q>>
 		{
-			static void write(std::ostream& os, glm::qua<T, Q> const& value, std::endian endian)
+			static void write(std::ostream& os, glm::qua<T, Q> const& value)
 			{
 				for (auto i : range(0, 4))
-					write<T>(os, value[i], endian);
+					io::write<T>(os, value[i]);
 			}
 		};
 
 		template<class T, glm::qualifier Q>
 		struct read_impl<glm::qua<T, Q>>
 		{
-			static glm::qua<T, Q> read(std::istream& is, std::endian endian)
+			static glm::qua<T, Q> read(std::istream& is)
 			{
 				auto value = glm::qua<T, Q>();
 
 				for (auto i : range(0, 4))
-					value[i] = read<T>(is, endian);
+					value[i] = io::read<T>(is);
 				
 				return value;
 			}
@@ -74,7 +74,7 @@ namespace bump
 			static void write(std::ostream& os, glm::mat<C, R, T, Q> const& value)
 			{
 				for (auto i : range(0, C))
-					write<glm::mat<C, R, T, Q>::col_type>(os, value[i]);
+					io::write<glm::mat<C, R, T, Q>::col_type>(os, value[i]);
 			}
 		};
 
@@ -86,7 +86,7 @@ namespace bump
 				auto value = glm::mat<C, R, T, Q>();
 
 				for (auto i : range(0, C))
-					value[i] = read<glm::mat<C, R, T, Q>::col_type>(is);
+					value[i] = io::read<glm::mat<C, R, T, Q>::col_type>(is);
 				
 				return value;
 			}

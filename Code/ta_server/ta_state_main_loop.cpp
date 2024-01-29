@@ -25,6 +25,8 @@ namespace ta
 
 		auto& world = *world_ptr;
 
+		auto next_bullet_id = std::uint32_t{ 0 };
+
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
 		auto net_events = std::queue<ta::net::peer_net_event>();
@@ -160,30 +162,6 @@ namespace ta
 				
 				// update
 				{
-					// update player input
-					{
-						auto const player_view = world.m_registry.view<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>();
-
-						for (auto const p : player_view)
-						{
-							auto [pu, pp, pm, pr] = player_view.get<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>(p);
-
-							if (pm.m_firing)
-							{
-								auto const reload_time = pu.m_timers.contains(powerup_type::player_reload_speed) ? globals::powerup_player_reload_time : globals::reload_time;
-
-								if (pr.m_reload_timer.get_elapsed_time() >= reload_time)
-								{
-									auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
-									auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
-									auto const group_index = pp.m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
-									world.m_bullets.push_back(create_bullet(world.m_registry, world.m_b2_world, p, group_index, pos_px, dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul));
-									pr.m_reload_timer = bump::timer();
-								}
-							}
-						}
-					}
-
 					// update player movement
 					{
 						auto const player_view = world.m_registry.view<c_player_physics, c_player_powerups, c_player_movement>();
@@ -204,8 +182,42 @@ namespace ta
 								pp.m_b2_body->SetLinearVelocity(b2_velocity);
 							}
 						}
+					}
+					
+					// update player firing
+					{
+						auto const player_view = world.m_registry.view<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>();
 
-						// todo: broadcast player positions!
+						for (auto const p : player_view)
+						{
+							auto [pu, pp, pm, pr] = player_view.get<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>(p);
+
+							if (pm.m_firing)
+							{
+								auto const reload_time = pu.m_timers.contains(powerup_type::player_reload_speed) ? globals::powerup_player_reload_time : globals::reload_time;
+
+								if (pr.m_reload_timer.get_elapsed_time() >= reload_time)
+								{
+									// spawn bullet
+									auto const id = next_bullet_id++;
+									auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
+									auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
+									auto const vel_px = dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul;
+									auto const group_index = pp.m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
+									world.m_bullets.push_back(create_bullet(world.m_registry, world.m_b2_world, id, p, group_index, pos_px, vel_px));
+									pr.m_reload_timer = bump::timer();
+
+									// broadcast event
+									auto const slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
+										[&] (auto const& s) { return s.m_entity == p; });
+
+									bump::die_if(slot == world.m_player_slots.end());
+
+									auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
+									server.broadcast(0, net::game_events::spawn_bullet{ slot_index, id, pos_px, vel_px }, ENET_PACKET_FLAG_RELIABLE);
+								}
+							}
+						}
 					}
 
 					// update physics
@@ -269,6 +281,8 @@ namespace ta
 
 								ph.m_hp -= static_cast<std::uint32_t>(globals::bullet_damage * damage_multiplier);
 								bl.m_lifetime = 0.f;
+
+								// todo: broadcast hit to players
 							}
 
 							void player_powerup(entt::entity player_entity, entt::entity powerup_entity)
@@ -278,6 +292,8 @@ namespace ta
 
 								pp.m_timers[pt.m_type] = globals::powerup_duration;
 								pl.m_lifetime = 0.f;
+
+								// todo: broadcast to players
 							}
 
 							void bullet_tile(entt::entity bullet_entity, entt::entity )
@@ -311,6 +327,8 @@ namespace ta
 
 						// update physics
 						world.m_b2_world.Step(dt_f, 6, 2);
+
+						// todo: ???
 					}
 
 					// update bullet lifetimes
@@ -326,17 +344,21 @@ namespace ta
 
 					// remove expired bullets
 					{
-						auto const bullet_view = world.m_registry.view<c_bullet_lifetime, c_bullet_physics>();
+						auto const bullet_view = world.m_registry.view<c_bullet_id, c_bullet_lifetime, c_bullet_physics>();
 
 						auto first_expired = std::partition(world.m_bullets.begin(), world.m_bullets.end(),
 							[&] (auto const& b) { return bullet_view.get<c_bullet_lifetime>(b).m_lifetime > 0.f; });
 
 						for (auto const b : std::ranges::subrange(first_expired, world.m_bullets.end()))
+						{
+							auto const id = bullet_view.get<c_bullet_id>(b).m_id;
+
 							destroy_bullet(world.m_registry, world.m_b2_world, b);
 
-						world.m_bullets.erase(first_expired, world.m_bullets.end());
+							server.broadcast(0, net::game_events::despawn_bullet{ id }, ENET_PACKET_FLAG_RELIABLE);
+						}
 
-						// todo: broadcast to players
+						world.m_bullets.erase(first_expired, world.m_bullets.end());
 					}
 
 					// update player hp
@@ -354,9 +376,15 @@ namespace ta
 
 							ph.m_hp = std::min(ph.m_hp + globals::powerup_player_heal_hp, globals::player_hp);
 							hp_timer->second = 0.f;
-						}
 
-						// todo: broadcast to players
+							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
+								[&] (auto const& s) { return s.m_entity == p; });
+
+							bump::die_if(slot == world.m_player_slots.end());
+
+							auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
+							server.broadcast(0, net::game_events::set_hp{ slot_index, ph.m_hp }, ENET_PACKET_FLAG_RELIABLE);
+						}
 					}
 
 					// update player powerup timers

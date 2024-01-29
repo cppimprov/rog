@@ -62,6 +62,11 @@ namespace ta
 	void destroy_player(entt::registry& registry, b2World& b2_world, entt::entity player);
 
 	// BULLET:
+	struct c_bullet_id
+	{
+		std::uint32_t m_id = 0;
+	};
+
 	struct c_bullet_owner_id
 	{
 		entt::entity m_owner_id = entt::null;
@@ -77,7 +82,7 @@ namespace ta
 		b2Body* m_b2_body = nullptr;
 	};
 
-	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px);
+	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, std::uint32_t id, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px);
 	void destroy_bullet(entt::registry& registry, b2World& b2_world, entt::entity bullet);
 
 	// POWERUP:
