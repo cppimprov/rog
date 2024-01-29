@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ta_direction.hpp"
+#include "ta_world.hpp"
 
 #include <bump_io.hpp>
 #include <bump_enet.hpp>
@@ -43,13 +44,19 @@ namespace ta
 		namespace game_events
 		{
 
-			struct spawn   { std::uint8_t m_slot_index; bool m_self; };
+			struct spawn { std::uint8_t m_slot_index; bool m_self; };
 			struct despawn { std::uint8_t m_slot_index; };
-			struct ready   { };
-			struct input   { bump::high_res_duration_t m_timestamp; bool m_moving; ta::direction m_direction; bool m_firing; };
-			struct spawn_bullet   { std::uint8_t m_owner_slot_index; std::uint32_t m_id; glm::vec2 m_pos_px; glm::vec2 m_vel_px; };
+			struct ready { };
+			struct game_over { };
+			struct input { bump::high_res_duration_t m_timestamp; bool m_moving; ta::direction m_direction; bool m_firing; };
+			struct spawn_bullet { std::uint8_t m_owner_slot_index; std::uint32_t m_id; glm::vec2 m_pos_px; glm::vec2 m_vel_px; };
 			struct despawn_bullet { std::uint32_t m_id; };
-			struct set_hp  { std::uint8_t m_slot_index; std::uint32_t m_hp; };
+			struct set_hp { std::uint8_t m_slot_index; std::uint32_t m_hp; };
+			struct set_powerup_timer { std::uint8_t m_slot_index; enum class powerup_type m_type; float m_time; };
+			struct clear_powerup_timer { std::uint8_t m_slot_index; enum class powerup_type m_type; };
+			struct spawn_powerup { enum class powerup_type m_type; std::uint32_t m_id; glm::vec2 m_pos_px; };
+			struct despawn_powerup { std::uint32_t m_id; };
+			struct player_death { std::uint8_t m_slot_index; };
 
 		} // events
 
@@ -59,10 +66,16 @@ namespace ta
 			game_events::spawn,
 			game_events::despawn,
 			game_events::ready,
+			game_events::game_over,
 			game_events::input,
 			game_events::spawn_bullet,
 			game_events::despawn_bullet,
-			game_events::set_hp
+			game_events::set_hp,
+			game_events::set_powerup_timer,
+			game_events::clear_powerup_timer,
+			game_events::spawn_powerup,
+			game_events::despawn_powerup,
+			game_events::player_death
 		>;
 
 		struct peer_game_event
@@ -124,6 +137,24 @@ namespace bump
 		};
 
 		template<>
+		struct write_impl<ta::powerup_type>
+		{
+			static void write(std::ostream& os, ta::powerup_type value)
+			{
+				io::write(os, static_cast<std::uint8_t>(value));
+			}
+		};
+
+		template<>
+		struct read_impl<ta::powerup_type>
+		{
+			static ta::powerup_type read(std::istream& is)
+			{
+				return static_cast<ta::powerup_type>(io::read<std::uint8_t>(is));
+			}
+		};
+
+		template<>
 		struct write_impl<ta::net::game_events::spawn>
 		{
 			static void write(std::ostream& os, ta::net::game_events::spawn value)
@@ -178,6 +209,24 @@ namespace bump
 		struct read_impl<ta::net::game_events::ready>
 		{
 			static ta::net::game_events::ready read(std::istream& )
+			{
+				return { };
+			}
+		};
+
+		template<>
+		struct write_impl<ta::net::game_events::game_over>
+		{
+			static void write(std::ostream& os, ta::net::game_events::game_over)
+			{
+				io::write(os, ta::net::game_event_type::READY);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::game_over>
+		{
+			static ta::net::game_events::game_over read(std::istream& )
 			{
 				return { };
 			}
@@ -276,7 +325,117 @@ namespace bump
 				return { slot_index, hp };
 			}
 		};
-	
+
+		template<>
+		struct write_impl<ta::net::game_events::set_powerup_timer>
+		{
+			static void write(std::ostream& os, ta::net::game_events::set_powerup_timer value)
+			{
+				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, value.m_slot_index);
+				io::write(os, value.m_type);
+				io::write(os, value.m_time);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::set_powerup_timer>
+		{
+			static ta::net::game_events::set_powerup_timer read(std::istream& is)
+			{
+				auto const slot_index = io::read<std::uint8_t>(is);
+				auto const type = io::read<ta::powerup_type>(is);
+				auto const time = io::read<float>(is);
+				return { slot_index, type, time };
+			}
+		};
+
+		template<>
+		struct write_impl<ta::net::game_events::clear_powerup_timer>
+		{
+			static void write(std::ostream& os, ta::net::game_events::clear_powerup_timer value)
+			{
+				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, value.m_slot_index);
+				io::write(os, value.m_type);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::clear_powerup_timer>
+		{
+			static ta::net::game_events::clear_powerup_timer read(std::istream& is)
+			{
+				auto const slot_index = io::read<std::uint8_t>(is);
+				auto const type = io::read<ta::powerup_type>(is);
+				return { slot_index, type };
+			}
+		};
+
+		template<>
+		struct write_impl<ta::net::game_events::spawn_powerup>
+		{
+			static void write(std::ostream& os, ta::net::game_events::spawn_powerup value)
+			{
+				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, value.m_type);
+				io::write(os, value.m_id);
+				io::write(os, value.m_pos_px);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::spawn_powerup>
+		{
+			static ta::net::game_events::spawn_powerup read(std::istream& is)
+			{
+				auto const type = io::read<ta::powerup_type>(is);
+				auto const id = io::read<std::uint32_t>(is);
+				auto const pos_px = io::read<glm::vec2>(is);
+				return { type, id, pos_px };
+			}
+		};
+
+		template<>
+		struct write_impl<ta::net::game_events::despawn_powerup>
+		{
+			static void write(std::ostream& os, ta::net::game_events::despawn_powerup value)
+			{
+				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, value.m_id);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::despawn_powerup>
+		{
+			static ta::net::game_events::despawn_powerup read(std::istream& is)
+			{
+				auto const id = io::read<std::uint32_t>(is);
+				return { id };
+			}
+		};
+
+		template<>
+		struct write_impl<ta::net::game_events::player_death>
+		{
+			static void write(std::ostream& os, ta::net::game_events::player_death value)
+			{
+				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, value.m_slot_index);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::player_death>
+		{
+			static ta::net::game_events::player_death read(std::istream& is)
+			{
+				auto const slot_index = io::read<std::uint8_t>(is);
+				return { slot_index };
+			}
+		};
+
 		template<>
 		struct write_impl<ta::net::game_event>
 		{

@@ -104,6 +104,11 @@ namespace ta
 		powerup_type m_type;
 	};
 
+	struct c_powerup_id
+	{
+		std::uint32_t m_id = 0;
+	};
+
 	struct c_powerup_lifetime
 	{
 		float m_lifetime = 0.f;
@@ -114,7 +119,7 @@ namespace ta
 		b2Body* m_b2_body = nullptr;
 	};
 
-	entt::entity create_powerup(entt::registry& registry, b2World& b2_world, powerup_type type, glm::vec2 position_px);
+	entt::entity create_powerup(entt::registry& registry, b2World& b2_world, powerup_type type, std::uint32_t id, glm::vec2 position_px);
 	void destroy_powerup(entt::registry& registry, b2World& b2_world, entt::entity powerup);
 
 	// TILE:

@@ -135,7 +135,7 @@ namespace ta
 		bump::die();
 	}
 	
-	entt::entity create_powerup(entt::registry& registry, b2World& b2_world, powerup_type type, glm::vec2 position_px)
+	entt::entity create_powerup(entt::registry& registry, b2World& b2_world, powerup_type type, std::uint32_t id, glm::vec2 position_px)
 	{
 		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
 
@@ -161,6 +161,7 @@ namespace ta
 
 		auto const entity = registry.create();
 
+		registry.emplace<c_powerup_id>(entity, id);
 		registry.emplace<c_powerup_type>(entity, type);
 		registry.emplace<c_powerup_lifetime>(entity, globals::powerup_lifetime);
 		registry.emplace<c_powerup_physics>(entity, body);

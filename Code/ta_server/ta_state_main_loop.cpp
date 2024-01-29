@@ -25,7 +25,7 @@ namespace ta
 
 		auto& world = *world_ptr;
 
-		auto next_bullet_id = std::uint32_t{ 0 };
+		auto net_id = std::uint32_t{ 0 };
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -199,7 +199,7 @@ namespace ta
 								if (pr.m_reload_timer.get_elapsed_time() >= reload_time)
 								{
 									// spawn bullet
-									auto const id = next_bullet_id++;
+									auto const id = net_id++;
 									auto const speed_mul = pu.m_timers.contains(powerup_type::bullet_speed) ? globals::powerup_bullet_speed_multiplier : 1.f;
 									auto const pos_px = (globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition())) + dir_to_vec(pm.m_direction) * globals::player_radius;
 									auto const vel_px = dir_to_vec(pm.m_direction) * globals::bullet_speed * speed_mul;
@@ -225,9 +225,9 @@ namespace ta
 						// prepare collision callbacks
 						struct contact_listener : public b2ContactListener
 						{
-							contact_listener(entt::registry& registry, b2World& b2_world):
-								m_registry(registry),
-								m_b2_world(b2_world)
+							contact_listener(ta::world& world, net::server& server):
+								m_world(world),
+								m_server(server)
 							{ }
 
 							void BeginContact(b2Contact* contact) override
@@ -270,36 +270,48 @@ namespace ta
 
 							void player_bullet(entt::entity player_entity, entt::entity bullet_entity)
 							{
-								auto& ph = m_registry.get<c_player_hp>(player_entity);
-								auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+								auto& ph = m_world.m_registry.get<c_player_hp>(player_entity);
+								auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
 
 								if (bo.m_owner_id == player_entity)
 									return;
 
-								auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
+								auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
 								auto const damage_multiplier = opu.m_timers.contains(powerup_type::bullet_damage) ? globals::powerup_bullet_damage_multiplier : 1.f;
 
 								ph.m_hp -= static_cast<std::uint32_t>(globals::bullet_damage * damage_multiplier);
 								bl.m_lifetime = 0.f;
 
-								// todo: broadcast hit to players
+								auto slot = std::find_if(m_world.m_player_slots.begin(), m_world.m_player_slots.end(),
+									[&] (auto const& s) { return s.m_entity == player_entity; });
+
+								bump::die_if(slot == m_world.m_player_slots.end());
+
+								auto const slot_index = static_cast<std::uint8_t>(slot - m_world.m_player_slots.begin());
+								m_server.broadcast(0, net::game_events::set_hp{ slot_index, ph.m_hp }, ENET_PACKET_FLAG_RELIABLE);
 							}
 
 							void player_powerup(entt::entity player_entity, entt::entity powerup_entity)
 							{
-								auto& pp = m_registry.get<c_player_powerups>(player_entity);
-								auto [pt, pl] = m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
+								auto& pp = m_world.m_registry.get<c_player_powerups>(player_entity);
+								auto [pt, pl] = m_world.m_registry.get<c_powerup_type, c_powerup_lifetime>(powerup_entity);
 
 								pp.m_timers[pt.m_type] = globals::powerup_duration;
 								pl.m_lifetime = 0.f;
 
-								// todo: broadcast to players
+								auto slot = std::find_if(m_world.m_player_slots.begin(), m_world.m_player_slots.end(),
+									[&] (auto const& s) { return s.m_entity == player_entity; });
+
+								bump::die_if(slot == m_world.m_player_slots.end());
+
+								auto const slot_index = static_cast<std::uint8_t>(slot - m_world.m_player_slots.begin());
+								m_server.broadcast(0, net::game_events::set_powerup_timer{ slot_index, pt.m_type, globals::powerup_duration }, ENET_PACKET_FLAG_RELIABLE);
 							}
 
 							void bullet_tile(entt::entity bullet_entity, entt::entity )
 							{
-								auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-								auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
+								auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+								auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
 
 								if (opu.m_timers.contains(powerup_type::bullet_bounce))
 									return;
@@ -309,8 +321,8 @@ namespace ta
 
 							void bullet_world_bounds(entt::entity bullet_entity)
 							{
-								auto [bo, bl] = m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
-								auto const& opu = m_registry.get<c_player_powerups>(bo.m_owner_id);
+								auto [bo, bl] = m_world.m_registry.get<c_bullet_owner_id, c_bullet_lifetime>(bullet_entity);
+								auto const& opu = m_world.m_registry.get<c_player_powerups>(bo.m_owner_id);
 
 								if (opu.m_timers.contains(powerup_type::bullet_bounce))
 									return;
@@ -318,17 +330,17 @@ namespace ta
 								bl.m_lifetime = 0.f;
 							}
 
-							entt::registry& m_registry;
-							b2World& m_b2_world;
+							ta::world& m_world;
+							net::server& m_server;
 						};
 
-						auto cl = contact_listener(world.m_registry, world.m_b2_world);
+						auto cl = contact_listener(world, server);
 						world.m_b2_world.SetContactListener(&cl);
 
 						// update physics
 						world.m_b2_world.Step(dt_f, 6, 2);
 
-						// todo: ???
+						// todo: broadcast positions, velocities? for players and bullets
 					}
 
 					// update bullet lifetimes
@@ -397,12 +409,25 @@ namespace ta
 
 							for (auto& [type, time] : pp.m_timers)
 								time -= dt_f;
+							
+							for (auto t = pp.m_timers.begin(); t != pp.m_timers.end();)
+							{
+								if (t->second <= 0.f)
+								{
+									auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
+										[&] (auto const& s) { return s.m_entity == p; });
+									
+									bump::die_if(slot == world.m_player_slots.end());
 
-							std::erase_if(pp.m_timers,
-								[] (auto const& p) { return p.second <= 0.f; });
+									auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
+									server.broadcast(0, net::game_events::clear_powerup_timer{ slot_index, t->first }, ENET_PACKET_FLAG_RELIABLE);
+
+									t = pp.m_timers.erase(t);
+								}
+								else
+									++t;
+							}
 						}
-
-						// todo: broadcast end of powerup timer? (but not simple updates?)
 					}
 
 					// update powerup lifetimes
@@ -418,17 +443,21 @@ namespace ta
 
 					// remove expired powerups
 					{
-						auto const powerup_view = world.m_registry.view<c_powerup_lifetime, c_powerup_physics>();
+						auto const powerup_view = world.m_registry.view<c_powerup_id, c_powerup_lifetime, c_powerup_physics>();
 
 						auto first_expired = std::partition(world.m_powerups.begin(), world.m_powerups.end(),
 							[&] (auto const& p) { return powerup_view.get<c_powerup_lifetime>(p).m_lifetime > 0.f; });
 
 						for (auto const p : std::ranges::subrange(first_expired, world.m_powerups.end()))
+						{
+							auto const id = powerup_view.get<c_powerup_id>(p).m_id;
+
 							destroy_powerup(world.m_registry, world.m_b2_world, p);
 
-						world.m_powerups.erase(first_expired, world.m_powerups.end());
+							server.broadcast(0, net::game_events::despawn_powerup{ id }, ENET_PACKET_FLAG_RELIABLE);
+						}
 
-						// todo: broadcast to players
+						world.m_powerups.erase(first_expired, world.m_powerups.end());
 					}
 
 					// remove dead players
@@ -445,18 +474,24 @@ namespace ta
 							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
 								[&] (auto const& s) { return s.m_entity == p; });
 
-							if (slot == world.m_player_slots.end())
-							{
-								bump::log_error("player not found!");
-								continue;
-							}
+							bump::die_if(slot == world.m_player_slots.end());
 
 							slot->m_entity = entt::null;
+
+							auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
+							server.broadcast(0, net::game_events::player_death{ slot_index }, ENET_PACKET_FLAG_RELIABLE);
 						}
 
 						world.m_players.erase(first_dead, world.m_players.end());
 
-						// todo: broadcast to players
+						if (world.m_players.size() <= 1)
+						{
+							bump::log_info("game over!");
+
+							server.broadcast(0, net::game_events::game_over{ }, ENET_PACKET_FLAG_RELIABLE);
+
+							return { [&] (bump::app& app) { return loading(app); } };
+						}
 					}
 
 					// spawn powerups
@@ -487,13 +522,14 @@ namespace ta
 							auto tile = entt::entity();
 							std::sample(tile_list.begin(), end, &tile, 1, rng);
 							
+							auto const id = net_id++;
 							auto const pos_px = globals::b2_inv_scale_factor * to_glm_vec2(tile_view.get<c_tile_physics>(tile).m_b2_body->GetPosition());
 
-							world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, type, pos_px));
+							world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, type, id, pos_px));
 							powerup_spawn_timer = bump::timer();
-						}
 
-						// todo: broadcast to players
+							server.broadcast(0, net::game_events::spawn_powerup{ type, id, pos_px }, ENET_PACKET_FLAG_RELIABLE);
+						}
 					}
 				}
 
