@@ -74,9 +74,14 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
+// todo: bug fixes:
+	// clients all seem to be (in their own view) the blue player
+	// players disappearing randomly
+	// set_hp messages being sent randomly
+	// clients crashing
+
 // todo: networking
-	// receive events on clients
-	// test what we have so far
+	// testing...
 	// broadcast positions / velocities
 	// receive positions / velocities on clients
 	// add interpolation / extrapolation on clients
@@ -84,3 +89,6 @@ int main(int , char* [])
 // todo (sometime): not all apps need network code... (or other things)
 	// each program should have its own "app" class that includes the things it needs
 	// then we can remove the bump::app class
+
+// todo (sometime): enet replacement?
+	// would be nice to use our own networking code

@@ -123,26 +123,137 @@ namespace ta
 
 					while (!game_events.empty())
 					{
-						bump::log_info("game event received!");
-
 						auto event = std::move(game_events.front());
 						game_events.pop();
 
 						namespace ge = ta::net::game_events;
 
-						// todo: ...
+						if (std::holds_alternative<ge::spawn_bullet>(event))
+						{
+							bump::log_info("game event: spawn bullet");
 
-						// events:
-							// dead bullets
-							// hit players
-							// dead players
-							// powerup timers expiring
-							// dead powerups
-							// new powerups
+							auto const& data = std::get<ge::spawn_bullet>(event);
+
+							auto const owner = world.m_player_slots[data.m_owner_slot_index].m_entity;
+							auto const owner_group_id = world.m_registry.get<c_player_physics>(owner).m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
+							world.m_bullets.push_back(create_bullet(world.m_registry, world.m_b2_world, data.m_id, owner, owner_group_id, data.m_pos_px, data.m_vel_px));
+							continue;
+						}
+
+						if (std::holds_alternative<ge::despawn_bullet>(event))
+						{
+							bump::log_info("game event: despawn bullet");
+
+							auto const& data = std::get<ge::despawn_bullet>(event);
+
+							auto const bullet_view = world.m_registry.view<c_bullet_id>();
+
+							for (auto const b : bullet_view)
+							{
+								auto const& bi = bullet_view.get<c_bullet_id>(b);
+
+								if (bi.m_id == data.m_id)
+								{
+									destroy_bullet(world.m_registry, world.m_b2_world, b);
+									std::erase_if(world.m_bullets, [&] (auto const& bullet) { return bullet == b; });
+									break;
+								}
+							}
+
+							continue;
+						}
+
+						if (std::holds_alternative<ge::set_hp>(event))
+						{
+							bump::log_info("game event: set hp");
+
+							auto const& data = std::get<ge::set_hp>(event);
+
+							auto const player_entity = world.m_player_slots[data.m_slot_index].m_entity;
+							auto& ph = world.m_registry.get<c_player_hp>(player_entity);
+							ph.m_hp = data.m_hp;
+							continue;
+						}
+
+						if (std::holds_alternative<ge::set_powerup_timer>(event))
+						{
+							bump::log_info("game event: set powerup timer");
+
+							auto const& data = std::get<ge::set_powerup_timer>(event);
+
+							auto const player_entity = world.m_player_slots[data.m_slot_index].m_entity;
+							auto& pp = world.m_registry.get<c_player_powerups>(player_entity);
+							pp.m_timers[data.m_type] = data.m_time;
+							continue;
+						}
+
+						if (std::holds_alternative<ge::clear_powerup_timer>(event))
+						{
+							bump::log_info("game event: clear powerup timer");
+
+							auto const& data = std::get<ge::clear_powerup_timer>(event);
+
+							auto const player_entity = world.m_player_slots[data.m_slot_index].m_entity;
+							auto& pp = world.m_registry.get<c_player_powerups>(player_entity);
+							pp.m_timers.erase(data.m_type);
+							continue;
+						}
+
+						if (std::holds_alternative<ge::spawn_powerup>(event))
+						{
+							bump::log_info("game event: spawn powerup");
+
+							auto const& data = std::get<ge::spawn_powerup>(event);
+
+							world.m_powerups.push_back(create_powerup(world.m_registry, world.m_b2_world, data.m_type, data.m_id, data.m_pos_px));
+							continue;
+						}
+
+						if (std::holds_alternative<ge::despawn_powerup>(event))
+						{
+							bump::log_info("game event: despawn powerup");
+
+							auto const& data = std::get<ge::despawn_powerup>(event);
+
+							auto const powerup_view = world.m_registry.view<c_powerup_id>();
+
+							for (auto const p : powerup_view)
+							{
+								auto const& pid = powerup_view.get<c_powerup_id>(p);
+
+								if (pid.m_id == data.m_id)
+								{
+									destroy_powerup(world.m_registry, world.m_b2_world, p);
+									std::erase_if(world.m_powerups, [&] (auto const& powerup) { return powerup == p; });
+									break;
+								}
+							}
+
+							continue;
+						}
+
+						if (std::holds_alternative<ge::player_death>(event))
+						{
+							bump::log_info("game event: player death");
+
+							auto const& data = std::get<ge::player_death>(event);
+
+							auto& entity = world.m_player_slots[data.m_slot_index].m_entity;
+							destroy_player(world.m_registry, world.m_b2_world, entity);
+							std::erase_if(world.m_players, [&] (auto const& player) { return player == entity; });
+							entity = entt::null;
+							continue;
+						}
 						
 						// states:
 							// player position, velocity, direction, firing
 							// bullet position, velocity
+
+						if (std::holds_alternative<ge::game_over>(event))
+						{
+							bump::log_info("game over!");
+							return { [&] (bump::app& app) { return loading(app); } };
+						}
 					}
 
 				}
