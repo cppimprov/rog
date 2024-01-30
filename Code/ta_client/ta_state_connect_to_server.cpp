@@ -33,7 +33,7 @@ namespace ta
 			}
 
 			// create player
-			world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, slot.m_start_pos_px, slot.m_color));
+			world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, event.m_slot_index, slot.m_start_pos_px, slot.m_color));
 
 			// spawn input component for local player
 			if (event.m_self)

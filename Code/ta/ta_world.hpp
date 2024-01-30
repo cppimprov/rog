@@ -17,6 +17,11 @@ namespace ta
 {
 
 	// PLAYER:
+	struct c_player_slot_index
+	{
+		std::uint8_t m_index = 0;
+	};
+
 	struct c_player_hp
 	{
 		std::uint32_t m_hp = 0;
@@ -58,7 +63,7 @@ namespace ta
 		bool m_input_fire = false;
 	};
 
-	entt::entity create_player(entt::registry& registry, b2World& b2_world, glm::vec2 position_px, glm::vec3 color);
+	entt::entity create_player(entt::registry& registry, b2World& b2_world, std::uint8_t slot_index, glm::vec2 position_px, glm::vec3 color);
 	void destroy_player(entt::registry& registry, b2World& b2_world, entt::entity player);
 
 	// BULLET:

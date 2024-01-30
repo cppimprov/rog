@@ -24,7 +24,8 @@ namespace ta
 		}
 
 		// create player 
-		world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, new_slot->m_start_pos_px, new_slot->m_color));
+		auto const new_slot_index = static_cast<std::uint8_t>(new_slot - world.m_player_slots.begin());
+		world.m_players.push_back(create_player(world.m_registry, world.m_b2_world, new_slot_index, new_slot->m_start_pos_px, new_slot->m_color));
 
 		// occupy player slot
 		new_slot->m_entity = world.m_players.back();
@@ -32,7 +33,6 @@ namespace ta
 
 		// send spawn event to everyone
 		auto const new_entity = world.m_players.back();
-		auto const new_slot_index = static_cast<std::uint8_t>(new_slot - world.m_player_slots.begin());
 		server.broadcast(0, net::game_events::spawn{ new_slot_index, true }, ENET_PACKET_FLAG_RELIABLE);
 		
 		// update new client by spawning other players
@@ -61,8 +61,8 @@ namespace ta
 
 		// send despawn event to everyone
 		auto const entity = slot->m_entity;
-		auto const slot_index = slot - world.m_player_slots.begin();
-		server.broadcast(0, net::game_events::despawn{ static_cast<std::uint8_t>(slot_index) }, ENET_PACKET_FLAG_RELIABLE);
+		auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
+		server.broadcast(0, net::game_events::despawn{ slot_index }, ENET_PACKET_FLAG_RELIABLE);
 
 		// remove player's bullets from registry
 		auto const bullet_view = world.m_registry.view<c_bullet_owner_id>();

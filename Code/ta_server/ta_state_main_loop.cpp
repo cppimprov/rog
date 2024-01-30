@@ -186,11 +186,11 @@ namespace ta
 					
 					// update player firing
 					{
-						auto const player_view = world.m_registry.view<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>();
+						auto const player_view = world.m_registry.view<c_player_slot_index, c_player_powerups, c_player_physics, c_player_movement, c_player_reload>();
 
 						for (auto const p : player_view)
 						{
-							auto [pu, pp, pm, pr] = player_view.get<c_player_powerups, c_player_physics, c_player_movement, c_player_reload>(p);
+							auto [ps, pu, pp, pm, pr] = player_view.get<c_player_slot_index, c_player_powerups, c_player_physics, c_player_movement, c_player_reload>(p);
 
 							if (pm.m_firing)
 							{
@@ -208,13 +208,7 @@ namespace ta
 									pr.m_reload_timer = bump::timer();
 
 									// broadcast event
-									auto const slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-										[&] (auto const& s) { return s.m_entity == p; });
-
-									bump::die_if(slot == world.m_player_slots.end());
-
-									auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
-									server.broadcast(0, net::game_events::spawn_bullet{ slot_index, id, pos_px, vel_px }, ENET_PACKET_FLAG_RELIABLE);
+									server.broadcast(0, net::game_events::spawn_bullet{ ps.m_index, id, pos_px, vel_px }, ENET_PACKET_FLAG_RELIABLE);
 								}
 							}
 						}
@@ -375,11 +369,11 @@ namespace ta
 
 					// update player hp
 					{
-						auto const player_view = world.m_registry.view<c_player_hp, c_player_powerups>();
+						auto const player_view = world.m_registry.view<c_player_slot_index, c_player_hp, c_player_powerups>();
 
 						for (auto const p : player_view)
 						{
-							auto [ph, pp] = player_view.get<c_player_hp, c_player_powerups>(p);
+							auto [ps, ph, pp] = player_view.get<c_player_slot_index, c_player_hp, c_player_powerups>(p);
 
 							auto hp_timer = pp.m_timers.find(powerup_type::player_heal);
 
@@ -389,23 +383,17 @@ namespace ta
 							ph.m_hp = std::min(ph.m_hp + globals::powerup_player_heal_hp, globals::player_hp);
 							hp_timer->second = 0.f;
 
-							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-								[&] (auto const& s) { return s.m_entity == p; });
-
-							bump::die_if(slot == world.m_player_slots.end());
-
-							auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
-							server.broadcast(0, net::game_events::set_hp{ slot_index, ph.m_hp }, ENET_PACKET_FLAG_RELIABLE);
+							server.broadcast(0, net::game_events::set_hp{ ps.m_index, ph.m_hp }, ENET_PACKET_FLAG_RELIABLE);
 						}
 					}
 
 					// update player powerup timers
 					{
-						auto const player_view = world.m_registry.view<c_player_powerups>();
+						auto const player_view = world.m_registry.view<c_player_slot_index, c_player_powerups>();
 
 						for (auto const p : player_view)
 						{
-							auto& pp = player_view.get<c_player_powerups>(p);
+							auto [ps, pp] = player_view.get<c_player_slot_index, c_player_powerups>(p);
 
 							for (auto& [type, time] : pp.m_timers)
 								time -= dt_f;
@@ -414,14 +402,7 @@ namespace ta
 							{
 								if (t->second <= 0.f)
 								{
-									auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-										[&] (auto const& s) { return s.m_entity == p; });
-									
-									bump::die_if(slot == world.m_player_slots.end());
-
-									auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
-									server.broadcast(0, net::game_events::clear_powerup_timer{ slot_index, t->first }, ENET_PACKET_FLAG_RELIABLE);
-
+									server.broadcast(0, net::game_events::clear_powerup_timer{ ps.m_index, t->first }, ENET_PACKET_FLAG_RELIABLE);
 									t = pp.m_timers.erase(t);
 								}
 								else
@@ -462,24 +443,20 @@ namespace ta
 
 					// remove dead players
 					{
-						auto const player_view = world.m_registry.view<c_player_hp, c_player_physics>();
+						auto const player_view = world.m_registry.view<c_player_slot_index, c_player_hp, c_player_physics>();
 
 						auto first_dead = std::partition(world.m_players.begin(), world.m_players.end(),
 							[&] (auto const& p) { return player_view.get<c_player_hp>(p).m_hp > 0; });
 
 						for (auto const p : std::ranges::subrange(first_dead, world.m_players.end()))
 						{
+							auto const slot_index = player_view.get<c_player_slot_index>(p).m_index;
+
 							destroy_player(world.m_registry, world.m_b2_world, p);
 
-							auto slot = std::find_if(world.m_player_slots.begin(), world.m_player_slots.end(),
-								[&] (auto const& s) { return s.m_entity == p; });
-
-							bump::die_if(slot == world.m_player_slots.end());
-
-							slot->m_entity = entt::null;
-
-							auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
-							server.broadcast(0, net::game_events::player_death{ slot_index }, ENET_PACKET_FLAG_RELIABLE);
+							world.m_player_slots[slot_index].m_entity = entt::null;
+							
+							server.broadcast(0, net::game_events::set_hp{ slot_index, 0 }, ENET_PACKET_FLAG_RELIABLE);
 						}
 
 						world.m_players.erase(first_dead, world.m_players.end());

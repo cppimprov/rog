@@ -75,9 +75,11 @@ int main(int , char* [])
 }
 
 // todo: networking
-	// go through both server and client code, and 'todo:' all the things that need to be done...
-
-// todo: split gamestates into smaller functions as necessary
+	// receive events on clients
+	// test what we have so far
+	// broadcast positions / velocities
+	// receive positions / velocities on clients
+	// add interpolation / extrapolation on clients
 
 // todo (sometime): not all apps need network code... (or other things)
 	// each program should have its own "app" class that includes the things it needs

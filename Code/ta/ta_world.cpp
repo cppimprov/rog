@@ -12,7 +12,7 @@ namespace ta
 {
 
 	// PLAYER:
-	entt::entity create_player(entt::registry& registry, b2World& b2_world, glm::vec2 position_px, glm::vec3 color)
+	entt::entity create_player(entt::registry& registry, b2World& b2_world, std::uint8_t slot_index, glm::vec2 position_px, glm::vec3 color)
 	{
 		auto const b2_position = to_b2_vec2(globals::b2_scale_factor * position_px);
 
@@ -48,6 +48,7 @@ namespace ta
 
 		auto const entity = registry.create();
 
+		registry.emplace<c_player_slot_index>(entity, slot_index);
 		registry.emplace<c_player_hp>(entity, globals::player_hp);
 		registry.emplace<c_player_graphics>(entity, color);
 		registry.emplace<c_player_powerups>(entity);
