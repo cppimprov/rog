@@ -493,6 +493,27 @@ class PlatformMSVC:
 		]
 		self.write_static_lib(n, build_type, sdlmixer, '3')
 
+		lualib = ProjectStaticLib.from_name('lualib', self, build_type)
+		lualib.code_dir = get_code_dir('lua')
+		lualib.src_files = [
+			"lapi.c", "lcode.c", "lctype.c", "ldebug.c", "ldo.c", "ldump.c", "lfunc.c", "lgc.c", "llex.c", "lmem.c", "lobject.c", "lopcodes.c", "lparser.c", "lstate.c", "lstring.c", "ltable.c", "ltm.c", "lundump.c", "lvm.c", "lzio.c",
+			"lauxlib.c", "lbaselib.c", "lcorolib.c", "ldblib.c", "liolib.c", "lmathlib.c", "loadlib.c", "loslib.c", "lstrlib.c", "ltablib.c", "lutf8lib.c", "linit.c",
+		]
+		lualib.src_files = [ join_file(lualib.code_dir, 'src', f) for f in lualib.src_files ]
+		lualib.inc_dirs = [ join_dir(lualib.code_dir, 'src') ]
+		self.write_static_lib(n, build_type, lualib, '3')
+
+		lua = ProjectExe.from_name('lua', self, build_type)
+		lua.src_files = lualib.src_files + [ join_file(lua.code_dir, 'src', 'lua.c') ]
+		lua.inc_dirs = lualib.inc_dirs
+		self.write_exe(n, build_type, lua, '3')
+
+		luac = ProjectExe.from_name('luac', self, build_type)
+		luac.code_dir = get_code_dir('lua')
+		luac.src_files = lualib.src_files + [ join_file(luac.code_dir, 'src', 'luac.c') ]
+		luac.inc_dirs = lualib.inc_dirs
+		self.write_exe(n, build_type, luac, '3')
+
 		bump_dirs = [ 'debug', 'enet', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'util' ]
 		bump_core_dirs = [ 'debug', 'io', 'math', 'net', 'util' ]
 
