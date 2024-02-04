@@ -74,9 +74,6 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
-// todo: bug fixes:
-	// clients all seem to be (in their own view) the blue player
-
 // todo: networking
 	// testing...
 	// broadcast positions / velocities

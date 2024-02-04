@@ -31,19 +31,30 @@ namespace ta
 		new_slot->m_entity = world.m_players.back();
 		new_slot->m_peer = peer;
 
-		// send spawn event to everyone
+		// send spawn event to new client
 		auto const new_entity = world.m_players.back();
-		server.broadcast(0, net::game_events::spawn{ new_slot_index, true }, ENET_PACKET_FLAG_RELIABLE);
-		
-		// update new client by spawning other players
-		for (auto slot_index = std::size_t{ 0 }; slot_index != world.m_player_slots.size(); ++slot_index)
+		server.send(peer, 0, net::game_events::spawn{ new_slot_index, true }, ENET_PACKET_FLAG_RELIABLE);
+
+		// update new client by spawning existing players
+		for (auto slot_index = std::uint8_t{ 0 }; slot_index != world.m_player_slots.size(); ++slot_index)
 		{
 			auto const& slot = world.m_player_slots[slot_index];
 
 			if (slot.m_entity == entt::null || slot.m_entity == new_entity)
 				continue;
 			
-			server.send(peer, 0, net::game_events::spawn{ static_cast<std::uint8_t>(slot_index), false }, ENET_PACKET_FLAG_RELIABLE);
+			server.send(peer, 0, net::game_events::spawn{ slot_index, false }, ENET_PACKET_FLAG_RELIABLE);
+		}
+
+		// update existing clients by spawning the new player
+		for (auto slot_index = std::uint8_t{ 0 }; slot_index != world.m_player_slots.size(); ++slot_index)
+		{
+			auto const& slot = world.m_player_slots[slot_index];
+
+			if (slot.m_entity == entt::null || slot.m_entity == new_entity)
+				continue;
+
+			server.send(slot.m_peer, 0, net::game_events::spawn{ new_slot_index, false }, ENET_PACKET_FLAG_RELIABLE);
 		}
 	}
 

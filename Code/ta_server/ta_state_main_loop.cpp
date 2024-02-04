@@ -139,19 +139,12 @@ namespace ta
 								continue;
 							}
 
-							auto const slot_index = static_cast<std::uint8_t>(slot - world.m_player_slots.begin());
-							bump::log_info("player slot: " + std::to_string(slot_index));
-
-							auto const& input = std::get<ge::input>(event.m_event);
-
 							// update player input
-							{
-								auto& pm = world.m_registry.get<c_player_movement>(slot->m_entity);
-
-								pm.m_moving = input.m_moving;
-								pm.m_direction = input.m_direction;
-								pm.m_firing = input.m_firing;
-							}
+							auto& pm = world.m_registry.get<c_player_movement>(slot->m_entity);
+							auto const& input = std::get<ge::input>(event.m_event);
+							pm.m_moving = input.m_moving;
+							pm.m_direction = input.m_direction;
+							pm.m_firing = input.m_firing;
 						}
 					}
 
