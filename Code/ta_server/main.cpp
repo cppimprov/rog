@@ -76,9 +76,6 @@ int main(int , char* [])
 
 // todo: bug fixes:
 	// clients all seem to be (in their own view) the blue player
-	// players disappearing randomly
-	// set_hp messages being sent randomly
-	// clients crashing
 
 // todo: networking
 	// testing...

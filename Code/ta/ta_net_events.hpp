@@ -39,7 +39,22 @@ namespace ta
 			net_event m_event;
 		};
 
-		enum class game_event_type : std::uint8_t { SPAWN, DESPAWN, READY, INPUT, SPAWN_BULLET, DESPAWN_BULLET, FIRE, SET_HP, };
+		enum class game_event_type : std::uint8_t
+		{
+			SPAWN,
+			DESPAWN,
+			READY,
+			GAME_OVER,
+			INPUT,
+			SPAWN_BULLET,
+			DESPAWN_BULLET,
+			SET_HP,
+			SET_POWERUP_TIMER,
+			CLEAR_POWERUP_TIMER,
+			SPAWN_POWERUP,
+			DESPAWN_POWERUP,
+			PLAYER_DEATH
+		};
 
 		namespace game_events
 		{
@@ -170,9 +185,11 @@ namespace bump
 		{
 			static ta::net::game_events::spawn read(std::istream& is)
 			{
-				auto const slot_index = io::read<std::uint8_t>(is);
-				auto const self = io::read<bool>(is);
-				return { slot_index, self };
+				return
+				{
+					.m_slot_index = io::read<std::uint8_t>(is),
+					.m_self       = io::read<bool>(is)
+				};
 			}
 		};
 
@@ -191,8 +208,7 @@ namespace bump
 		{
 			static ta::net::game_events::despawn read(std::istream& is)
 			{
-				auto const slot_index = io::read<std::uint8_t>(is);
-				return { slot_index };
+				return { .m_slot_index = io::read<std::uint8_t>(is) };
 			}
 		};
 
@@ -219,7 +235,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::game_over)
 			{
-				io::write(os, ta::net::game_event_type::READY);
+				io::write(os, ta::net::game_event_type::GAME_OVER);
 			}
 		};
 
@@ -250,11 +266,13 @@ namespace bump
 		{
 			static ta::net::game_events::input read(std::istream& is)
 			{
-				auto const timestamp = io::read<bump::high_res_duration_t>(is);
-				auto const moving = io::read<bool>(is);
-				auto const direction = io::read<ta::direction>(is);
-				auto const firing = io::read<bool>(is);
-				return { timestamp, moving, direction, firing };
+				return
+				{
+					.m_timestamp = io::read<bump::high_res_duration_t>(is),
+					.m_moving    = io::read<bool>(is),
+					.m_direction = io::read<ta::direction>(is),
+					.m_firing    = io::read<bool>(is)
+				};
 			}
 		};
 
@@ -263,7 +281,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::spawn_bullet value)
 			{
-				io::write(os, ta::net::game_event_type::FIRE);
+				io::write(os, ta::net::game_event_type::SPAWN_BULLET);
 				io::write(os, value.m_owner_slot_index);
 				io::write(os, value.m_id);
 				io::write(os, value.m_pos_px);
@@ -276,11 +294,13 @@ namespace bump
 		{
 			static ta::net::game_events::spawn_bullet read(std::istream& is)
 			{
-				auto const owner_slot_index = io::read<std::uint8_t>(is);
-				auto const id = io::read<std::uint32_t>(is);
-				auto const pos_px = io::read<glm::vec2>(is);
-				auto const vel_px = io::read<glm::vec2>(is);
-				return { owner_slot_index, id, pos_px, vel_px };
+				return
+				{
+					.m_owner_slot_index = io::read<std::uint8_t>(is),
+					.m_id               = io::read<std::uint32_t>(is),
+					.m_pos_px           = io::read<glm::vec2>(is),
+					.m_vel_px           = io::read<glm::vec2>(is)
+				};
 			}
 		};
 
@@ -299,8 +319,7 @@ namespace bump
 		{
 			static ta::net::game_events::despawn_bullet read(std::istream& is)
 			{
-				auto const id = io::read<std::uint32_t>(is);
-				return { id };
+				return { .m_id = io::read<std::uint32_t>(is) };
 			}
 		};
 
@@ -320,9 +339,11 @@ namespace bump
 		{
 			static ta::net::game_events::set_hp read(std::istream& is)
 			{
-				auto const slot_index = io::read<std::uint8_t>(is);
-				auto const hp = io::read<std::uint32_t>(is);
-				return { slot_index, hp };
+				return
+				{
+					.m_slot_index = io::read<std::uint8_t>(is),
+					.m_hp         = io::read<std::uint32_t>(is)
+				};
 			}
 		};
 
@@ -331,7 +352,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::set_powerup_timer value)
 			{
-				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, ta::net::game_event_type::SET_POWERUP_TIMER);
 				io::write(os, value.m_slot_index);
 				io::write(os, value.m_type);
 				io::write(os, value.m_time);
@@ -343,10 +364,12 @@ namespace bump
 		{
 			static ta::net::game_events::set_powerup_timer read(std::istream& is)
 			{
-				auto const slot_index = io::read<std::uint8_t>(is);
-				auto const type = io::read<ta::powerup_type>(is);
-				auto const time = io::read<float>(is);
-				return { slot_index, type, time };
+				return
+				{
+					.m_slot_index = io::read<std::uint8_t>(is),
+					.m_type       = io::read<ta::powerup_type>(is),
+					.m_time       = io::read<float>(is)
+				};
 			}
 		};
 
@@ -355,7 +378,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::clear_powerup_timer value)
 			{
-				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, ta::net::game_event_type::CLEAR_POWERUP_TIMER);
 				io::write(os, value.m_slot_index);
 				io::write(os, value.m_type);
 			}
@@ -366,9 +389,11 @@ namespace bump
 		{
 			static ta::net::game_events::clear_powerup_timer read(std::istream& is)
 			{
-				auto const slot_index = io::read<std::uint8_t>(is);
-				auto const type = io::read<ta::powerup_type>(is);
-				return { slot_index, type };
+				return
+				{
+					.m_slot_index = io::read<std::uint8_t>(is),
+					.m_type       = io::read<ta::powerup_type>(is)
+				};
 			}
 		};
 
@@ -377,7 +402,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::spawn_powerup value)
 			{
-				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, ta::net::game_event_type::SPAWN_POWERUP);
 				io::write(os, value.m_type);
 				io::write(os, value.m_id);
 				io::write(os, value.m_pos_px);
@@ -389,10 +414,12 @@ namespace bump
 		{
 			static ta::net::game_events::spawn_powerup read(std::istream& is)
 			{
-				auto const type = io::read<ta::powerup_type>(is);
-				auto const id = io::read<std::uint32_t>(is);
-				auto const pos_px = io::read<glm::vec2>(is);
-				return { type, id, pos_px };
+				return
+				{
+					.m_type   = io::read<ta::powerup_type>(is),
+					.m_id     = io::read<std::uint32_t>(is),
+					.m_pos_px = io::read<glm::vec2>(is)
+				};
 			}
 		};
 
@@ -401,7 +428,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::despawn_powerup value)
 			{
-				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, ta::net::game_event_type::DESPAWN_POWERUP);
 				io::write(os, value.m_id);
 			}
 		};
@@ -411,8 +438,7 @@ namespace bump
 		{
 			static ta::net::game_events::despawn_powerup read(std::istream& is)
 			{
-				auto const id = io::read<std::uint32_t>(is);
-				return { id };
+				return { .m_id = io::read<std::uint32_t>(is) };
 			}
 		};
 
@@ -421,7 +447,7 @@ namespace bump
 		{
 			static void write(std::ostream& os, ta::net::game_events::player_death value)
 			{
-				io::write(os, ta::net::game_event_type::SET_HP);
+				io::write(os, ta::net::game_event_type::PLAYER_DEATH);
 				io::write(os, value.m_slot_index);
 			}
 		};
@@ -431,8 +457,7 @@ namespace bump
 		{
 			static ta::net::game_events::player_death read(std::istream& is)
 			{
-				auto const slot_index = io::read<std::uint8_t>(is);
-				return { slot_index };
+				return { .m_slot_index = io::read<std::uint8_t>(is) };
 			}
 		};
 
@@ -450,17 +475,26 @@ namespace bump
 		{
 			static ta::net::game_event read(std::istream& is)
 			{
-				auto const type = io::read<ta::net::game_event_type>(is);
+				using event_type = ta::net::game_event_type;
+				namespace ge = ta::net::game_events;
+
+				auto const type = io::read<event_type>(is);
 				
 				switch (type)
 				{
-				case ta::net::game_event_type::SPAWN: return { io::read<ta::net::game_events::spawn>(is) };
-				case ta::net::game_event_type::DESPAWN: return { io::read<ta::net::game_events::despawn>(is) };
-				case ta::net::game_event_type::READY: return { io::read<ta::net::game_events::ready>(is) };
-				case ta::net::game_event_type::INPUT: return { io::read<ta::net::game_events::input>(is) };
-				case ta::net::game_event_type::FIRE: return { io::read<ta::net::game_events::spawn_bullet>(is) };
-				case ta::net::game_event_type::DESPAWN_BULLET: return { io::read<ta::net::game_events::despawn_bullet>(is) };
-				case ta::net::game_event_type::SET_HP: return { io::read<ta::net::game_events::set_hp>(is) };
+				case event_type::SPAWN              : return { io::read<ge::spawn>(is) };
+				case event_type::DESPAWN            : return { io::read<ge::despawn>(is) };
+				case event_type::READY              : return { io::read<ge::ready>(is) };
+				case event_type::GAME_OVER          : return { io::read<ge::game_over>(is) };
+				case event_type::INPUT              : return { io::read<ge::input>(is) };
+				case event_type::SPAWN_BULLET       : return { io::read<ge::spawn_bullet>(is) };
+				case event_type::DESPAWN_BULLET     : return { io::read<ge::despawn_bullet>(is) };
+				case event_type::SET_HP             : return { io::read<ge::set_hp>(is) };
+				case event_type::SET_POWERUP_TIMER  : return { io::read<ge::set_powerup_timer>(is) };
+				case event_type::CLEAR_POWERUP_TIMER: return { io::read<ge::clear_powerup_timer>(is) };
+				case event_type::SPAWN_POWERUP      : return { io::read<ge::spawn_powerup>(is) };
+				case event_type::DESPAWN_POWERUP    : return { io::read<ge::despawn_powerup>(is) };
+				case event_type::PLAYER_DEATH       : return { io::read<ge::player_death>(is) };
 				}
 
 				return { };
