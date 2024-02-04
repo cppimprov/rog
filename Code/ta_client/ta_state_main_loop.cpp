@@ -137,6 +137,7 @@ namespace ta
 							auto const owner = world.m_player_slots[data.m_owner_slot_index].m_entity;
 							auto const owner_group_id = world.m_registry.get<c_player_physics>(owner).m_b2_body->GetFixtureList()->GetFilterData().groupIndex;
 							world.m_bullets.push_back(create_bullet(world.m_registry, world.m_b2_world, data.m_id, owner, owner_group_id, data.m_pos_px, data.m_vel_px));
+							world.m_registry.emplace<c_bullet_state_history>(world.m_bullets.back());
 							continue;
 						}
 
@@ -228,7 +229,6 @@ namespace ta
 									break;
 								}
 							}
-
 							continue;
 						}
 
@@ -245,9 +245,50 @@ namespace ta
 							continue;
 						}
 						
-						// states:
-							// player position, velocity, direction, firing
-							// bullet position, velocity
+						if (std::holds_alternative<ge::player_state>(event))
+						{
+							bump::log_info("game event: player state");
+
+							auto const& data = std::get<ge::player_state>(event);
+
+							auto& slot = world.m_player_slots[data.m_slot_index];
+
+							if (slot.m_entity == entt::null)
+								continue;
+							
+							auto [pp, pm, ph] = world.m_registry.get<c_player_physics, c_player_movement, c_player_state_history>(slot.m_entity);
+							pp.m_b2_body->SetTransform(to_b2_vec2(globals::b2_scale_factor * data.m_pos_px), pp.m_b2_body->GetAngle());
+							pp.m_b2_body->SetLinearVelocity(to_b2_vec2(globals::b2_scale_factor * data.m_vel_px));
+							pm.m_direction = data.m_direction;
+
+							// todo: add to state history
+							continue;
+						}
+
+						if (std::holds_alternative<ge::bullet_state>(event))
+						{
+							bump::log_info("game event: bullet state");
+
+							auto const& data = std::get<ge::bullet_state>(event);
+
+							auto const bullet_view = world.m_registry.view<c_bullet_id>();
+
+							for (auto const b : bullet_view)
+							{
+								auto const& bi = bullet_view.get<c_bullet_id>(b);
+
+								if (bi.m_id == data.m_id)
+								{
+									auto [bp, bh] = world.m_registry.get<c_bullet_physics, c_bullet_state_history>(b);
+									bp.m_b2_body->SetTransform(to_b2_vec2(globals::b2_scale_factor * data.m_pos_px), bp.m_b2_body->GetAngle());
+									bp.m_b2_body->SetLinearVelocity(to_b2_vec2(globals::b2_scale_factor * data.m_vel_px));
+
+									// todo: add to state history
+									break;
+								}
+							}
+							continue;
+						}
 
 						if (std::holds_alternative<ge::game_over>(event))
 						{

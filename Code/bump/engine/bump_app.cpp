@@ -4,7 +4,7 @@ namespace bump
 {
 
 	app::app(asset_metadata const& metadata, glm::i32vec2 window_size, std::string const& window_title, sdl::window::display_mode window_display_mode):
-		m_sdl_context(),
+		m_sdl_context(sdl::init().unwrap()),
 		m_mixer_context(),
 		m_ft_context(),
 		m_window(window_size, window_title, window_display_mode),

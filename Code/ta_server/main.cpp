@@ -74,10 +74,11 @@ int main(int , char* [])
 	return EXIT_SUCCESS;
 }
 
+// todo: bug fix - server crashes when closing clients?
+
 // todo: networking
-	// testing...
-	// broadcast positions / velocities
-	// receive positions / velocities on clients
+	// add timestamp / sequence number to state updates
+	// cache state history on the client (fixed size circular buffer?)
 	// add interpolation / extrapolation on clients
 
 // todo (sometime): not all apps need network code... (or other things)

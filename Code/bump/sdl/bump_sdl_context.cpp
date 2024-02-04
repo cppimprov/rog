@@ -1,32 +1,61 @@
 #include "bump_sdl_context.hpp"
 
-#include "bump_die.hpp"
-#include "bump_log.hpp"
-
-#include <SDL.h>
-
-#include <string>
-
 namespace bump
 {
 	
 	namespace sdl
 	{
-		
-		context::context()
+
+		void context::quit()
 		{
-			if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
+			if (m_active)
 			{
-				log_error("SDL_Init() failed: " + std::string(SDL_GetError()));
-				die();
+				sdl::quit();
+				m_active = false;
 			}
 		}
 
-		context::~context()
+		result<context, std::string_view> init()
+		{
+			return init(subsystems::EVERYTHING);
+		}
+
+		result<context, std::string_view> init(subsystems s)
+		{
+			if (SDL_Init(s) != 0)
+				return make_err(std::string_view(SDL_GetError()));
+
+			return make_ok(context(true));
+		}
+
+		result<void, std::string_view> init_subsystems(subsystems s)
+		{
+			if (SDL_InitSubSystem(s) != 0)
+				return make_err(std::string_view(SDL_GetError()));
+
+			return make_ok();
+		}
+
+		subsystems was_init()
+		{
+			return was_init(subsystems::EVERYTHING);
+		}
+
+		subsystems was_init(subsystems s)
+		{
+			return static_cast<subsystems>(SDL_WasInit(s));
+		}
+
+		void quit()
 		{
 			SDL_Quit();
 		}
-		
+
+		void quit_subsystems(subsystems s)
+		{
+			SDL_QuitSubSystem(s);
+		}
+
 	} // sdl
 	
 } // bump

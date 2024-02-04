@@ -36,18 +36,19 @@ namespace ta
 		auto tile_list = std::vector<entt::entity>();
 
 		auto timer = bump::frame_timer();
-		auto dt_accumulator = bump::high_res_duration_t{ 0 };
+		auto update_dt_accumulator = bump::high_res_duration_t{ 0 };
+		auto net_dt_accumulator = bump::high_res_duration_t{ 0 };
 		auto powerup_spawn_timer = bump::timer();
 
 		auto const start_time = bump::high_res_clock_t::now();
 		
 		while (true)
 		{
-			dt_accumulator += timer.get_last_frame_time();
+			update_dt_accumulator += timer.get_last_frame_time();
 
-			while (dt_accumulator >= globals::server_update_tick_rate)
+			while (update_dt_accumulator >= globals::server_update_tick_rate)
 			{
-				dt_accumulator -= globals::server_update_tick_rate;
+				update_dt_accumulator -= globals::server_update_tick_rate;
 				auto const dt_f = globals::server_update_tick_rate_f;
 
 				// input
@@ -317,8 +318,6 @@ namespace ta
 
 						// update physics
 						world.m_b2_world.Step(dt_f, 6, 2);
-
-						// todo: broadcast positions, velocities? for players and bullets
 					}
 
 					// update bullet lifetimes
@@ -495,6 +494,47 @@ namespace ta
 				}
 
 			}
+
+			net_dt_accumulator += timer.get_last_frame_time();
+
+			if (net_dt_accumulator >= globals::server_net_tick_rate)
+			{
+				net_dt_accumulator -= globals::server_net_tick_rate;
+
+				// broadcast positions / velocities
+				{
+					auto const player_view = world.m_registry.view<c_player_slot_index, c_player_physics, c_player_movement>();
+
+					for (auto const p : player_view)
+					{
+						auto [ps, pp, pm] = player_view.get<c_player_slot_index, c_player_physics, c_player_movement>(p);
+
+						auto const pos_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetPosition());
+						auto const vel_px = globals::b2_inv_scale_factor * to_glm_vec2(pp.m_b2_body->GetLinearVelocity());
+
+						server.broadcast(0, net::game_events::player_state{ ps.m_index, pos_px, vel_px, pm.m_direction }, ENET_PACKET_FLAG_UNSEQUENCED);
+					}
+				}
+
+				// broadcast bullet positions / velocities
+				{
+					auto const bullet_view = world.m_registry.view<c_bullet_id, c_bullet_physics>();
+
+					for (auto const b : bullet_view)
+					{
+						auto [bi, bp] = bullet_view.get<c_bullet_id, c_bullet_physics>(b);
+
+						auto const pos_px = globals::b2_inv_scale_factor * to_glm_vec2(bp.m_b2_body->GetPosition());
+						auto const vel_px = globals::b2_inv_scale_factor * to_glm_vec2(bp.m_b2_body->GetLinearVelocity());
+
+						server.broadcast(0, net::game_events::bullet_state{ bi.m_id, pos_px, vel_px }, ENET_PACKET_FLAG_UNSEQUENCED);
+					}
+				}
+			}
+
+			// note: no point sending the same state multiple times per frame
+			while (net_dt_accumulator >= globals::server_net_tick_rate)
+				net_dt_accumulator -= globals::server_net_tick_rate;
 
 			render_world(app.m_window, app.m_renderer, world);
 

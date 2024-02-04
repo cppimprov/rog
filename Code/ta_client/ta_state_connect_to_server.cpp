@@ -42,6 +42,9 @@ namespace ta
 				world.m_local_player = world.m_players.back();
 			}
 
+			// add state history component for interpolation / extrapolation
+			world.m_registry.emplace<c_player_state_history>(world.m_players.back());
+
 			// occupy player slot
 			slot.m_entity = world.m_players.back();
 		}

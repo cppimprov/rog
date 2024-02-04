@@ -63,6 +63,19 @@ namespace ta
 		bool m_input_fire = false;
 	};
 
+	struct c_player_state_history
+	{
+		struct state
+		{
+			std::chrono::high_resolution_clock::time_point m_time;
+			b2Vec2 m_position;
+			b2Vec2 m_velocity;
+			direction m_direction;
+		};
+
+		std::vector<state> m_states;
+	};
+
 	entt::entity create_player(entt::registry& registry, b2World& b2_world, std::uint8_t slot_index, glm::vec2 position_px, glm::vec3 color);
 	void destroy_player(entt::registry& registry, b2World& b2_world, entt::entity player);
 
@@ -85,6 +98,18 @@ namespace ta
 	struct c_bullet_physics
 	{
 		b2Body* m_b2_body = nullptr;
+	};
+
+	struct c_bullet_state_history
+	{
+		struct state
+		{
+			std::chrono::high_resolution_clock::time_point m_time;
+			b2Vec2 m_position;
+			b2Vec2 m_velocity;
+		};
+
+		std::vector<state> m_states;
 	};
 
 	entt::entity create_bullet(entt::registry& registry, b2World& b2_world, std::uint32_t id, entt::entity owner_id, std::int16_t owner_player_group_index, glm::vec2 position_px, glm::vec2 velocity_px);

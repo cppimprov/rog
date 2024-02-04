@@ -53,7 +53,9 @@ namespace ta
 			CLEAR_POWERUP_TIMER,
 			SPAWN_POWERUP,
 			DESPAWN_POWERUP,
-			PLAYER_DEATH
+			PLAYER_DEATH,
+			PLAYER_STATE,
+			BULLET_STATE
 		};
 
 		namespace game_events
@@ -72,6 +74,8 @@ namespace ta
 			struct spawn_powerup { enum class powerup_type m_type; std::uint32_t m_id; glm::vec2 m_pos_px; };
 			struct despawn_powerup { std::uint32_t m_id; };
 			struct player_death { std::uint8_t m_slot_index; };
+			struct player_state { std::uint8_t m_slot_index; glm::vec2 m_pos_px; glm::vec2 m_vel_px; ta::direction m_direction; };
+			struct bullet_state { std::uint32_t m_id; glm::vec2 m_pos_px; glm::vec2 m_vel_px; };
 
 		} // events
 
@@ -90,7 +94,9 @@ namespace ta
 			game_events::clear_powerup_timer,
 			game_events::spawn_powerup,
 			game_events::despawn_powerup,
-			game_events::player_death
+			game_events::player_death,
+			game_events::player_state,
+			game_events::bullet_state
 		>;
 
 		struct peer_game_event
@@ -462,6 +468,60 @@ namespace bump
 		};
 
 		template<>
+		struct write_impl<ta::net::game_events::player_state>
+		{
+			static void write(std::ostream& os, ta::net::game_events::player_state value)
+			{
+				io::write(os, ta::net::game_event_type::PLAYER_STATE);
+				io::write(os, value.m_slot_index);
+				io::write(os, value.m_pos_px);
+				io::write(os, value.m_vel_px);
+				io::write(os, value.m_direction);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::player_state>
+		{
+			static ta::net::game_events::player_state read(std::istream& is)
+			{
+				return
+				{
+					.m_slot_index = io::read<std::uint8_t>(is),
+					.m_pos_px     = io::read<glm::vec2>(is),
+					.m_vel_px     = io::read<glm::vec2>(is),
+					.m_direction  = io::read<ta::direction>(is)
+				};
+			}
+		};
+		
+		template<>
+		struct write_impl<ta::net::game_events::bullet_state>
+		{
+			static void write(std::ostream& os, ta::net::game_events::bullet_state value)
+			{
+				io::write(os, ta::net::game_event_type::BULLET_STATE);
+				io::write(os, value.m_id);
+				io::write(os, value.m_pos_px);
+				io::write(os, value.m_vel_px);
+			}
+		};
+
+		template<>
+		struct read_impl<ta::net::game_events::bullet_state>
+		{
+			static ta::net::game_events::bullet_state read(std::istream& is)
+			{
+				return
+				{
+					.m_id     = io::read<std::uint32_t>(is),
+					.m_pos_px = io::read<glm::vec2>(is),
+					.m_vel_px = io::read<glm::vec2>(is)
+				};
+			}
+		};
+
+		template<>
 		struct write_impl<ta::net::game_event>
 		{
 			static void write(std::ostream& os, ta::net::game_event const& value)
@@ -495,6 +555,8 @@ namespace bump
 				case event_type::SPAWN_POWERUP      : return { io::read<ge::spawn_powerup>(is) };
 				case event_type::DESPAWN_POWERUP    : return { io::read<ge::despawn_powerup>(is) };
 				case event_type::PLAYER_DEATH       : return { io::read<ge::player_death>(is) };
+				case event_type::PLAYER_STATE       : return { io::read<ge::player_state>(is) };
+				case event_type::BULLET_STATE       : return { io::read<ge::bullet_state>(is) };
 				}
 
 				return { };

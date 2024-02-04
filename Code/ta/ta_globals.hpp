@@ -41,6 +41,9 @@ namespace ta
 		auto const server_update_tick_rate = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::milliseconds{ 32 });
 		auto const server_update_tick_rate_f = bump::high_res_duration_to_seconds(server_update_tick_rate);
 
+		auto const server_net_tick_rate = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::milliseconds{ 64 });
+		auto const server_net_tick_rate_f = bump::high_res_duration_to_seconds(server_net_tick_rate);
+
 		auto const client_update_tick_rate = std::chrono::duration_cast<bump::high_res_duration_t>(std::chrono::milliseconds{ 16 });
 		auto const client_update_tick_rate_f = bump::high_res_duration_to_seconds(client_update_tick_rate);
 
