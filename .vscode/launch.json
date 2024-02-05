@@ -57,6 +57,7 @@
                 "ta_server",
                 "ta_client",
                 "test",
+                "sol_test",
             ]
         },
         {
