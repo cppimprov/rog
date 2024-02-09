@@ -125,12 +125,12 @@ class PlatformMSVC:
 	def get_cc_in_includes(self, paths):
 		return ' '.join('/I' + p for p in paths)
 
-	def write_cc_build(self, n, build_type, in_src, in_includes, out_obj, out_pdb, defines, warning_level):
+	def write_cc_build(self, n, build_type, in_src, in_includes, out_obj, out_pdb, defines, warning_level, extra_flags):
 		in_deps = [in_src]
 		out_deps = [out_obj, out_pdb]
 		n.build(out_deps, 'cc', in_deps,
 			variables = [
-				('cc_flags', self.get_cc_flags()),
+				('cc_flags', self.get_cc_flags() + ' ' + extra_flags),
 				('cc_build_flags', self.get_cc_build_flags(build_type)),
 				('cc_warning_level', self.get_cc_warning_level(warning_level)),
 				('cc_defines', self.get_cc_defines(defines)),
@@ -200,26 +200,26 @@ class PlatformMSVC:
 				('res_file', res_file),
 			])
 			
-	def write_static_lib(self, n, build_type, lib, warning_level = '4'):
+	def write_static_lib(self, n, build_type, lib, warning_level = '4', extra_flags = ''):
 		src_paths = lib.src_files
 		inc_paths = lib.inc_dirs
 		obj_paths = [join_file(lib.build_dir, get_file_stem(f)) + '.obj' for f in lib.src_files]
 		pdb_paths = [join_file(lib.deploy_dir, get_file_stem(f)) + '.pdb' for f in lib.src_files]
 
 		for src, obj, pdb in zip(src_paths, obj_paths, pdb_paths):
-			self.write_cc_build(n, build_type, src, inc_paths, obj, pdb, lib.defines, warning_level)
+			self.write_cc_build(n, build_type, src, inc_paths, obj, pdb, lib.defines, warning_level, extra_flags)
 
 		lib_path = join_file(lib.deploy_dir, lib.project_name + '.lib')
 		self.write_ar_build(n, obj_paths, lib_path)
 
-	def write_exe(self, n, build_type, exe, warning_level = '4', res_file = ''):
+	def write_exe(self, n, build_type, exe, warning_level = '4', extra_flags = '', res_file = ''):
 		src_paths = exe.src_files
 		inc_paths = exe.inc_dirs
 		obj_paths = [join_file(exe.build_dir, get_file_stem(f)) + '.obj' for f in exe.src_files]
 		pdb_paths = [join_file(exe.build_dir, get_file_stem(f)) + '.pdb' for f in exe.src_files]
 
 		for src, obj, pdb in zip(src_paths, obj_paths, pdb_paths):
-			self.write_cc_build(n, build_type, src, inc_paths, obj, pdb, exe.defines, warning_level)
+			self.write_cc_build(n, build_type, src, inc_paths, obj, pdb, exe.defines, warning_level, extra_flags)
 
 		exe_path = join_file(exe.deploy_dir, exe.project_name + '.exe')
 		pdb_final_path = join_file(exe.deploy_dir, exe.project_name + '.pdb')
@@ -501,21 +501,21 @@ class PlatformMSVC:
 		]
 		lualib.src_files = [ join_file(lualib.code_dir, 'src', f) for f in lualib.src_files ]
 		lualib.inc_dirs = [ join_dir(lualib.code_dir, 'src') ]
-		self.write_static_lib(n, build_type, lualib, '3')
+		self.write_static_lib(n, build_type, lualib, '2', '/TP')
 
 		lua = ProjectExe.from_name('lua', self, build_type)
 		lua.src_files = lualib.src_files + [ join_file(lua.code_dir, 'src', 'lua.c') ]
 		lua.inc_dirs = lualib.inc_dirs
-		self.write_exe(n, build_type, lua, '3')
+		self.write_exe(n, build_type, lua, '2', '/TP')
 
 		luac = ProjectExe.from_name('luac', self, build_type)
 		luac.code_dir = get_code_dir('lua')
 		luac.src_files = lualib.src_files + [ join_file(luac.code_dir, 'src', 'luac.c') ]
 		luac.inc_dirs = lualib.inc_dirs
-		self.write_exe(n, build_type, luac, '3')
+		self.write_exe(n, build_type, luac, '2', '/TP')
 
 		sol = ProjectStaticLib.from_name('sol', self, build_type)
-		sol.defines = [ 'SOL_ALL_SAFETIES_ON', 'SOL_NO_EXCEPTIONS' ]
+		sol.defines = [ 'SOL_ALL_SAFETIES_ON=1', 'SOL_DEFAULT_PASS_ON_ERROR=1', 'SOL_PRINT_ERRORS=0', 'SOL_USING_CXX_LUA=1' ]
 
 		bump_dirs = [ 'debug', 'enet', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'util' ]
 		bump_core_dirs = [ 'debug', 'io', 'math', 'net', 'util' ]
@@ -571,7 +571,7 @@ class PlatformMSVC:
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
 		rog.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
-		self.write_exe(n, build_type, rog, '4', res_file)
+		self.write_exe(n, build_type, rog, '4', '', res_file)
 
 		rog_ascii_gen = ProjectExe.from_name('rog_ascii_gen', self, build_type)
 		rog_ascii_gen.defines = bump.defines
