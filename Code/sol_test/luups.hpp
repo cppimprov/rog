@@ -1,0 +1,237 @@
+#pragma once
+
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <variant>
+
+namespace luups
+{
+
+	inline constexpr void die_if(bool condition) { if (condition) __debugbreak(); }
+	[[noreturn]] inline constexpr void die() { die_if(true); }
+
+	enum class lua_status
+	{
+		ok = LUA_OK,
+		runtime = LUA_ERRRUN,
+		memory = LUA_ERRMEM,
+		error = LUA_ERRERR,
+		syntax = LUA_ERRSYNTAX,
+		yield = LUA_YIELD,
+		file = LUA_ERRFILE,
+	};
+
+	std::string to_string(lua_status status);
+
+	enum class lua_std_library
+	{
+		base,
+		package,
+		coroutine,
+		table,
+		io,
+		os,
+		string,
+		math,
+		utf8,
+		debug,
+	};
+
+	using lua_load_mode = std::uint32_t;
+	static constexpr lua_load_mode binary = 1U << 0;
+	static constexpr lua_load_mode text   = 1U << 1;
+
+	namespace detail
+	{
+
+		inline char const* get_mode_str(lua_load_mode mode)
+		{
+			if (mode == (binary | text)) return "bt";
+			if (mode == binary) return "b";
+			if (mode == text) return "t";
+			die();
+		}
+
+	} // detail
+
+	static constexpr int lua_multiple_return = LUA_MULTRET;
+	static constexpr int lua_no_msg_handler = 0;
+
+	enum class lua_type
+	{
+		none = LUA_TNONE,
+		nil = LUA_TNIL,
+		boolean = LUA_TBOOLEAN,
+		lightuserdata = LUA_TLIGHTUSERDATA,
+		number = LUA_TNUMBER,
+		string = LUA_TSTRING,
+		table = LUA_TTABLE,
+		function = LUA_TFUNCTION,
+		userdata = LUA_TUSERDATA,
+		thread = LUA_TTHREAD,
+	};
+
+	std::string to_string(lua_type type);
+
+	class lua_state
+	{
+	public:
+
+		// CONSTRUCT / DESTROY
+
+		lua_state(): L(nullptr) { }
+		explicit lua_state(lua_State* L): L(L) { }
+
+		lua_state(lua_state const&) = delete;
+		lua_state& operator=(lua_state const&) = delete;
+		lua_state(lua_state&& other): L(other.L) { other.L = nullptr; }
+		lua_state& operator=(lua_state&& other) { auto temp = std::move(other); std::swap(L, temp.L); return *this; }
+
+		~lua_state() { close(); }
+
+		bool is_open() const { return L != nullptr; }
+		void close() { if (L) lua_close(L); L = nullptr; }
+		
+		lua_State* handle() const { return L; }
+
+		// UTILS
+
+		double version() const { die_if(!is_open()); return lua_version(L); }
+		lua_status status() const { die_if(!is_open()); return static_cast<lua_status>(::lua_status(L)); }
+		std::string traceback(std::string const& prefix = "", int level = 0);
+
+		// LIBRARIES / PACKAGES
+
+		void open_libraries();
+		void open_std_library(lua_std_library library);
+		void require(std::string const& module_name, lua_CFunction open_fn, bool global = true);
+
+		// LOAD / EXECUTE
+		
+		// todo: more generic load() function (i.e. lua_Reader wrapper?)
+		// todo: load_stdin()
+
+		[[nodiscard]] lua_status load_string(std::string const& code, lua_load_mode mode = binary | text);
+		[[nodiscard]] lua_status load_file(std::string const& path, lua_load_mode mode = binary | text);
+		[[nodiscard]] lua_status call(int num_args, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+		[[nodiscard]] lua_status do_string(std::string const& code, lua_load_mode mode = binary | text, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+		[[nodiscard]] lua_status do_file(std::string const& path, lua_load_mode mode = binary | text, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+
+		// STACK - MANAGEMENT
+
+		int size() const;
+		bool empty() const { return size() == 0; }
+		void resize(int index);
+		void clear() { resize(0); }
+
+		void copy(int from_index, int to_index);
+		void insert(int index);
+		void pop(int num_elements = 1);
+		void remove(int index);
+		void replace(int index);
+		void rotate(int index, int num_elements);
+		void concat(int num_elements);
+		
+		[[nodiscard]] bool ensure(int num_elements);
+		int to_abs_index(int index) const;
+
+		// STACK - TYPES
+
+		// note: invalid indices (outside the currently allocated stack space) return none
+		// note: indices that are valid, but currently empty return nil		
+		lua_type get_type(int index) const { die_if(!is_open()); return static_cast<lua_type>(::lua_type(L, index)); }
+
+		bool is_none(int index) const { return get_type(index) == lua_type::none; }
+		bool is_nil(int index) const { return get_type(index) == lua_type::nil; }
+		bool is_none_or_nil(int index) const { return is_none(index) || is_nil(index); }
+		bool is_boolean(int index) const { return get_type(index) == lua_type::boolean; }
+		bool is_integer(int index) const { return get_type(index) == lua_type::number && lua_isinteger(L, index); }
+		bool is_number(int index) const { return get_type(index) == lua_type::number; }
+		bool is_string(int index) const { return get_type(index) == lua_type::string; }
+		bool is_table(int index) const { return get_type(index) == lua_type::table; }
+
+		// STACK - VARIABLES
+
+		void push_nil();
+		void push_fail();
+		void push_boolean(bool value);
+		void push_integer(std::int64_t value);
+		void push_number(double value);
+		void push_string(std::string_view value);
+		
+		void push_copy(int index);
+		void push_length(int index);
+
+		bool pop_boolean();
+		std::int64_t pop_integer();
+		double pop_number();
+		std::string pop_string();
+
+		bool get_boolean(int index = -1) const;
+		std::int64_t get_integer(int index = -1) const;
+		double get_number(int index = -1) const;
+		std::string_view get_string(int index = -1) const;
+
+		std::optional<bool> try_get_boolean(int index = -1) const;
+		std::optional<std::int64_t> try_get_integer(int index = -1) const;
+		std::optional<double> try_get_number(int index = -1) const;
+		std::optional<std::string_view> try_get_string(int index = -1) const;
+
+		bool get_boolean_or(bool default_value, int index = -1) const;
+		std::int64_t get_integer_or(std::int64_t default_value, int index = -1) const;
+		double get_number_or(double default_value, int index = -1) const;
+		std::string_view get_string_or(std::string_view default_value, int index = -1) const;
+
+		std::int64_t get_length(int index);
+
+		// STACK - TABLES
+
+		void push_table(int sequence_size = 0, int hash_size = 0);
+		void push_globals_table();
+
+		lua_type push_table_field(int table_index);
+		lua_type push_table_field_raw(int table_index);
+		lua_type push_table_field(int table_index, std::string const& key_name);
+		lua_type push_table_field_raw(int table_index, std::string const& key_name);
+		lua_type push_table_field(int table_index, std::uint64_t key_index);
+		lua_type push_table_field_raw(int table_index, std::uint64_t key_index);
+		lua_type push_global(std::string const& key_name);
+
+		void set_table_field(int table_index);
+		void set_table_field_raw(int table_index);
+		void set_table_field(int table_index, std::string const& key_name);
+		void set_table_field_raw(int table_index, std::string const& key_name);
+		void set_table_field(int table_index, std::uint64_t key_index);
+		void set_table_field_raw(int table_index, std::uint64_t key_index);
+		void set_global(std::string const& key_name);
+
+		int next_table_field(int table_index);
+
+	private:
+
+		// THE STATE
+
+		lua_State* L;
+
+		// STACK MANAGEMENT UTILS
+
+		static bool is_pseudo_index(int index);
+
+		bool to_boolean_impl(int index) const;
+		std::int64_t to_integer_impl(int index) const;
+		double to_number_impl(int index) const;
+		std::string_view to_string_impl(int index) const;
+	};
+
+	inline lua_state new_state()
+	{
+		return lua_state(luaL_newstate());
+	}
+
+} // luups
