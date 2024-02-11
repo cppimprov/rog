@@ -7,12 +7,12 @@ Types:
 *lua_CFunction
 *lua_Debug
 *lua_Hook
-*lua_Integer
+lua_Integer
 *lua_KContext
 *lua_KFunction
-*lua_Number
+lua_Number
 *lua_Reader
-*lua_State
+lua_State
 *lua_Unsigned
 *lua_WarnFunction
 *lua_Writer
@@ -96,7 +96,7 @@ lua_pushvalue
 lua_rawget
 lua_rawgeti
 *lua_rawgetp
-*lua_rawlen
+lua_rawlen
 lua_rawset
 lua_rawseti
 *lua_rawsetp
@@ -206,7 +206,7 @@ luaL_optstring
 luaL_pushfail
 *luaL_pushresult
 *luaL_pushresultsize
-*luaL_ref
+luaL_ref
 luaL_requiref
 *luaL_setfuncs
 *luaL_setmetatable
@@ -215,5 +215,15 @@ luaL_tolstring
 luaL_traceback
 *luaL_typeerror
 luaL_typename
-*luaL_unref
+luaL_unref
 *luaL_where
+
+// todo: metatables
+// todo: threads
+// todo: userdata
+// todo: raw* functions
+// todo: register c functions (and setfuncs?)
+// todo: upvalues
+// todo: buffers
+// todo: libraries (newlib / newlibtable)
+// todo: refs

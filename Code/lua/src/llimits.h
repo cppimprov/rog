@@ -123,7 +123,9 @@ typedef LUAI_UACINT l_uacInt;
 #define luai_apicheck(l,e)	((void)l, lua_assert(e))
 #endif
 
+#if !defined(api_check)
 #define api_check(l,e,msg)	luai_apicheck(l,(e) && msg)
+#endif
 
 
 /* macro to avoid warnings about unused variables */

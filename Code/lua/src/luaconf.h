@@ -11,6 +11,8 @@
 #include <limits.h>
 #include <stddef.h>
 
+#include <stdexcept>
+
 
 /*
 ** ===================================================================
@@ -104,14 +106,14 @@
 */
 
 /* predefined options for LUA_INT_TYPE */
-#define LUA_INT_INT		1
-#define LUA_INT_LONG		2
-#define LUA_INT_LONGLONG	3
+#define LUA_INT_INT      1
+#define LUA_INT_LONG     2
+#define LUA_INT_LONGLONG 3
 
 /* predefined options for LUA_FLOAT_TYPE */
-#define LUA_FLOAT_FLOAT		1
-#define LUA_FLOAT_DOUBLE	2
-#define LUA_FLOAT_LONGDOUBLE	3
+#define LUA_FLOAT_FLOAT      1
+#define LUA_FLOAT_DOUBLE     2
+#define LUA_FLOAT_LONGDOUBLE 3
 
 
 /* Default configuration ('long long' and 'double', for 64-bit Lua) */
@@ -705,17 +707,19 @@
 ** numbers to strings. Define LUA_NOCVTS2N to turn off automatic
 ** coercion from strings to numbers.
 */
-/* #define LUA_NOCVTN2S */
-/* #define LUA_NOCVTS2N */
+#define LUA_NOCVTN2S
+#define LUA_NOCVTS2N
 
+
+inline constexpr void lua_api_die_if(bool condition) { if (condition) __debugbreak(); }
+[[noreturn]] inline constexpr void lua_api_die() { lua_api_die_if(true); }
 
 /*
 @@ LUA_USE_APICHECK turns on several consistency checks on the C API.
 ** Define it as a help when debugging C code.
 */
 #if defined(LUA_USE_APICHECK)
-#include <assert.h>
-#define luai_apicheck(l,e)	assert(e)
+#define api_check(l, c, msg) ((void)l, lua_api_die_if(!(c) && msg))
 #endif
 
 /* }================================================================== */

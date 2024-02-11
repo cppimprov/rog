@@ -494,6 +494,7 @@ class PlatformMSVC:
 		self.write_static_lib(n, build_type, sdlmixer, '3')
 
 		lualib = ProjectStaticLib.from_name('lualib', self, build_type)
+		lualib.defines = [ 'LUA_USE_APICHECK' ]
 		lualib.code_dir = get_code_dir('lua')
 		lualib.src_files = [
 			"lapi.c", "lcode.c", "lctype.c", "ldebug.c", "ldo.c", "ldump.c", "lfunc.c", "lgc.c", "llex.c", "lmem.c", "lobject.c", "lopcodes.c", "lparser.c", "lstate.c", "lstring.c", "ltable.c", "ltm.c", "lundump.c", "lvm.c", "lzio.c",
@@ -504,18 +505,20 @@ class PlatformMSVC:
 		self.write_static_lib(n, build_type, lualib, '2', '/TP')
 
 		lua = ProjectExe.from_name('lua', self, build_type)
+		lua.defines = lualib.defines
 		lua.src_files = lualib.src_files + [ join_file(lua.code_dir, 'src', 'lua.c') ]
 		lua.inc_dirs = lualib.inc_dirs
 		self.write_exe(n, build_type, lua, '2', '/TP')
 
 		luac = ProjectExe.from_name('luac', self, build_type)
+		luac.defines = lualib.defines
 		luac.code_dir = get_code_dir('lua')
 		luac.src_files = lualib.src_files + [ join_file(luac.code_dir, 'src', 'luac.c') ]
 		luac.inc_dirs = lualib.inc_dirs
 		self.write_exe(n, build_type, luac, '2', '/TP')
 
 		sol = ProjectStaticLib.from_name('sol', self, build_type)
-		sol.defines = [ 'SOL_ALL_SAFETIES_ON=1', 'SOL_DEFAULT_PASS_ON_ERROR=1', 'SOL_PRINT_ERRORS=0', 'SOL_USING_CXX_LUA=1' ]
+		sol.defines = [ 'SOL_ALL_SAFETIES_ON=1', 'SOL_DEFAULT_PASS_ON_ERROR=1', 'SOL_PRINT_ERRORS=0', 'SOL_USING_CXX_LUA=1' ] + lualib.defines
 
 		bump_dirs = [ 'debug', 'enet', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'util' ]
 		bump_core_dirs = [ 'debug', 'io', 'math', 'net', 'util' ]

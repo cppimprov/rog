@@ -6,6 +6,9 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [
+                "LUA_USE_APICHECK",
+                "__cplusplus",
+                
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE",
@@ -23,6 +26,9 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [
+                "LUA_USE_APICHECK",
+                "__cplusplus",
+
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE",

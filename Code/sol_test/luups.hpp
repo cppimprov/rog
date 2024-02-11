@@ -79,6 +79,11 @@ namespace luups
 
 	std::string to_string(lua_type type);
 
+	using lua_number = lua_Number;
+	using lua_integer = lua_Integer;
+	using lua_unsigned = lua_Unsigned;
+	using lua_cfunction = lua_CFunction;
+
 	class lua_state
 	{
 	public:
@@ -86,7 +91,7 @@ namespace luups
 		// CONSTRUCT / DESTROY
 
 		lua_state(): L(nullptr) { }
-		explicit lua_state(lua_State* L): L(L) { }
+		explicit lua_state(lua_State* L): L(L) { if (is_open()) at_panic(&default_panic_fn); }
 
 		lua_state(lua_state const&) = delete;
 		lua_state& operator=(lua_state const&) = delete;
@@ -96,15 +101,23 @@ namespace luups
 		~lua_state() { close(); }
 
 		bool is_open() const { return L != nullptr; }
-		void close() { if (L) lua_close(L); L = nullptr; }
+		void close() { if (is_open()) lua_close(L); L = nullptr; }
 		
 		lua_State* handle() const { return L; }
 
 		// UTILS
 
-		double version() const { die_if(!is_open()); return lua_version(L); }
+		lua_cfunction at_panic(lua_cfunction panic_fn);
+		void error();
+
+		lua_number version() const { die_if(!is_open()); return lua_version(L); }
 		lua_status status() const { die_if(!is_open()); return static_cast<lua_status>(::lua_status(L)); }
+
 		std::string traceback(std::string const& prefix = "", int level = 0);
+
+		std::string print_value(int index) const;
+		std::string print_stack() const;
+		std::string print_globals();
 
 		// LIBRARIES / PACKAGES
 
@@ -138,13 +151,13 @@ namespace luups
 		void rotate(int index, int num_elements);
 		void concat(int num_elements);
 		
-		[[nodiscard]] bool ensure(int num_elements);
+		bool check(int num_elements);
 		int to_abs_index(int index) const;
 
 		// STACK - TYPES
 
 		// note: invalid indices (outside the currently allocated stack space) return none
-		// note: indices that are valid, but currently empty return nil		
+		// note: indices that are valid, but currently empty return nil
 		lua_type get_type(int index) const { die_if(!is_open()); return static_cast<lua_type>(::lua_type(L, index)); }
 
 		bool is_none(int index) const { return get_type(index) == lua_type::none; }
@@ -155,63 +168,75 @@ namespace luups
 		bool is_number(int index) const { return get_type(index) == lua_type::number; }
 		bool is_string(int index) const { return get_type(index) == lua_type::string; }
 		bool is_table(int index) const { return get_type(index) == lua_type::table; }
+		bool is_function(int index) const { return get_type(index) == lua_type::function; }
 
 		// STACK - VARIABLES
 
 		void push_nil();
 		void push_fail();
 		void push_boolean(bool value);
-		void push_integer(std::int64_t value);
-		void push_number(double value);
+		void push_integer(lua_integer value);
+		void push_number(lua_number value);
 		void push_string(std::string_view value);
-		
+		void push_function(lua_cfunction value);
+
 		void push_copy(int index);
 		void push_length(int index);
 
 		bool pop_boolean();
-		std::int64_t pop_integer();
-		double pop_number();
+		lua_integer pop_integer();
+		lua_number pop_number();
 		std::string pop_string();
+		lua_cfunction pop_function();
 
 		bool get_boolean(int index = -1) const;
-		std::int64_t get_integer(int index = -1) const;
-		double get_number(int index = -1) const;
+		lua_integer get_integer(int index = -1) const;
+		lua_number get_number(int index = -1) const;
 		std::string_view get_string(int index = -1) const;
+		lua_cfunction get_function(int index = -1) const;
 
 		std::optional<bool> try_get_boolean(int index = -1) const;
-		std::optional<std::int64_t> try_get_integer(int index = -1) const;
-		std::optional<double> try_get_number(int index = -1) const;
+		std::optional<lua_integer> try_get_integer(int index = -1) const;
+		std::optional<lua_number> try_get_number(int index = -1) const;
 		std::optional<std::string_view> try_get_string(int index = -1) const;
+		std::optional<lua_cfunction> try_get_function(int index = -1) const;
 
 		bool get_boolean_or(bool default_value, int index = -1) const;
-		std::int64_t get_integer_or(std::int64_t default_value, int index = -1) const;
-		double get_number_or(double default_value, int index = -1) const;
+		lua_integer get_integer_or(lua_integer default_value, int index = -1) const;
+		lua_number get_number_or(lua_number default_value, int index = -1) const;
 		std::string_view get_string_or(std::string_view default_value, int index = -1) const;
+		lua_cfunction get_function_or(lua_cfunction default_value, int index = -1) const;
 
-		std::int64_t get_length(int index);
+		lua_integer get_length(int index);
+		lua_unsigned get_length_raw(int index);
 
 		// STACK - TABLES
 
-		void push_table(int sequence_size = 0, int hash_size = 0);
+		void push_new_table(int sequence_size = 0, int hash_size = 0);
 		void push_globals_table();
 
-		lua_type push_table_field(int table_index);
-		lua_type push_table_field_raw(int table_index);
-		lua_type push_table_field(int table_index, std::string const& key_name);
-		lua_type push_table_field_raw(int table_index, std::string const& key_name);
-		lua_type push_table_field(int table_index, std::uint64_t key_index);
-		lua_type push_table_field_raw(int table_index, std::uint64_t key_index);
+		lua_type push_field(int table_index);
+		lua_type push_field_raw(int table_index);
+		lua_type push_field(int table_index, std::string const& key_name);
+		lua_type push_field_raw(int table_index, std::string const& key_name);
+		lua_type push_field(int table_index, std::uint64_t key_index);
+		lua_type push_field_raw(int table_index, std::uint64_t key_index);
 		lua_type push_global(std::string const& key_name);
 
-		void set_table_field(int table_index);
-		void set_table_field_raw(int table_index);
-		void set_table_field(int table_index, std::string const& key_name);
-		void set_table_field_raw(int table_index, std::string const& key_name);
-		void set_table_field(int table_index, std::uint64_t key_index);
-		void set_table_field_raw(int table_index, std::uint64_t key_index);
+		void set_field(int table_index);
+		void set_field_raw(int table_index);
+		void set_field(int table_index, std::string const& key_name);
+		void set_field_raw(int table_index, std::string const& key_name);
+		void set_field(int table_index, std::uint64_t key_index);
+		void set_field_raw(int table_index, std::uint64_t key_index);
 		void set_global(std::string const& key_name);
 
-		int next_table_field(int table_index);
+		int next_field(int table_index);
+
+		// STACK - REFERENCES
+
+		int set_ref(int table_index);
+		void clear_ref(int table_index, int ref);
 
 	private:
 
@@ -219,13 +244,15 @@ namespace luups
 
 		lua_State* L;
 
+		// ERROR HANDLING
+
+		static int default_panic_fn(lua_State* L);
+
 		// STACK MANAGEMENT UTILS
 
-		static bool is_pseudo_index(int index);
-
 		bool to_boolean_impl(int index) const;
-		std::int64_t to_integer_impl(int index) const;
-		double to_number_impl(int index) const;
+		lua_integer to_integer_impl(int index) const;
+		lua_number to_number_impl(int index) const;
 		std::string_view to_string_impl(int index) const;
 	};
 

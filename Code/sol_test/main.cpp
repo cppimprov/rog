@@ -33,82 +33,78 @@ int main()
 	auto result = lua.do_string("print('Hello, world!')");
 	die_if(result != lua_status::ok);
 
-	lua.push_boolean(true);
-	lua.push_integer(42);
+	world_data data;
+
+	if (lua.do_file("data/colors.lua") != lua_status::ok)
+	{
+		std::cerr << "Failed to load colors.lua: " << lua.pop_string() << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	try
+	{
+		lua.push_boolean(false);
+		lua.insert(LUA_REGISTRYINDEX);
+	}
+	catch (std::exception const& e)
+	{
+		std::cerr << e.what() << std::endl;
+	}
+
+	// lua.do<glm::vec3>("return colors.LIGHT_BROWN");
+	// lua.do("x, y = ...; print(x, y);", 1, 2);
+
+	std::cout << lua.print_globals() << std::endl;
+
+	if (lua.push_global("colors") != lua_type::table)
+	{
+		std::cerr << "Failed to get global colors table." << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	std::cout << lua.print_stack() << std::endl;
+
+	int c_tbl = lua.size();
+
+	if (lua.push_field(c_tbl, "LIGHT_BROWN") != lua_type::table)
+	{
+		std::cerr << "Failed to get LIGHT_BROWN table." << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	int lb_tbl = lua.size();
+
+	if (lua.push_field(lb_tbl, 1) != lua_type::number)
+	{
+		std::cerr << "Failed to get r field." << std::endl;
+		return EXIT_FAILURE;
+	}
 	
-	// ...
+	auto r = lua.get_number(-1);
 	
-	// world_data data;
+	if (lua.push_field(lb_tbl, 2) != lua_type::number)
+	{
+		std::cerr << "Failed to get r field." << std::endl;
+		return EXIT_FAILURE;
+	}
 
-	// auto lr = lua.load_file("data/colors.lua");
+	auto g = lua.get_number(-1);
+	
+	if (lua.push_field(lb_tbl, 3) != lua_type::number)
+	{
+		std::cerr << "Failed to get r field." << std::endl;
+		return EXIT_FAILURE;
+	}
 
-	// if (!lr.valid())
-	// {
-	// 	auto const get_status_string = [] (sol::load_status s)
-	// 	{
-	// 		switch (s)
-	// 		{
-	// 			case sol::load_status::ok: return "ok";
-	// 			case sol::load_status::syntax: return "syntax error";
-	// 			case sol::load_status::memory: return "memory allocation error";
-	// 			case sol::load_status::gc: return "garbage collection error";
-	// 			case sol::load_status::file: return "file error";
-	// 		}
-	// 		return "unknown";
-	// 	};
+	auto b = lua.get_number(-1);
 
-	// 	std::cout << "Failed to load file nope.lua: " << get_status_string(lr.status()) << std::endl;
-	// }
+	lua.clear();
 
-	// try
-	// {
-	// 	lua["sdoifuosidf"]["sdkljfsf"] = 5;
-	// }
-	// catch (std::exception& e)
-	// {
-	// 	std::cout << "Lua error: " << e.what() << std::endl;
-	// }
-
-	// auto env = sol::environment(lua, sol::create, lua.globals());
-
-	// {
-	// 	auto pfr = lua.script_file("data/colors.lua", env);
-		
-	// 	if (!pfr.valid())
-	// 	{
-	// 		sol::error err = pfr;
-	// 		std::cout << "Failed to load colors.lua: " << err.what() << std::endl;
-	// 		return EXIT_FAILURE;
-	// 	}
-
-	// 	auto c = lua["colors"]["LIGHT_BROWN"].get<sol::as_table_t<glm::vec4>>();
-
-	// 	std::cout << c.x << std::endl;
-	// 	std::cout << c.y << std::endl;
-	// 	std::cout << c.z << std::endl;
-	// 	std::cout << c.w << std::endl;
-	// }
-
-	// {
-	// 	auto pfr = lua.script_file("data/features.lua", env);
-
-	// 	// ...
-	// }
+	std::cout << "LIGHT_BROWN: " << r << ", " << g << ", " << b << std::endl;
 	
 	std::cout << "done!" << std::endl;
 }
 
-// todo: debug print stack?
+// todo: remove checks in functions that are now covered by api asserts in lua
+// todo: throw instead of die in lua_assert
 
-// todo: should various lua_state functions be const?
-
-// todo: metatables?
-// todo: threads?
-// todo: userdata?
-// todo: iteration (next...)?
-// todo: raw* functions
-// todo: register c functions (and setfuncs?)
-// todo: upvalues?
-// todo: buffers?
-// todo: libraries (newlib / newlibtable)
-// todo: pushref
