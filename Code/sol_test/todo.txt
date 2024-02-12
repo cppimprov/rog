@@ -3,8 +3,8 @@ Lua C API:
 
 Types:
 
-*lua_Alloc
-*lua_CFunction
+lua_Alloc
+lua_CFunction
 *lua_Debug
 *lua_Hook
 lua_Integer
@@ -21,7 +21,7 @@ Core Functions:
 
 lua_absindex
 *lua_arith
-*lua_atpanic
+lua_atpanic
 lua_call
 *lua_callk
 lua_checkstack
@@ -34,8 +34,8 @@ lua_copy
 lua_createtable
 *lua_dump
 *lua_error
-*lua_gc
-*lua_getallocf
+lua_gc
+lua_getallocf
 *lua_getextraspace
 lua_getfield
 lua_getglobal
@@ -53,10 +53,10 @@ lua_gettop
 *lua_getupvalue
 lua_insert
 lua_isboolean
-*lua_iscfunction
-*lua_isfunction
+lua_iscfunction
+lua_isfunction
 lua_isinteger
-*lua_islightuserdata
+lua_islightuserdata
 lua_isnil
 lua_isnone
 lua_isnoneornil
@@ -64,11 +64,11 @@ lua_isnumber
 lua_isstring
 lua_istable
 lua_isthread
-*lua_isuserdata
+lua_isuserdata
 *lua_isyieldable
 lua_len
 lua_load
-*lua_newstate
+lua_newstate
 lua_newtable
 *lua_newthread
 *lua_newuserdatauv
@@ -78,8 +78,8 @@ lua_next
 *lua_pcallk
 lua_pop
 lua_pushboolean
-*lua_pushcclosure
-*lua_pushcfunction
+lua_pushcclosure
+lua_pushcfunction
 *lua_pushfstring
 lua_pushglobaltable
 lua_pushinteger
@@ -106,7 +106,7 @@ lua_replace
 *lua_resetthread
 *lua_resume
 lua_rotate
-*lua_setallocf
+lua_setallocf
 lua_setfield
 lua_setglobal
 *lua_sethook
@@ -121,7 +121,7 @@ lua_settop
 lua_status
 *lua_stringtonumber
 lua_toboolean
-*lua_tocfunction
+lua_tocfunction
 *lua_toclose
 lua_tointeger
 lua_tointegerx
@@ -138,7 +138,7 @@ lua_typename
 *lua_upvalueindex
 *lua_upvaluejoin
 lua_version
-*lua_warning
+lua_warning
 *lua_xmove
 *lua_yield
 *lua_yieldk
@@ -218,12 +218,11 @@ luaL_typename
 luaL_unref
 *luaL_where
 
+// todo: userdata
 // todo: metatables
 // todo: threads
-// todo: userdata
 // todo: raw* functions
 // todo: register c functions (and setfuncs?)
 // todo: upvalues
 // todo: buffers
 // todo: libraries (newlib / newlibtable)
-// todo: refs

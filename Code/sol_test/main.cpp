@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <iostream>
 #include <map>
@@ -27,11 +28,20 @@ int main()
 {
 	using namespace luups;
 
-	lua_state lua = new_state();
+	auto alloc = lua_debug_allocator();
+
+	lua_state lua = new_state(alloc);
+
+	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
+
 	lua.open_libraries();
+	
+	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
 	
 	auto result = lua.do_string("print('Hello, world!')");
 	die_if(result != lua_status::ok);
+	
+	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
 
 	world_data data;
 
@@ -40,16 +50,27 @@ int main()
 		std::cerr << "Failed to load colors.lua: " << lua.pop_string() << std::endl;
 		return EXIT_FAILURE;
 	}
+	
+	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
+
+	lua.gc_collect();
+
+	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
+	std::cout << "bytes allocated: " << lua.gc_count_bytes() << std::endl;
 
 	try
 	{
-		lua.push_boolean(false);
-		lua.insert(LUA_REGISTRYINDEX);
+		(void)lua.do_string("return table.unpack(colors.LIGHT_BROWN)");
+		auto color = glm::vec3{ lua.get_number(-3), lua.get_number(-2), lua.get_number(-1) };
+		std::cout << glm::to_string(color) << std::endl;
+		lua.clear();
 	}
 	catch (std::exception const& e)
 	{
 		std::cerr << e.what() << std::endl;
 	}
+	
+	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
 
 	// lua.do<glm::vec3>("return colors.LIGHT_BROWN");
 	// lua.do("x, y = ...; print(x, y);", 1, 2);
@@ -104,7 +125,3 @@ int main()
 	
 	std::cout << "done!" << std::endl;
 }
-
-// todo: remove checks in functions that are now covered by api asserts in lua
-// todo: throw instead of die in lua_assert
-

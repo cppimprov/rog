@@ -16,6 +16,50 @@ namespace luups
 	inline constexpr void die_if(bool condition) { if (condition) __debugbreak(); }
 	[[noreturn]] inline constexpr void die() { die_if(true); }
 
+	using lua_allocator = lua_Alloc;
+
+	class lua_debug_allocator
+	{
+	public:
+
+		lua_debug_allocator() = default;
+
+		lua_debug_allocator(lua_debug_allocator const&) = delete;
+		lua_debug_allocator& operator=(lua_debug_allocator const&) = delete;
+		lua_debug_allocator(lua_debug_allocator&&) = delete;
+		lua_debug_allocator& operator=(lua_debug_allocator&&) = delete;
+
+		void *realloc(void* ptr, std::size_t old_size, std::size_t new_size)
+		{
+			allocated -= old_size;
+			allocated += new_size;
+
+			if (new_size == 0)
+			{
+				std::free(ptr);
+				return nullptr;
+			}
+
+			return std::realloc(ptr, new_size);
+		}
+
+		// todo: tag allocations with a string for debugging purposes
+		// todo: check if this matches lua's GCCOUNT and GCCOUNTB
+
+		std::size_t allocated = 0;
+	};
+	
+	inline void* debug_alloc(void* ud, void* ptr, std::size_t old_size, std::size_t new_size)
+	{
+		return static_cast<lua_debug_allocator*>(ud)->realloc(ptr, old_size, new_size);
+	}
+
+	enum class lua_gc_mode
+	{
+		incremental = LUA_GCINC,
+		generational = LUA_GCGEN,
+	};
+
 	enum class lua_status
 	{
 		ok = LUA_OK,
@@ -109,6 +153,7 @@ namespace luups
 
 		lua_cfunction at_panic(lua_cfunction panic_fn);
 		void error();
+		void warning(std::string const& msg);
 
 		lua_number version() const { die_if(!is_open()); return lua_version(L); }
 		lua_status status() const { die_if(!is_open()); return static_cast<lua_status>(::lua_status(L)); }
@@ -118,6 +163,20 @@ namespace luups
 		std::string print_value(int index) const;
 		std::string print_stack() const;
 		std::string print_globals();
+
+		// MEMORY
+
+		void set_allocator(lua_allocator alloc, void* ud);
+		lua_allocator get_allocator(void** ud) const;
+
+		void gc_collect();
+		void gc_step(int step_size_kb);
+		void gc_stop();
+		void gc_restart();
+		bool gc_is_running() const;
+		lua_gc_mode gc_inc(int pause, int step_mul, int step_size);
+		lua_gc_mode gc_gen(int minor_mul, int major_mul);
+		int gc_count_bytes() const;
 
 		// LIBRARIES / PACKAGES
 
@@ -169,6 +228,9 @@ namespace luups
 		bool is_string(int index) const { return get_type(index) == lua_type::string; }
 		bool is_table(int index) const { return get_type(index) == lua_type::table; }
 		bool is_function(int index) const { return get_type(index) == lua_type::function; }
+		bool is_cfunction(int index) const { return get_type(index) == lua_type::function && lua_iscfunction(L, index); }
+		bool is_userdata(int index) const { return get_type(index) == lua_type::userdata; }
+		bool is_lightuserdata(int index) const { return get_type(index) == lua_type::lightuserdata; }
 
 		// STACK - VARIABLES
 
@@ -178,7 +240,8 @@ namespace luups
 		void push_integer(lua_integer value);
 		void push_number(lua_number value);
 		void push_string(std::string_view value);
-		void push_function(lua_cfunction value);
+		void push_cclosure(lua_cfunction value, int num_values);
+		void push_cfunction(lua_cfunction value);
 
 		void push_copy(int index);
 		void push_length(int index);
@@ -187,25 +250,25 @@ namespace luups
 		lua_integer pop_integer();
 		lua_number pop_number();
 		std::string pop_string();
-		lua_cfunction pop_function();
+		lua_cfunction pop_cfunction();
 
 		bool get_boolean(int index = -1) const;
 		lua_integer get_integer(int index = -1) const;
 		lua_number get_number(int index = -1) const;
 		std::string_view get_string(int index = -1) const;
-		lua_cfunction get_function(int index = -1) const;
+		lua_cfunction get_cfunction(int index = -1) const;
 
 		std::optional<bool> try_get_boolean(int index = -1) const;
 		std::optional<lua_integer> try_get_integer(int index = -1) const;
 		std::optional<lua_number> try_get_number(int index = -1) const;
 		std::optional<std::string_view> try_get_string(int index = -1) const;
-		std::optional<lua_cfunction> try_get_function(int index = -1) const;
+		std::optional<lua_cfunction> try_get_cfunction(int index = -1) const;
 
 		bool get_boolean_or(bool default_value, int index = -1) const;
 		lua_integer get_integer_or(lua_integer default_value, int index = -1) const;
 		lua_number get_number_or(lua_number default_value, int index = -1) const;
 		std::string_view get_string_or(std::string_view default_value, int index = -1) const;
-		lua_cfunction get_function_or(lua_cfunction default_value, int index = -1) const;
+		lua_cfunction get_cfunction_or(lua_cfunction default_value, int index = -1) const;
 
 		lua_integer get_length(int index);
 		lua_unsigned get_length_raw(int index);
@@ -254,11 +317,17 @@ namespace luups
 		lua_integer to_integer_impl(int index) const;
 		lua_number to_number_impl(int index) const;
 		std::string_view to_string_impl(int index) const;
+		lua_cfunction to_cfunction_impl(int index) const;
 	};
 
 	inline lua_state new_state()
 	{
 		return lua_state(luaL_newstate());
+	}
+
+	inline lua_state new_state(lua_debug_allocator& ud)
+	{
+		return lua_state(lua_newstate(debug_alloc, &ud));
 	}
 
 } // luups

@@ -39,7 +39,7 @@ namespace luups
 		die();
 	}
 
-	lua_cfunction lua_state::at_panic(lua_CFunction panic_fn)
+	lua_cfunction lua_state::at_panic(lua_cfunction panic_fn)
 	{
 		die_if(!is_open());
 		return lua_atpanic(L, panic_fn);
@@ -49,6 +49,12 @@ namespace luups
 	{
 		die_if(!is_open());
 		lua_error(L);
+	}
+
+	void lua_state::warning(std::string const& msg)
+	{
+		die_if(!is_open());
+		lua_warning(L, msg.data(), false);
 	}
 
 	std::string lua_state::traceback(std::string const& prefix, int level)
@@ -136,6 +142,66 @@ namespace luups
 		pop();
 
 		return result;
+	}
+
+	void lua_state::set_allocator(lua_allocator alloc, void* ud)
+	{
+		die_if(!is_open());
+		lua_setallocf(L, alloc, ud);
+	}
+
+	lua_allocator lua_state::get_allocator(void** ud) const
+	{
+		die_if(!is_open());
+		return lua_getallocf(L, ud);
+	}
+
+	void lua_state::gc_collect()
+	{
+		die_if(!is_open());
+		lua_gc(L, LUA_GCCOLLECT);
+	}
+
+	void lua_state::gc_step(int step_size_kb)
+	{
+		die_if(!is_open());
+		lua_gc(L, LUA_GCSTEP, step_size_kb);
+	}
+
+	void lua_state::gc_stop()
+	{
+		die_if(!is_open());
+		lua_gc(L, LUA_GCSTOP);
+	}
+
+	void lua_state::gc_restart()
+	{
+		die_if(!is_open());
+		lua_gc(L, LUA_GCRESTART);
+	}
+
+	bool lua_state::gc_is_running() const
+	{
+		die_if(!is_open());
+		return (lua_gc(L, LUA_GCISRUNNING) != 0);
+	}
+
+	lua_gc_mode lua_state::gc_inc(int pause, int step_mul, int step_size)
+	{
+		die_if(!is_open());
+		return static_cast<lua_gc_mode>(lua_gc(L, LUA_GCINC, pause, step_mul, step_size));
+	}
+
+	lua_gc_mode lua_state::gc_gen(int minor_mul, int major_mul)
+	{
+		die_if(!is_open());
+		return static_cast<lua_gc_mode>(lua_gc(L, LUA_GCGEN, minor_mul, major_mul));
+	}
+
+	int lua_state::gc_count_bytes() const
+	{
+		die_if(!is_open());
+		return lua_gc(L, LUA_GCCOUNT) * 1024 + lua_gc(L, LUA_GCCOUNTB);
 	}
 
 	void lua_state::open_libraries()
@@ -331,7 +397,14 @@ namespace luups
 		lua_pushlstring(L, value.data(), value.size());
 	}
 
-	void lua_state::push_function(lua_cfunction value)
+	void lua_state::push_cclosure(lua_cfunction value, int num_values)
+	{
+		die_if(!is_open());
+		check(1);
+		lua_pushcclosure(L, value, num_values);
+	}
+
+	void lua_state::push_cfunction(lua_cfunction value)
 	{
 		die_if(!is_open());
 		check(1);
@@ -380,9 +453,9 @@ namespace luups
 		return std::string(result);
 	}
 
-	lua_cfunction lua_state::pop_function()
+	lua_cfunction lua_state::pop_cfunction()
 	{
-		auto const result = get_function();
+		auto const result = get_cfunction();
 		pop();
 		return result;
 	}
@@ -415,7 +488,7 @@ namespace luups
 		return to_string_impl(index);
 	}
 
-	lua_cfunction lua_state::get_function(int index) const
+	lua_cfunction lua_state::get_cfunction(int index) const
 	{
 		die_if(!is_open());
 		die_if(!is_function(index));
@@ -454,9 +527,9 @@ namespace luups
 		return { to_string_impl(index) };
 	}
 
-	std::optional<lua_cfunction> lua_state::try_get_function(int index) const
+	std::optional<lua_cfunction> lua_state::try_get_cfunction(int index) const
 	{
-		if (!is_function(index))
+		if (!is_cfunction(index))
 			return { };
 		
 		return { lua_tocfunction(L, index) };
@@ -482,9 +555,9 @@ namespace luups
 		return is_string(index) ? to_string_impl(index) : default_value;
 	}
 
-	lua_cfunction lua_state::get_function_or(lua_cfunction default_value, int index) const
+	lua_cfunction lua_state::get_cfunction_or(lua_cfunction default_value, int index) const
 	{
-		return is_function(index) ? lua_tocfunction(L, index) : default_value;
+		return is_cfunction(index) ? to_cfunction_impl(index) : default_value;
 	}
 
 	lua_integer lua_state::get_length(int index)
@@ -651,11 +724,18 @@ namespace luups
 	std::string_view lua_state::to_string_impl(int index) const
 	{
 		// n.b. assumes state is valid and type is string
+
 		std::size_t len = 0;
 		auto str = lua_tolstring(L, index, &len);
 		die_if(!str);
 
 		return std::string_view(str, len);
+	}
+
+	lua_cfunction lua_state::to_cfunction_impl(int index) const
+	{
+		// n.b. assumes state is valid and type is function
+		return lua_tocfunction(L, index);
 	}
 	
 } // luups
