@@ -10,6 +10,8 @@
 #include <string_view>
 #include <variant>
 
+#include <iostream> // temp!!!
+
 namespace luups
 {
 
@@ -188,6 +190,7 @@ namespace luups
 		
 		// todo: more generic load() function (i.e. lua_Reader wrapper?)
 		// todo: load_stdin()
+		// todo: improve function names?
 
 		[[nodiscard]] lua_status load_string(std::string const& code, lua_load_mode mode = binary | text);
 		[[nodiscard]] lua_status load_file(std::string const& path, lua_load_mode mode = binary | text);
@@ -319,6 +322,51 @@ namespace luups
 		std::string_view to_string_impl(int index) const;
 		lua_cfunction to_cfunction_impl(int index) const;
 	};
+	
+
+	template<class T> struct to_lua_impl;
+
+	template<class T>
+	void to_lua(lua_state& state, T const& value)
+	{
+		return to_lua_impl<std::decay_t<T>>::to_lua(state, value);
+	}
+
+	template<class T> struct from_lua_impl;
+
+	template<class T>
+	T from_lua(lua_state& state)
+	{
+		return from_lua_impl<std::decay_t<T>>::from_lua(state);
+	}
+
+	// todo: to_lua and from_lua for normal lua types (identity)
+
+	template<class... Rets, class... Args>
+	decltype(auto) run(lua_state& state, std::string const& code, [[maybe_unused]] Args&&... args)
+	{
+		if (state.load_string(code) != lua_status::ok)
+			state.error();
+		
+		(to_lua(state, args), ...);
+
+		auto constexpr num_args = sizeof...(Args);
+		auto constexpr num_rets = sizeof...(Rets);
+
+		if (state.call(num_args, num_rets) != lua_status::ok)
+			state.error();
+
+		if constexpr (num_rets == 0)
+			return;
+
+		if constexpr (num_rets == 1)
+			return (from_lua<Rets>(state), ...);
+
+		return std::make_tuple(from_lua<Rets>(state)...);
+	}
+
+	// todo: frun() - like run(), but takes a file path, not a code string
+	// todo: keep a default lua_load_mode in the lua_state?
 
 	inline lua_state new_state()
 	{

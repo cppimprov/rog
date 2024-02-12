@@ -122,6 +122,16 @@ int main()
 	lua.clear();
 
 	std::cout << "LIGHT_BROWN: " << r << ", " << g << ", " << b << std::endl;
+
+	lua.run();
+	lua.run<int>();
+	lua.run<int, float, int>();
+	lua.run<double>(5, (void*)&lua);
+	lua.run(1, 2, 3, 4, 5);
+
 	
 	std::cout << "done!" << std::endl;
 }
+
+// todo: implement generic function calls -> passing and return arguments
+// todo: do all the functions in lua_state need to be members?

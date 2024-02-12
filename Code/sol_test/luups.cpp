@@ -235,9 +235,6 @@ namespace luups
 	void lua_state::require(std::string const& module_name, lua_CFunction open_fn, bool global)
 	{
 		die_if(!is_open());
-
-		// todo: check - is empty name valid?
-		die_if(!open_fn);
 		luaL_requiref(L, module_name.data(), open_fn, global);
 		lua_pop(L, 1);
 	}
@@ -259,7 +256,6 @@ namespace luups
 	[[nodiscard]] lua_status lua_state::call(int num_args, int num_results, int msg_handler_idx)
 	{
 		die_if(!is_open());
-		die_if(size() < num_args + 1); // todo: is this necessary / correct?
 		auto result = lua_pcall(L, num_args, num_results, msg_handler_idx);
 		return static_cast<lua_status>(result);
 	}
