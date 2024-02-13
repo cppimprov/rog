@@ -10,8 +10,6 @@
 #include <string_view>
 #include <variant>
 
-#include <iostream> // temp!!!
-
 namespace luups
 {
 
@@ -339,14 +337,108 @@ namespace luups
 	{
 		return from_lua_impl<std::decay_t<T>>::from_lua(state);
 	}
+	
+	template<>
+	struct to_lua_impl<bool>
+	{
+		static void to_lua(lua_state& state, bool value) { state.push_boolean(value); }
+	};
 
-	// todo: to_lua and from_lua for normal lua types (identity)
+	template<>
+	struct from_lua_impl<bool>
+	{
+		static bool from_lua(lua_state& state) { return state.pop_boolean(); }
+	};
+
+	template<>
+	struct to_lua_impl<lua_integer>
+	{
+		static void to_lua(lua_state& state, lua_integer value) { state.push_integer(value); }
+	};
+
+	template<>
+	struct from_lua_impl<lua_integer>
+	{
+		static lua_integer from_lua(lua_state& state) { return state.pop_integer(); }
+	};
+
+	template<>
+	struct to_lua_impl<lua_number>
+	{
+		static void to_lua(lua_state& state, lua_number value) { state.push_number(value); }
+	};
+
+	template<>
+	struct from_lua_impl<lua_number>
+	{
+		static lua_number from_lua(lua_state& state) { return state.pop_number(); }
+	};
+
+	template<>
+	struct to_lua_impl<std::string>
+	{
+		static void to_lua(lua_state& state, std::string const& value) { state.push_string(value); }
+	};
+
+	template<>
+	struct from_lua_impl<std::string>
+	{
+		static std::string from_lua(lua_state& state) { return state.pop_string(); }
+	};
+
+	namespace detail
+	{
+
+		template<class... Ts> struct reverse_tuple;
+
+		template<>
+		struct reverse_tuple<std::tuple<>>
+		{
+			using type = std::tuple<>;
+		};
+
+		template<class T, class... Ts>
+		struct reverse_tuple<std::tuple<T, Ts...>>
+		{
+			using head = std::tuple<T>;
+			using tail = typename reverse_tuple<std::tuple<Ts...>>::type;
+			using type = decltype(std::tuple_cat(std::declval<tail>(), std::declval<head>()));
+		};
+
+		template<class T>
+		using reverse_tuple_t = typename reverse_tuple<T>::type;
+
+		template<class... Ts>
+		std::tuple<Ts...> tuple_from_lua(lua_state& state, std::tuple<Ts...>)
+		{
+			return std::tuple{ from_lua<Ts>(state)... };
+		}
+
+		template<class... Ts>
+		reverse_tuple_t<std::tuple<Ts...>> reverse_from_lua(lua_state& state)
+		{
+			return tuple_from_lua(state, reverse_tuple_t<std::tuple<Ts...>>{ });
+		}
+
+		template<class T, std::size_t... Is>
+		reverse_tuple_t<T> reverse_impl(T&& t, std::index_sequence<Is...>)
+		{
+			return { std::get<sizeof...(Is) - 1 - Is>(std::forward<T>(t))... };
+		}
+
+		template<class T>
+		reverse_tuple_t<T> reverse(T&& t)
+		{
+			return reverse_impl(std::forward<T>(t), std::make_index_sequence<std::tuple_size_v<T>>{ });
+		}
+
+	} // detail
 
 	template<class... Rets, class... Args>
 	decltype(auto) run(lua_state& state, std::string const& code, [[maybe_unused]] Args&&... args)
 	{
 		if (state.load_string(code) != lua_status::ok)
-			state.error();
+			throw std::runtime_error(state.pop_string());
 		
 		(to_lua(state, args), ...);
 
@@ -354,15 +446,23 @@ namespace luups
 		auto constexpr num_rets = sizeof...(Rets);
 
 		if (state.call(num_args, num_rets) != lua_status::ok)
-			state.error();
+			throw std::runtime_error(state.pop_string());
 
 		if constexpr (num_rets == 0)
+		{
 			return;
-
-		if constexpr (num_rets == 1)
+		}
+		else if constexpr (num_rets == 1)
+		{
 			return (from_lua<Rets>(state), ...);
-
-		return std::make_tuple(from_lua<Rets>(state)...);
+		}
+		else
+		{
+			// note: from_lua (and hence pop) must be called for the *last*
+			// argument in Rets... *first*. the resulting tuple must then be
+			// reversed to get back to the original order of Rets...
+			return detail::reverse(detail::reverse_from_lua<Rets...>(state));
+		}
 	}
 
 	// todo: frun() - like run(), but takes a file path, not a code string

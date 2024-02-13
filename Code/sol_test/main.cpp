@@ -122,16 +122,23 @@ int main()
 	lua.clear();
 
 	std::cout << "LIGHT_BROWN: " << r << ", " << g << ", " << b << std::endl;
-
-	lua.run();
-	lua.run<int>();
-	lua.run<int, float, int>();
-	lua.run<double>(5, (void*)&lua);
-	lua.run(1, 2, 3, 4, 5);
-
 	
+	run(lua, "print('r1')");
+	auto r2 = run<lua_integer>(lua, "return 2");
+	auto r3 = run<lua_integer, lua_number, lua_integer>(lua, "return ...", lua_integer{ 1 }, lua_number{ 2.0 }, lua_integer{ 3 });
+	auto r4 = run<lua_number>(lua, "return 4.0");
+	auto r5 = run<std::string, lua_integer>(lua, "return 'hi', 5");
+
+	static_assert(std::is_same_v<decltype(r2), lua_integer>);
+	static_assert(std::is_same_v<decltype(r3), std::tuple<lua_integer, lua_number, lua_integer>>);
+	static_assert(std::is_same_v<decltype(r4), lua_number>);
+	static_assert(std::is_same_v<decltype(r5), std::tuple<std::string, lua_integer>>);
+
 	std::cout << "done!" << std::endl;
 }
 
-// todo: implement generic function calls -> passing and return arguments
+// todo: is the order for make_tuple guaranteed?
+// todo: convert built-in types to/from lua number types (with range checking) (add to_lua and from_lua specializations, throw for errors)
+// todo: check what happens when run calls error() (failing to load / call)
+
 // todo: do all the functions in lua_state need to be members?
