@@ -607,14 +607,14 @@ namespace luups
 		return push_field_raw(i);
 	}
 
-	lua_type lua_state::push_field(int table_index, std::uint64_t key_index)
+	lua_type lua_state::push_field(int table_index, lua_integer key_index)
 	{
 		die_if(!is_open());
 		check(1);
 		return static_cast<lua_type>(lua_geti(L, table_index, key_index));
 	}
 
-	lua_type lua_state::push_field_raw(int table_index, std::uint64_t key_index)
+	lua_type lua_state::push_field_raw(int table_index, lua_integer key_index)
 	{
 		die_if(!is_open());
 		check(1);
@@ -655,13 +655,13 @@ namespace luups
 		set_field_raw(i);
 	}
 
-	void lua_state::set_field(int table_index, std::uint64_t key_index)
+	void lua_state::set_field(int table_index, lua_integer key_index)
 	{
 		die_if(!is_open());
 		lua_seti(L, table_index, key_index);
 	}
 
-	void lua_state::set_field_raw(int table_index, std::uint64_t key_index)
+	void lua_state::set_field_raw(int table_index, lua_integer key_index)
 	{
 		die_if(!is_open());
 		lua_rawseti(L, table_index, key_index);
@@ -673,11 +673,11 @@ namespace luups
 		lua_setglobal(L, name.data());
 	}
 
-	int lua_state::next_field(int table_index)
+	bool lua_state::next_field(int table_index)
 	{
 		die_if(!is_open());
 		check(1);
-		return lua_next(L, table_index);
+		return (lua_next(L, table_index) != 0);
 	}
 
 	int lua_state::set_ref(int table_index)

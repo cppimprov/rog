@@ -4,12 +4,13 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <variant>
+#include <vector>
 
 namespace luups
 {
@@ -285,19 +286,19 @@ namespace luups
 		lua_type push_field_raw(int table_index);
 		lua_type push_field(int table_index, std::string const& key_name);
 		lua_type push_field_raw(int table_index, std::string const& key_name);
-		lua_type push_field(int table_index, std::uint64_t key_index);
-		lua_type push_field_raw(int table_index, std::uint64_t key_index);
+		lua_type push_field(int table_index, lua_integer key_index);
+		lua_type push_field_raw(int table_index, lua_integer key_index);
 		lua_type push_global(std::string const& key_name);
 
 		void set_field(int table_index);
 		void set_field_raw(int table_index);
 		void set_field(int table_index, std::string const& key_name);
 		void set_field_raw(int table_index, std::string const& key_name);
-		void set_field(int table_index, std::uint64_t key_index);
-		void set_field_raw(int table_index, std::uint64_t key_index);
+		void set_field(int table_index, lua_integer key_index);
+		void set_field_raw(int table_index, lua_integer key_index);
 		void set_global(std::string const& key_name);
 
-		int next_field(int table_index);
+		bool next_field(int table_index);
 
 		// STACK - REFERENCES
 
@@ -331,29 +332,29 @@ namespace luups
 	template<class T> struct to_lua_impl;
 
 	template<class T>
-	void to_lua(lua_state& state, T const& value)
+	void to_lua(lua_state& lua, T const& value)
 	{
-		return to_lua_impl<std::decay_t<T>>::to_lua(state, value);
+		return to_lua_impl<std::decay_t<T>>::to_lua(lua, value);
 	}
 
 	template<class T> struct from_lua_impl;
 
 	template<class T>
-	T from_lua(lua_state& state)
+	T from_lua(lua_state& lua)
 	{
-		return from_lua_impl<std::decay_t<T>>::from_lua(state);
+		return from_lua_impl<std::decay_t<T>>::from_lua(lua);
 	}
 	
 	template<>
 	struct to_lua_impl<bool>
 	{
-		static void to_lua(lua_state& state, bool value) { state.push_boolean(value); }
+		static void to_lua(lua_state& lua, bool value) { lua.push_boolean(value); }
 	};
 
 	template<>
 	struct from_lua_impl<bool>
 	{
-		static bool from_lua(lua_state& state) { return state.pop_boolean(); }
+		static bool from_lua(lua_state& lua) { return lua.pop_boolean(); }
 	};
 
 	namespace detail
@@ -401,67 +402,158 @@ namespace luups
 
 	// INTEGER TYPES
 
-	template<> struct to_lua_impl<char>               { static void to_lua(lua_state& state, char value) {               state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<signed char>        { static void to_lua(lua_state& state, signed char value) {        state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<unsigned char>      { static void to_lua(lua_state& state, unsigned char value) {      state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<short>              { static void to_lua(lua_state& state, short value) {              state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<unsigned short>     { static void to_lua(lua_state& state, unsigned short value) {     state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<int>                { static void to_lua(lua_state& state, int value) {                state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<unsigned int>       { static void to_lua(lua_state& state, unsigned int value) {       state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<long>               { static void to_lua(lua_state& state, long value) {               state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<unsigned long>      { static void to_lua(lua_state& state, unsigned long value) {      state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<long long>          { static void to_lua(lua_state& state, long long value) {          state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<unsigned long long> { static void to_lua(lua_state& state, unsigned long long value) { state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<char8_t>            { static void to_lua(lua_state& state, char8_t value) {            state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<char16_t>           { static void to_lua(lua_state& state, char16_t value) {           state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<char32_t>           { static void to_lua(lua_state& state, char32_t value) {           state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
-	template<> struct to_lua_impl<wchar_t>            { static void to_lua(lua_state& state, wchar_t value) {            state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char>               { static void to_lua(lua_state& lua, char value) {               lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<signed char>        { static void to_lua(lua_state& lua, signed char value) {        lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned char>      { static void to_lua(lua_state& lua, unsigned char value) {      lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<short>              { static void to_lua(lua_state& lua, short value) {              lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned short>     { static void to_lua(lua_state& lua, unsigned short value) {     lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<int>                { static void to_lua(lua_state& lua, int value) {                lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned int>       { static void to_lua(lua_state& lua, unsigned int value) {       lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<long>               { static void to_lua(lua_state& lua, long value) {               lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned long>      { static void to_lua(lua_state& lua, unsigned long value) {      lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<long long>          { static void to_lua(lua_state& lua, long long value) {          lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned long long> { static void to_lua(lua_state& lua, unsigned long long value) { lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char8_t>            { static void to_lua(lua_state& lua, char8_t value) {            lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char16_t>           { static void to_lua(lua_state& lua, char16_t value) {           lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char32_t>           { static void to_lua(lua_state& lua, char32_t value) {           lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<wchar_t>            { static void to_lua(lua_state& lua, wchar_t value) {            lua.push_integer(detail::narrow_cast<lua_integer>(value)); } };
 
-	template<> struct from_lua_impl<char>               { static char from_lua(lua_state& state) {               return detail::narrow_cast<char>(state.pop_integer()); } };
-	template<> struct from_lua_impl<signed char>        { static signed char from_lua(lua_state& state) {        return detail::narrow_cast<signed char>(state.pop_integer()); } };
-	template<> struct from_lua_impl<unsigned char>      { static unsigned char from_lua(lua_state& state) {      return detail::narrow_cast<unsigned char>(state.pop_integer()); } };
-	template<> struct from_lua_impl<short>              { static short from_lua(lua_state& state) {              return detail::narrow_cast<short>(state.pop_integer()); } };
-	template<> struct from_lua_impl<unsigned short>     { static unsigned short from_lua(lua_state& state) {     return detail::narrow_cast<unsigned short>(state.pop_integer()); } };
-	template<> struct from_lua_impl<int>                { static int from_lua(lua_state& state) {                return detail::narrow_cast<int>(state.pop_integer()); } };
-	template<> struct from_lua_impl<unsigned int>       { static unsigned int from_lua(lua_state& state) {       return detail::narrow_cast<unsigned int>(state.pop_integer()); } };
-	template<> struct from_lua_impl<long>               { static long from_lua(lua_state& state) {               return detail::narrow_cast<long>(state.pop_integer()); } };
-	template<> struct from_lua_impl<unsigned long>      { static unsigned long from_lua(lua_state& state) {      return detail::narrow_cast<unsigned long>(state.pop_integer()); } };
-	template<> struct from_lua_impl<long long>          { static long long from_lua(lua_state& state) {          return detail::narrow_cast<long long>(state.pop_integer()); } };
-	template<> struct from_lua_impl<unsigned long long> { static unsigned long long from_lua(lua_state& state) { return detail::narrow_cast<unsigned long long>(state.pop_integer()); } };
-	template<> struct from_lua_impl<char8_t>            { static char8_t from_lua(lua_state& state) {            return detail::narrow_cast<char8_t>(state.pop_integer()); } };
-	template<> struct from_lua_impl<char16_t>           { static char16_t from_lua(lua_state& state) {           return detail::narrow_cast<char16_t>(state.pop_integer()); } };
-	template<> struct from_lua_impl<char32_t>           { static char32_t from_lua(lua_state& state) {           return detail::narrow_cast<char32_t>(state.pop_integer()); } };
-	template<> struct from_lua_impl<wchar_t>            { static wchar_t from_lua(lua_state& state) {            return detail::narrow_cast<wchar_t>(state.pop_integer()); } };
+	template<> struct from_lua_impl<char>               { static char from_lua(lua_state& lua) {               return detail::narrow_cast<char>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<signed char>        { static signed char from_lua(lua_state& lua) {        return detail::narrow_cast<signed char>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned char>      { static unsigned char from_lua(lua_state& lua) {      return detail::narrow_cast<unsigned char>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<short>              { static short from_lua(lua_state& lua) {              return detail::narrow_cast<short>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned short>     { static unsigned short from_lua(lua_state& lua) {     return detail::narrow_cast<unsigned short>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<int>                { static int from_lua(lua_state& lua) {                return detail::narrow_cast<int>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned int>       { static unsigned int from_lua(lua_state& lua) {       return detail::narrow_cast<unsigned int>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<long>               { static long from_lua(lua_state& lua) {               return detail::narrow_cast<long>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned long>      { static unsigned long from_lua(lua_state& lua) {      return detail::narrow_cast<unsigned long>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<long long>          { static long long from_lua(lua_state& lua) {          return detail::narrow_cast<long long>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned long long> { static unsigned long long from_lua(lua_state& lua) { return detail::narrow_cast<unsigned long long>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<char8_t>            { static char8_t from_lua(lua_state& lua) {            return detail::narrow_cast<char8_t>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<char16_t>           { static char16_t from_lua(lua_state& lua) {           return detail::narrow_cast<char16_t>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<char32_t>           { static char32_t from_lua(lua_state& lua) {           return detail::narrow_cast<char32_t>(lua.pop_integer()); } };
+	template<> struct from_lua_impl<wchar_t>            { static wchar_t from_lua(lua_state& lua) {            return detail::narrow_cast<wchar_t>(lua.pop_integer()); } };
 
 	// FLOATING POINT TYPES
 
-	template<> struct to_lua_impl<float> { static void to_lua(lua_state& state, float value) { state.push_number(detail::narrow_cast<lua_number>(value)); } };
-	template<> struct to_lua_impl<double> { static void to_lua(lua_state& state, double value) { state.push_number(detail::narrow_cast<lua_number>(value)); } };
-	template<> struct to_lua_impl<long double> { static void to_lua(lua_state& state, long double value) { state.push_number(detail::narrow_cast<lua_number>(value)); } };
+	template<> struct to_lua_impl<float>       { static void to_lua(lua_state& lua, float value) {       lua.push_number(detail::narrow_cast<lua_number>(value)); } };
+	template<> struct to_lua_impl<double>      { static void to_lua(lua_state& lua, double value) {      lua.push_number(detail::narrow_cast<lua_number>(value)); } };
+	template<> struct to_lua_impl<long double> { static void to_lua(lua_state& lua, long double value) { lua.push_number(detail::narrow_cast<lua_number>(value)); } };
 
-	template<> struct from_lua_impl<float> { static float from_lua(lua_state& state) { return detail::narrow_cast<float>(state.pop_number()); } };
-	template<> struct from_lua_impl<double> { static double from_lua(lua_state& state) { return detail::narrow_cast<double>(state.pop_number()); } };
-	template<> struct from_lua_impl<long double> { static long double from_lua(lua_state& state) { return detail::narrow_cast<long double>(state.pop_number()); } };
+	template<> struct from_lua_impl<float>       { static float from_lua(lua_state& lua) {       return detail::narrow_cast<float>(lua.pop_number()); } };
+	template<> struct from_lua_impl<double>      { static double from_lua(lua_state& lua) {      return detail::narrow_cast<double>(lua.pop_number()); } };
+	template<> struct from_lua_impl<long double> { static long double from_lua(lua_state& lua) { return detail::narrow_cast<long double>(lua.pop_number()); } };
 
-	// STRING TYPES
+	// STRINGS
 
 	template<>
 	struct to_lua_impl<std::string>
 	{
-		static void to_lua(lua_state& state, std::string const& value) { state.push_string(value); }
+		static void to_lua(lua_state& lua, std::string const& value) { lua.push_string(value); }
 	};
 
 	template<>
 	struct to_lua_impl<std::string_view>
 	{
-		static void to_lua(lua_state& state, std::string_view value) { state.push_string(value); }
+		static void to_lua(lua_state& lua, std::string_view value) { lua.push_string(value); }
 	};
 
 	template<>
 	struct from_lua_impl<std::string>
 	{
-		static std::string from_lua(lua_state& state) { return state.pop_string(); }
+		static std::string from_lua(lua_state& lua) { return lua.pop_string(); }
 	};
+
+	// ARRAY
+
+	template<class T, std::size_t N>
+	struct to_lua_impl<std::array<T, N>>
+	{
+		static void to_lua(lua_state& lua, std::array<T, N> const& arr)
+		{
+			lua.push_new_table(detail::narrow_cast<int>(N));
+
+			for (auto i = std::size_t{ 0 }; i != N; ++i)
+			{
+				luups::to_lua(lua, arr[i]);
+				lua.set_field(-2, detail::narrow_cast<lua_integer>(i + 1));
+			}
+		}
+	};
+
+	template<class T, std::size_t N>
+	struct from_lua_impl<std::array<T, N>>
+	{
+		static std::array<T, N> from_lua(lua_state& lua)
+		{
+			// todo: is this actually what we want?
+			// todo: sequences, borders, holes, oh my...
+
+			auto arr = std::array<T, N>{ };
+			
+			if (detail::narrow_cast<lua_integer>(N) < lua.get_length(-1))
+				throw std::runtime_error("from_lua_impl<std::array<T, N>>: table too long");
+
+			lua.push_nil();
+
+			while (lua.next_field(-2))
+			{
+				auto const i = detail::narrow_cast<std::size_t>(lua.get_integer(-2));
+				
+				if (i < std::size_t{ 1 } || i > N)
+					throw std::runtime_error("from_lua_impl<std::array<T, N>>: index out of range");
+
+				arr[i - 1] = luups::from_lua<T>(lua);
+			}
+
+			lua.pop(2);
+
+			return arr;
+		}
+	};
+
+	// VECTOR
+
+	template<class T>
+	struct to_lua_impl<std::vector<T>>
+	{
+		static void to_lua(lua_state& lua, std::vector<T> const& vec)
+		{
+			lua.push_new_table(detail::narrow_cast<int>(vec.size()));
+
+			for (auto i = std::size_t{ 0 }; i != vec.size(); ++i)
+			{
+				luups::to_lua(lua, vec[i]);
+				lua.set_field(-2, detail::narrow_cast<lua_integer>(i + 1));
+			}
+		}
+	};
+
+	template<class T>
+	struct from_lua_impl<std::vector<T>>
+	{
+		static std::vector<T> from_lua(lua_state& lua)
+		{
+			// todo: is this actually what we want?
+			// todo: sequences, borders, holes, oh my...
+
+			auto vec = std::vector<T>{ };
+
+			lua.push_nil();
+
+			while (lua.next_field(-2))
+			{
+				vec.push_back(luups::from_lua<T>(lua));
+			}
+
+			lua.pop(2);
+
+			return vec;
+		}
+	};
+
+	// MAP
+	// TUPLE
 
 	// todo: other std containers
 	// todo: glm types
@@ -494,16 +586,16 @@ namespace luups
 
 		// calls from_lua in the order of tuple<Ts...> and returns a tuple
 		template<class... Ts>
-		std::tuple<Ts...> tuple_from_lua(lua_state& state, std::tuple<Ts...>)
+		std::tuple<Ts...> tuple_from_lua(lua_state& lua, std::tuple<Ts...>)
 		{
-			return { from_lua<Ts>(state)... };
+			return { from_lua<Ts>(lua)... };
 		}
 
 		// calls from_lua in the reverse order of Ts... and returns a tuple
 		template<class... Ts>
-		reverse_tuple_t<std::tuple<Ts...>> reverse_from_lua(lua_state& state)
+		reverse_tuple_t<std::tuple<Ts...>> reverse_from_lua(lua_state& lua)
 		{
-			return tuple_from_lua(state, reverse_tuple_t<std::tuple<Ts...>>{ });
+			return tuple_from_lua(lua, reverse_tuple_t<std::tuple<Ts...>>{ });
 		}
 
 		// reverses a tuple
@@ -525,15 +617,15 @@ namespace luups
 	{
 
 		template<class... Rets, class... Args>
-		auto run_loaded(lua_state& state, Args&&... args)
+		auto run_loaded(lua_state& lua, Args&&... args)
 		{
-			(to_lua(state, args), ...);
+			(to_lua(lua, args), ...);
 
 			auto constexpr num_args = sizeof...(Args);
 			auto constexpr num_rets = sizeof...(Rets);
 
-			if (state.call(num_args, num_rets) != lua_status::ok)
-				throw std::runtime_error(state.pop_string());
+			if (lua.call(num_args, num_rets) != lua_status::ok)
+				throw std::runtime_error(lua.pop_string());
 
 			if constexpr (num_rets == 0)
 			{
@@ -541,7 +633,7 @@ namespace luups
 			}
 			else if constexpr (num_rets == 1)
 			{
-				return (from_lua<Rets>(state), ...);
+				return (from_lua<Rets>(lua), ...);
 			}
 			else
 			{
@@ -550,28 +642,28 @@ namespace luups
 				// so we have to call from_lua on Rets... in reverse order.
 				// the resulting tuple must then be reversed for return to the caller.
 
-				return detail::reverse(reverse_from_lua<Rets...>(state));
+				return detail::reverse(reverse_from_lua<Rets...>(lua));
 			}
 		}
 
 	} // detail
 
 	template<class... Rets, class... Args>
-	auto run(lua_state& state, std::string const& code, Args&&... args)
+	auto run(lua_state& lua, std::string const& code, Args&&... args)
 	{
-		if (state.load_string(code) != lua_status::ok)
-			throw std::runtime_error(state.pop_string());
+		if (lua.load_string(code) != lua_status::ok)
+			throw std::runtime_error(lua.pop_string());
 		
-		return detail::run_loaded<Rets...>(state, std::forward<Args>(args)...);
+		return detail::run_loaded<Rets...>(lua, std::forward<Args>(args)...);
 	}
 
 	template<class... Rets, class... Args>
-	auto frun(lua_state& state, std::string const& file_path, Args&&... args)
+	auto frun(lua_state& lua, std::string const& file_path, Args&&... args)
 	{
-		if (state.load_file(file_path) != lua_status::ok)
-			throw std::runtime_error(state.pop_string());
+		if (lua.load_file(file_path) != lua_status::ok)
+			throw std::runtime_error(lua.pop_string());
 		
-		return detail::run_loaded<Rets...>(state, std::forward<Args>(args)...);
+		return detail::run_loaded<Rets...>(lua, std::forward<Args>(args)...);
 	}
 
 	inline lua_state new_state()
