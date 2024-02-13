@@ -85,60 +85,76 @@ int main()
 
 	std::cout << lua.print_stack() << std::endl;
 
-	int c_tbl = lua.size();
-
-	if (lua.push_field(c_tbl, "LIGHT_BROWN") != lua_type::table)
 	{
-		std::cerr << "Failed to get LIGHT_BROWN table." << std::endl;
-		return EXIT_FAILURE;
+
+		int c_tbl = lua.size();
+
+		if (lua.push_field(c_tbl, "LIGHT_BROWN") != lua_type::table)
+		{
+			std::cerr << "Failed to get LIGHT_BROWN table." << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		int lb_tbl = lua.size();
+
+		if (lua.push_field(lb_tbl, 1) != lua_type::number)
+		{
+			std::cerr << "Failed to get r field." << std::endl;
+			return EXIT_FAILURE;
+		}
+		
+		auto r = lua.get_number(-1);
+		
+		if (lua.push_field(lb_tbl, 2) != lua_type::number)
+		{
+			std::cerr << "Failed to get r field." << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		auto g = lua.get_number(-1);
+		
+		if (lua.push_field(lb_tbl, 3) != lua_type::number)
+		{
+			std::cerr << "Failed to get r field." << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		auto b = lua.get_number(-1);
+
+		lua.clear();
+
+		std::cout << "LIGHT_BROWN: " << r << ", " << g << ", " << b << std::endl;
+
 	}
 
-	int lb_tbl = lua.size();
-
-	if (lua.push_field(lb_tbl, 1) != lua_type::number)
 	{
-		std::cerr << "Failed to get r field." << std::endl;
-		return EXIT_FAILURE;
+		auto [rt, gt, bt] = std::tuple<int, float, int>{ 1, 2.0f, 3 };
+		std::cout << gt << std::endl;
 	}
-	
-	auto r = lua.get_number(-1);
-	
-	if (lua.push_field(lb_tbl, 2) != lua_type::number)
-	{
-		std::cerr << "Failed to get r field." << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	auto g = lua.get_number(-1);
-	
-	if (lua.push_field(lb_tbl, 3) != lua_type::number)
-	{
-		std::cerr << "Failed to get r field." << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	auto b = lua.get_number(-1);
-
-	lua.clear();
-
-	std::cout << "LIGHT_BROWN: " << r << ", " << g << ", " << b << std::endl;
 	
 	run(lua, "print('r1')");
-	auto r2 = run<lua_integer>(lua, "return 2");
-	auto r3 = run<lua_integer, lua_number, lua_integer>(lua, "return ...", lua_integer{ 1 }, lua_number{ 2.0 }, lua_integer{ 3 });
-	auto r4 = run<lua_number>(lua, "return 4.0");
-	auto r5 = run<std::string, lua_integer>(lua, "return 'hi', 5");
+	auto r2 = run<int>(lua, "return 2");
+	auto [a, b, c] = run<std::int16_t, float, std::uint8_t>(lua, "return ...", 1, 2, 3 );
+	auto r4 = run<double>(lua, "return 4.0");
+	auto [d, e] = run<std::string, std::uint64_t>(lua, "return 'hi', 5");
 
-	static_assert(std::is_same_v<decltype(r2), lua_integer>);
-	static_assert(std::is_same_v<decltype(r3), std::tuple<lua_integer, lua_number, lua_integer>>);
-	static_assert(std::is_same_v<decltype(r4), lua_number>);
-	static_assert(std::is_same_v<decltype(r5), std::tuple<std::string, lua_integer>>);
+	static_assert(std::is_same_v<decltype(a), std::int16_t>);
+	static_assert(std::is_same_v<decltype(b), float>);
+	static_assert(std::is_same_v<decltype(c), std::uint8_t>);
+	static_assert(std::is_same_v<decltype(d), std::string>);
+	static_assert(std::is_same_v<decltype(e), std::uint64_t>);
+
+	std::cout << "r2: " << r2 << std::endl;
+	std::cout << "r3: " << a << ", " << b << ", " << (int)c << std::endl;
+	std::cout << "r4: " << r4 << std::endl;
+	std::cout << "r5: " << d << ", " << e << std::endl;
+
+	frun(lua, "data/colors.lua");
 
 	std::cout << "done!" << std::endl;
 }
 
-// todo: is the order for make_tuple guaranteed?
-// todo: convert built-in types to/from lua number types (with range checking) (add to_lua and from_lua specializations, throw for errors)
-// todo: check what happens when run calls error() (failing to load / call)
+// todo: way to return / send functions / function pointers to run()?
 
+// todo: organise code - split to separate files
 // todo: do all the functions in lua_state need to be members?

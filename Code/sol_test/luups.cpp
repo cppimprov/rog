@@ -239,17 +239,17 @@ namespace luups
 		lua_pop(L, 1);
 	}
 
-	[[nodiscard]] lua_status lua_state::load_string(std::string const& code, lua_load_mode mode)
+	[[nodiscard]] lua_status lua_state::load_string(std::string const& code)
 	{
 		die_if(!is_open());
-		auto const result = luaL_loadbufferx(L, code.data(), code.size(), code.data(), detail::get_mode_str(mode));
+		auto const result = luaL_loadbufferx(L, code.data(), code.size(), code.data(), detail::get_mode_str(load_mode));
 		return static_cast<lua_status>(result);
 	}
 
-	[[nodiscard]] lua_status lua_state::load_file(std::string const& path, lua_load_mode mode)
+	[[nodiscard]] lua_status lua_state::load_file(std::string const& path)
 	{
 		die_if(!is_open());
-		auto const result = luaL_loadfilex(L, path.data(), detail::get_mode_str(mode));
+		auto const result = luaL_loadfilex(L, path.data(), detail::get_mode_str(load_mode));
 		return static_cast<lua_status>(result);
 	}
 
@@ -260,23 +260,23 @@ namespace luups
 		return static_cast<lua_status>(result);
 	}
 
-	[[nodiscard]] lua_status lua_state::do_string(std::string const& code, lua_load_mode mode, int num_results, int msg_handler_idx)
+	[[nodiscard]] lua_status lua_state::do_string(std::string const& code, int num_results, int msg_handler_idx)
 	{
 		die_if(!is_open());
 
-		auto const load_result = load_string(code, mode);
+		auto const load_result = load_string(code);
 
-		if (load_string(code, mode) != lua_status::ok)
+		if (load_string(code) != lua_status::ok)
 			return load_result;
 		
 		return call(0, num_results, msg_handler_idx);
 	}
 
-	[[nodiscard]] lua_status lua_state::do_file(std::string const& path, lua_load_mode mode, int num_results, int msg_handler_idx)
+	[[nodiscard]] lua_status lua_state::do_file(std::string const& path, int num_results, int msg_handler_idx)
 	{
 		die_if(!is_open());
 
-		auto const load_result = load_file(path, mode);
+		auto const load_result = load_file(path);
 
 		if (load_result != lua_status::ok)
 			return load_result;
@@ -720,7 +720,6 @@ namespace luups
 	std::string_view lua_state::to_string_impl(int index) const
 	{
 		// n.b. assumes state is valid and type is string
-
 		std::size_t len = 0;
 		auto str = lua_tolstring(L, index, &len);
 		die_if(!str);

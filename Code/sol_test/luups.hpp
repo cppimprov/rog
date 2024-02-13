@@ -4,6 +4,7 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
+#include <concepts>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -44,7 +45,6 @@ namespace luups
 		}
 
 		// todo: tag allocations with a string for debugging purposes
-		// todo: check if this matches lua's GCCOUNT and GCCOUNTB
 
 		std::size_t allocated = 0;
 	};
@@ -164,6 +164,8 @@ namespace luups
 		std::string print_stack() const;
 		std::string print_globals();
 
+		lua_load_mode set_load_mode(lua_load_mode mode) { auto old_mode = load_mode; load_mode = mode; return old_mode; }
+
 		// MEMORY
 
 		void set_allocator(lua_allocator alloc, void* ud);
@@ -190,11 +192,11 @@ namespace luups
 		// todo: load_stdin()
 		// todo: improve function names?
 
-		[[nodiscard]] lua_status load_string(std::string const& code, lua_load_mode mode = binary | text);
-		[[nodiscard]] lua_status load_file(std::string const& path, lua_load_mode mode = binary | text);
+		[[nodiscard]] lua_status load_string(std::string const& code);
+		[[nodiscard]] lua_status load_file(std::string const& path);
 		[[nodiscard]] lua_status call(int num_args, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
-		[[nodiscard]] lua_status do_string(std::string const& code, lua_load_mode mode = binary | text, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
-		[[nodiscard]] lua_status do_file(std::string const& path, lua_load_mode mode = binary | text, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+		[[nodiscard]] lua_status do_string(std::string const& code, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+		[[nodiscard]] lua_status do_file(std::string const& path, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
 
 		// STACK - MANAGEMENT
 
@@ -312,6 +314,10 @@ namespace luups
 
 		static int default_panic_fn(lua_State* L);
 
+		// LOADING
+
+		lua_load_mode load_mode = binary | text;
+
 		// STACK MANAGEMENT UTILS
 
 		bool to_boolean_impl(int index) const;
@@ -350,29 +356,94 @@ namespace luups
 		static bool from_lua(lua_state& state) { return state.pop_boolean(); }
 	};
 
-	template<>
-	struct to_lua_impl<lua_integer>
+	namespace detail
 	{
-		static void to_lua(lua_state& state, lua_integer value) { state.push_integer(value); }
-	};
 
-	template<>
-	struct from_lua_impl<lua_integer>
-	{
-		static lua_integer from_lua(lua_state& state) { return state.pop_integer(); }
-	};
+		template<class T, class U> requires std::is_integral_v<T> && std::is_integral_v<U>
+		T narrow_cast(U u)
+		{
+			if constexpr (std::is_same_v<T, U>)
+			{
+				return u;
+			}
+			else
+			{
+				auto const t = static_cast<T>(u);
 
-	template<>
-	struct to_lua_impl<lua_number>
-	{
-		static void to_lua(lua_state& state, lua_number value) { state.push_number(value); }
-	};
+				if (static_cast<U>(t) != u)
+					throw std::runtime_error("narrow_cast: value out of range");
 
-	template<>
-	struct from_lua_impl<lua_number>
-	{
-		static lua_number from_lua(lua_state& state) { return state.pop_number(); }
-	};
+				if constexpr (std::is_signed_v<T> != std::is_signed_v<U>)
+					if ((t < T{ 0 }) != (u < U{ 0 }))
+						throw std::runtime_error("narrow_cast: value out of range");
+
+				return t;
+			}
+		}
+
+		template<class T, class U> requires std::is_floating_point_v<T> && std::is_floating_point_v<U>
+		T narrow_cast(U u)
+		{
+			if constexpr (std::is_same_v<T, U>)
+			{
+				return u;
+			}
+			else
+			{
+				if (u > std::numeric_limits<T>::max() || u < std::numeric_limits<T>::lowest())
+					throw std::runtime_error("narrow_cast: value out of range");
+				
+				return static_cast<T>(u);
+			}
+		}
+
+	} // detail
+
+	// INTEGER TYPES
+
+	template<> struct to_lua_impl<char>               { static void to_lua(lua_state& state, char value) {               state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<signed char>        { static void to_lua(lua_state& state, signed char value) {        state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned char>      { static void to_lua(lua_state& state, unsigned char value) {      state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<short>              { static void to_lua(lua_state& state, short value) {              state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned short>     { static void to_lua(lua_state& state, unsigned short value) {     state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<int>                { static void to_lua(lua_state& state, int value) {                state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned int>       { static void to_lua(lua_state& state, unsigned int value) {       state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<long>               { static void to_lua(lua_state& state, long value) {               state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned long>      { static void to_lua(lua_state& state, unsigned long value) {      state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<long long>          { static void to_lua(lua_state& state, long long value) {          state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<unsigned long long> { static void to_lua(lua_state& state, unsigned long long value) { state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char8_t>            { static void to_lua(lua_state& state, char8_t value) {            state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char16_t>           { static void to_lua(lua_state& state, char16_t value) {           state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<char32_t>           { static void to_lua(lua_state& state, char32_t value) {           state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+	template<> struct to_lua_impl<wchar_t>            { static void to_lua(lua_state& state, wchar_t value) {            state.push_integer(detail::narrow_cast<lua_integer>(value)); } };
+
+	template<> struct from_lua_impl<char>               { static char from_lua(lua_state& state) {               return detail::narrow_cast<char>(state.pop_integer()); } };
+	template<> struct from_lua_impl<signed char>        { static signed char from_lua(lua_state& state) {        return detail::narrow_cast<signed char>(state.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned char>      { static unsigned char from_lua(lua_state& state) {      return detail::narrow_cast<unsigned char>(state.pop_integer()); } };
+	template<> struct from_lua_impl<short>              { static short from_lua(lua_state& state) {              return detail::narrow_cast<short>(state.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned short>     { static unsigned short from_lua(lua_state& state) {     return detail::narrow_cast<unsigned short>(state.pop_integer()); } };
+	template<> struct from_lua_impl<int>                { static int from_lua(lua_state& state) {                return detail::narrow_cast<int>(state.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned int>       { static unsigned int from_lua(lua_state& state) {       return detail::narrow_cast<unsigned int>(state.pop_integer()); } };
+	template<> struct from_lua_impl<long>               { static long from_lua(lua_state& state) {               return detail::narrow_cast<long>(state.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned long>      { static unsigned long from_lua(lua_state& state) {      return detail::narrow_cast<unsigned long>(state.pop_integer()); } };
+	template<> struct from_lua_impl<long long>          { static long long from_lua(lua_state& state) {          return detail::narrow_cast<long long>(state.pop_integer()); } };
+	template<> struct from_lua_impl<unsigned long long> { static unsigned long long from_lua(lua_state& state) { return detail::narrow_cast<unsigned long long>(state.pop_integer()); } };
+	template<> struct from_lua_impl<char8_t>            { static char8_t from_lua(lua_state& state) {            return detail::narrow_cast<char8_t>(state.pop_integer()); } };
+	template<> struct from_lua_impl<char16_t>           { static char16_t from_lua(lua_state& state) {           return detail::narrow_cast<char16_t>(state.pop_integer()); } };
+	template<> struct from_lua_impl<char32_t>           { static char32_t from_lua(lua_state& state) {           return detail::narrow_cast<char32_t>(state.pop_integer()); } };
+	template<> struct from_lua_impl<wchar_t>            { static wchar_t from_lua(lua_state& state) {            return detail::narrow_cast<wchar_t>(state.pop_integer()); } };
+
+	// FLOATING POINT TYPES
+
+	template<> struct to_lua_impl<float> { static void to_lua(lua_state& state, float value) { state.push_number(detail::narrow_cast<lua_number>(value)); } };
+	template<> struct to_lua_impl<double> { static void to_lua(lua_state& state, double value) { state.push_number(detail::narrow_cast<lua_number>(value)); } };
+	template<> struct to_lua_impl<long double> { static void to_lua(lua_state& state, long double value) { state.push_number(detail::narrow_cast<lua_number>(value)); } };
+
+	template<> struct from_lua_impl<float> { static float from_lua(lua_state& state) { return detail::narrow_cast<float>(state.pop_number()); } };
+	template<> struct from_lua_impl<double> { static double from_lua(lua_state& state) { return detail::narrow_cast<double>(state.pop_number()); } };
+	template<> struct from_lua_impl<long double> { static long double from_lua(lua_state& state) { return detail::narrow_cast<long double>(state.pop_number()); } };
+
+	// STRING TYPES
 
 	template<>
 	struct to_lua_impl<std::string>
@@ -381,14 +452,27 @@ namespace luups
 	};
 
 	template<>
+	struct to_lua_impl<std::string_view>
+	{
+		static void to_lua(lua_state& state, std::string_view value) { state.push_string(value); }
+	};
+
+	template<>
 	struct from_lua_impl<std::string>
 	{
 		static std::string from_lua(lua_state& state) { return state.pop_string(); }
 	};
 
+	// todo: other std containers
+	// todo: glm types
+
 	namespace detail
 	{
 
+		template<class... Ts>
+		using tuple_cat_t = decltype(std::tuple_cat(std::declval<Ts>()...));
+
+		// reverse_tuple produces a reversed tuple *type*
 		template<class... Ts> struct reverse_tuple;
 
 		template<>
@@ -402,71 +486,93 @@ namespace luups
 		{
 			using head = std::tuple<T>;
 			using tail = typename reverse_tuple<std::tuple<Ts...>>::type;
-			using type = decltype(std::tuple_cat(std::declval<tail>(), std::declval<head>()));
+			using type = tuple_cat_t<tail, head>;
 		};
 
 		template<class T>
 		using reverse_tuple_t = typename reverse_tuple<T>::type;
 
+		// calls from_lua in the order of tuple<Ts...> and returns a tuple
 		template<class... Ts>
 		std::tuple<Ts...> tuple_from_lua(lua_state& state, std::tuple<Ts...>)
 		{
-			return std::tuple{ from_lua<Ts>(state)... };
+			return { from_lua<Ts>(state)... };
 		}
 
+		// calls from_lua in the reverse order of Ts... and returns a tuple
 		template<class... Ts>
 		reverse_tuple_t<std::tuple<Ts...>> reverse_from_lua(lua_state& state)
 		{
 			return tuple_from_lua(state, reverse_tuple_t<std::tuple<Ts...>>{ });
 		}
 
+		// reverses a tuple
 		template<class T, std::size_t... Is>
-		reverse_tuple_t<T> reverse_impl(T&& t, std::index_sequence<Is...>)
+		reverse_tuple_t<T> reverse_impl(T&& tuple, std::index_sequence<Is...>)
 		{
-			return { std::get<sizeof...(Is) - 1 - Is>(std::forward<T>(t))... };
+			return reverse_tuple_t<T>{ std::move(std::get<sizeof...(Is) - 1 - Is>(std::forward<T>(tuple)))... };
 		}
 
 		template<class T>
-		reverse_tuple_t<T> reverse(T&& t)
+		reverse_tuple_t<T> reverse(T&& tuple)
 		{
-			return reverse_impl(std::forward<T>(t), std::make_index_sequence<std::tuple_size_v<T>>{ });
+			return reverse_impl(std::forward<T>(tuple), std::make_index_sequence<std::tuple_size_v<T>>{ });
+		}
+
+	} // detail
+
+	namespace detail
+	{
+
+		template<class... Rets, class... Args>
+		auto run_loaded(lua_state& state, Args&&... args)
+		{
+			(to_lua(state, args), ...);
+
+			auto constexpr num_args = sizeof...(Args);
+			auto constexpr num_rets = sizeof...(Rets);
+
+			if (state.call(num_args, num_rets) != lua_status::ok)
+				throw std::runtime_error(state.pop_string());
+
+			if constexpr (num_rets == 0)
+			{
+				return;
+			}
+			else if constexpr (num_rets == 1)
+			{
+				return (from_lua<Rets>(state), ...);
+			}
+			else
+			{
+				// note: lua pushes return values onto the stack in order, so the
+				// last return value is at the top of the stack.
+				// so we have to call from_lua on Rets... in reverse order.
+				// the resulting tuple must then be reversed for return to the caller.
+
+				return detail::reverse(reverse_from_lua<Rets...>(state));
+			}
 		}
 
 	} // detail
 
 	template<class... Rets, class... Args>
-	decltype(auto) run(lua_state& state, std::string const& code, [[maybe_unused]] Args&&... args)
+	auto run(lua_state& state, std::string const& code, Args&&... args)
 	{
 		if (state.load_string(code) != lua_status::ok)
 			throw std::runtime_error(state.pop_string());
 		
-		(to_lua(state, args), ...);
-
-		auto constexpr num_args = sizeof...(Args);
-		auto constexpr num_rets = sizeof...(Rets);
-
-		if (state.call(num_args, num_rets) != lua_status::ok)
-			throw std::runtime_error(state.pop_string());
-
-		if constexpr (num_rets == 0)
-		{
-			return;
-		}
-		else if constexpr (num_rets == 1)
-		{
-			return (from_lua<Rets>(state), ...);
-		}
-		else
-		{
-			// note: from_lua (and hence pop) must be called for the *last*
-			// argument in Rets... *first*. the resulting tuple must then be
-			// reversed to get back to the original order of Rets...
-			return detail::reverse(detail::reverse_from_lua<Rets...>(state));
-		}
+		return detail::run_loaded<Rets...>(state, std::forward<Args>(args)...);
 	}
 
-	// todo: frun() - like run(), but takes a file path, not a code string
-	// todo: keep a default lua_load_mode in the lua_state?
+	template<class... Rets, class... Args>
+	auto frun(lua_state& state, std::string const& file_path, Args&&... args)
+	{
+		if (state.load_file(file_path) != lua_status::ok)
+			throw std::runtime_error(state.pop_string());
+		
+		return detail::run_loaded<Rets...>(state, std::forward<Args>(args)...);
+	}
 
 	inline lua_state new_state()
 	{
