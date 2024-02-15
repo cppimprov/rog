@@ -8,6 +8,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <string_view>
 
 using color = glm::vec4;
 
@@ -149,12 +150,20 @@ int main()
 	std::cout << "r4: " << r4 << std::endl;
 	std::cout << "r5: " << d << ", " << e << std::endl;
 
+	using namespace std::literals;
+
+	auto t = run<std::tuple<std::string, double, int>>(lua, "t = ...; for i,v in ipairs(t) do print(i, v) end; return t", std::tuple{ "a"sv, 1.0, 2 });
+	std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
+
 	frun(lua, "data/colors.lua");
 
 	std::cout << "done!" << std::endl;
 }
 
-// todo: way to return / send functions / function pointers to run()?
+// todo: test various std lib to_lua and from_lua functions
+// todo: think about other std types we might need...
+
+// todo: revert to lua naming conventions and type-conversion logic
 
 // todo: organise code - split to separate files
 // todo: do all the functions in lua_state need to be members?
