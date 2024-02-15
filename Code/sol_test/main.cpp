@@ -133,37 +133,73 @@ int main()
 		std::cout << gt << std::endl;
 	}
 	
-	run(lua, "print('r1')");
-	auto r2 = run<int>(lua, "return 2");
-	auto [a, b, c] = run<std::int16_t, float, std::uint8_t>(lua, "return ...", 1, 2, 3 );
-	auto r4 = run<double>(lua, "return 4.0");
-	auto [d, e] = run<std::string, std::uint64_t>(lua, "return 'hi', 5");
+	{
+		run(lua, "print('r1')");
+		auto r2 = run<int>(lua, "return 2");
+		auto [a, b, c] = run<std::int16_t, float, std::uint8_t>(lua, "return ...", 1, 2, 3 );
+		auto r4 = run<double>(lua, "return 4.0");
+		auto [d, e] = run<std::string, std::uint64_t>(lua, "return 'hi', 5");
 
-	static_assert(std::is_same_v<decltype(a), std::int16_t>);
-	static_assert(std::is_same_v<decltype(b), float>);
-	static_assert(std::is_same_v<decltype(c), std::uint8_t>);
-	static_assert(std::is_same_v<decltype(d), std::string>);
-	static_assert(std::is_same_v<decltype(e), std::uint64_t>);
+		static_assert(std::is_same_v<decltype(a), std::int16_t>);
+		static_assert(std::is_same_v<decltype(b), float>);
+		static_assert(std::is_same_v<decltype(c), std::uint8_t>);
+		static_assert(std::is_same_v<decltype(d), std::string>);
+		static_assert(std::is_same_v<decltype(e), std::uint64_t>);
 
-	std::cout << "r2: " << r2 << std::endl;
-	std::cout << "r3: " << a << ", " << b << ", " << (int)c << std::endl;
-	std::cout << "r4: " << r4 << std::endl;
-	std::cout << "r5: " << d << ", " << e << std::endl;
+		std::cout << "r2: " << r2 << std::endl;
+		std::cout << "r3: " << a << ", " << b << ", " << (int)c << std::endl;
+		std::cout << "r4: " << r4 << std::endl;
+		std::cout << "r5: " << d << ", " << e << std::endl;
+	}
 
-	using namespace std::literals;
+	{
+		using namespace std::literals;
 
-	auto t = run<std::tuple<std::string, double, int>>(lua, "t = ...; for i,v in ipairs(t) do print(i, v) end; return t", std::tuple{ "a"sv, 1.0, 2 });
-	std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
+		auto t = run<std::tuple<std::string, double, int>>(lua, "t = ...; for i,v in ipairs(t) do print(i, v) end; return t", std::tuple{ "a"sv, 1.0, 2 });
+		std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
+	}
 
-	frun(lua, "data/colors.lua");
+	{
+		frun(lua, "data/colors.lua");
+	}
+
+	{
+		if (lua.load_string(R"(
+			local t = _G
+			for k,v in pairs(t) do
+				io.write(string.format("%s: %s\n", k, type(v)))
+			end
+		)") != lua_status::ok)
+		{
+			std::cerr << "Failed to load string: " << lua.pop_string() << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		auto s = std::string();
+
+		auto const writer = [] (lua_State*, void const* data, std::size_t size, void* ud)
+		{
+			auto& s = *reinterpret_cast<std::string*>(ud);
+			s.append(static_cast<char const*>(data), size);
+			return 0;
+		};
+
+		lua.dump(writer, &s);
+
+		lua.clear();
+
+		if (lua.do_string(s) != lua_status::ok)
+		{
+			std::cerr << "Failed to do string: " << lua.pop_string() << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		// todo: default writer implementation in luups
+	}
 
 	std::cout << "done!" << std::endl;
 }
 
-// todo: test various std lib to_lua and from_lua functions
-// todo: think about other std types we might need...
-
-// todo: revert to lua naming conventions and type-conversion logic
-
 // todo: organise code - split to separate files
-// todo: do all the functions in lua_state need to be members?
+
+// ...

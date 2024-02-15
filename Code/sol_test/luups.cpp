@@ -64,6 +64,12 @@ namespace luups
 		return pop_string();
 	}
 
+	int lua_state::dump(lua_writer writer, void* ud, bool strip_debug_info)
+	{
+		die_if(!is_open());
+		return lua_dump(L, writer, ud, strip_debug_info ? 1 : 0);
+	}
+
 	std::string lua_state::print_value(int index) const
 	{
 		die_if(!is_open());
@@ -258,6 +264,12 @@ namespace luups
 		die_if(!is_open());
 		auto result = lua_pcall(L, num_args, num_results, msg_handler_idx);
 		return static_cast<lua_status>(result);
+	}
+
+	[[nodiscard]] void lua_state::call_unprotected(int num_args, int num_results)
+	{
+		die_if(!is_open());
+		lua_call(L, num_args, num_results);
 	}
 
 	[[nodiscard]] lua_status lua_state::do_string(std::string const& code, int num_results, int msg_handler_idx)
@@ -690,6 +702,33 @@ namespace luups
 	{
 		die_if(!is_open());
 		luaL_unref(L, table_index, ref);
+	}
+
+	void lua_state::arith(lua_arith_op op)
+	{
+		die_if(!is_open());
+		lua_arith(L, static_cast<int>(op));
+	}
+
+	bool lua_state::compare(lua_compare_op op, int index1, int index2)
+	{
+		die_if(!is_open());
+		return (lua_compare(L, index1, index2, static_cast<int>(op)) != 0);
+	}
+
+	bool lua_state::compare_eq(int index1, int index2)
+	{
+		return compare(lua_compare_op::eq, index1, index2);
+	}
+
+	bool lua_state::compare_lt(int index1, int index2)
+	{
+		return compare(lua_compare_op::lt, index1, index2);
+	}
+
+	bool lua_state::compare_le(int index1, int index2)
+	{
+		return compare(lua_compare_op::le, index1, index2);
 	}
 
 	int lua_state::default_panic_fn(lua_State* L)

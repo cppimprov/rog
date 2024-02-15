@@ -130,6 +130,34 @@ namespace luups
 	using lua_unsigned = lua_Unsigned;
 	using lua_cfunction = lua_CFunction;
 
+	enum class lua_arith_op
+	{
+		add = LUA_OPADD,
+		sub = LUA_OPSUB,
+		mul = LUA_OPMUL,
+		mod = LUA_OPMOD,
+		pow = LUA_OPPOW,
+		div = LUA_OPDIV,
+		idiv = LUA_OPIDIV,
+		band = LUA_OPBAND,
+		bor = LUA_OPBOR,
+		bxor = LUA_OPBXOR,
+		shl = LUA_OPSHL,
+		shr = LUA_OPSHR,
+		unm = LUA_OPUNM,
+		bnot = LUA_OPBNOT,
+	};
+
+	enum class lua_compare_op
+	{
+		eq = LUA_OPEQ,
+		lt = LUA_OPLT,
+		le = LUA_OPLE,
+	};
+
+	using lua_reader = lua_Reader;
+	using lua_writer = lua_Writer;
+
 	class lua_state
 	{
 	public:
@@ -161,6 +189,8 @@ namespace luups
 		lua_status status() const { die_if(!is_open()); return static_cast<lua_status>(::lua_status(L)); }
 
 		std::string traceback(std::string const& prefix = "", int level = 0);
+
+		int dump(lua_writer writer, void* ud = nullptr, bool strip_debug_info = false);
 
 		std::string print_value(int index) const;
 		std::string print_stack() const;
@@ -196,7 +226,8 @@ namespace luups
 
 		[[nodiscard]] lua_status load_string(std::string const& code);
 		[[nodiscard]] lua_status load_file(std::string const& path);
-		[[nodiscard]] lua_status call(int num_args, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+		[[nodiscard]] lua_status call(int num_args = 0, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
+		[[nodiscard]] void call_unprotected(int num_args = 0, int num_results = lua_multiple_return);
 		[[nodiscard]] lua_status do_string(std::string const& code, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
 		[[nodiscard]] lua_status do_file(std::string const& path, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
 
@@ -218,7 +249,7 @@ namespace luups
 		bool check(int num_elements);
 		int to_abs_index(int index) const;
 
-		// STACK - TYPES
+		// TYPES
 
 		// note: invalid indices (outside the currently allocated stack space) return none
 		// note: indices that are valid, but currently empty return nil
@@ -237,7 +268,7 @@ namespace luups
 		bool is_userdata(int index) const { return get_type(index) == lua_type::userdata; }
 		bool is_lightuserdata(int index) const { return get_type(index) == lua_type::lightuserdata; }
 
-		// STACK - VARIABLES
+		// VARIABLES
 
 		void push_nil();
 		void push_fail();
@@ -278,7 +309,7 @@ namespace luups
 		lua_integer get_length(int index);
 		lua_unsigned get_length_raw(int index);
 
-		// STACK - TABLES
+		// TABLES
 
 		void push_new_table(int sequence_size = 0, int hash_size = 0);
 		void push_globals_table();
@@ -301,10 +332,19 @@ namespace luups
 
 		bool next_field(int table_index);
 
-		// STACK - REFERENCES
+		// REFERENCES
 
 		int set_ref(int table_index);
 		void clear_ref(int table_index, int ref);
+		
+		// OPERATIONS
+
+		void arith(lua_arith_op op);
+
+		bool compare(lua_compare_op op, int index1, int index2);
+		bool compare_eq(int index1, int index2);
+		bool compare_lt(int index1, int index2);
+		bool compare_le(int index1, int index2);
 
 	private:
 

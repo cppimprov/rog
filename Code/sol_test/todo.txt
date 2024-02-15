@@ -15,12 +15,12 @@ lua_Number
 lua_State
 *lua_Unsigned
 *lua_WarnFunction
-*lua_Writer
+lua_Writer
 
 Core Functions:
 
 lua_absindex
-*lua_arith
+lua_arith
 lua_atpanic
 lua_call
 *lua_callk
@@ -28,12 +28,12 @@ lua_checkstack
 lua_close
 *lua_closeslot
 *lua_closethread
-*lua_compare
+lua_compare
 lua_concat
 lua_copy
 lua_createtable
-*lua_dump
-*lua_error
+lua_dump
+lua_error
 lua_gc
 lua_getallocf
 *lua_getextraspace
@@ -194,7 +194,7 @@ luaL_loadstring
 *luaL_newlib
 *luaL_newlibtable
 *luaL_newmetatable
-*luaL_newstate
+luaL_newstate
 luaL_openlibs
 luaL_opt
 luaL_optinteger
