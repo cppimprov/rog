@@ -220,14 +220,15 @@ namespace luups
 
 		// LOAD / EXECUTE
 		
-		// todo: more generic load() function (i.e. lua_Reader wrapper?)
-		// todo: load_stdin()
-		// todo: improve function names?
-
+		[[nodiscard]] lua_status load(lua_reader reader, std::string const& chunk_name, void* ud);
 		[[nodiscard]] lua_status load_string(std::string const& code);
 		[[nodiscard]] lua_status load_file(std::string const& path);
+		[[nodiscard]] lua_status load_stdin();
+		
+		// todo: rename to call and pcall?
 		[[nodiscard]] lua_status call(int num_args = 0, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
 		[[nodiscard]] void call_unprotected(int num_args = 0, int num_results = lua_multiple_return);
+
 		[[nodiscard]] lua_status do_string(std::string const& code, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
 		[[nodiscard]] lua_status do_file(std::string const& path, int num_results = lua_multiple_return, int msg_handler_idx = lua_no_msg_handler);
 

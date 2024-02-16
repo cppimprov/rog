@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <map>
+#include <spanstream>
 #include <string>
 #include <string_view>
 
@@ -188,13 +189,44 @@ int main()
 
 		lua.clear();
 
-		if (lua.do_string(s) != lua_status::ok)
+		struct stream_buf
 		{
-			std::cerr << "Failed to do string: " << lua.pop_string() << std::endl;
+			std::size_t store()
+			{
+				is.read(buffer.data(), buffer.size());
+				return static_cast<std::size_t>(is.gcount());
+			}
+
+			std::istream& is;
+			std::array<char, 1024> buffer;
+		};
+
+		auto is = std::ispanstream(s);
+		auto sb = stream_buf{ is };
+
+		auto const reader = [] (lua_State*, void* data, std::size_t* size) -> char const*
+		{
+			auto& s = *reinterpret_cast<stream_buf*>(data);
+			*size = s.store();
+			return *size ? s.buffer.data() : nullptr;
+		};
+
+		if (lua.load(reader, "", &sb) != lua_status::ok)
+		{
+			std::cerr << "Failed to load string: " << lua.pop_string() << std::endl;
 			return EXIT_FAILURE;
 		}
 
-		// todo: default writer implementation in luups
+		if (lua.call(0, 0) != lua_status::ok)
+		{
+			std::cerr << "Failed to call string: " << lua.pop_string() << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		// todo: default reader / writer implementations?
+		// todo: would be nice to support std::streams, std::string, std::vector, etc.
+
+		// how to control stream buffer?
 	}
 
 	std::cout << "done!" << std::endl;
@@ -202,4 +234,5 @@ int main()
 
 // todo: organise code - split to separate files
 
-// ...
+// todo: continuations
+// todo: buffers

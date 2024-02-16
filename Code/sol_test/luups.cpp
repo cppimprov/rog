@@ -245,6 +245,13 @@ namespace luups
 		lua_pop(L, 1);
 	}
 
+	[[nodiscard]] lua_status lua_state::load(lua_reader reader, std::string const& chunk_name, void* ud)
+	{
+		die_if(!is_open());
+		auto const result = lua_load(L, reader, ud, chunk_name.data(), nullptr);
+		return static_cast<lua_status>(result);
+	}
+
 	[[nodiscard]] lua_status lua_state::load_string(std::string const& code)
 	{
 		die_if(!is_open());
@@ -256,6 +263,13 @@ namespace luups
 	{
 		die_if(!is_open());
 		auto const result = luaL_loadfilex(L, path.data(), detail::get_mode_str(load_mode));
+		return static_cast<lua_status>(result);
+	}
+
+	[[nodiscard]] lua_status lua_state::load_stdin()
+	{
+		die_if(!is_open());
+		auto const result = luaL_loadfilex(L, nullptr, detail::get_mode_str(load_mode));
 		return static_cast<lua_status>(result);
 	}
 
