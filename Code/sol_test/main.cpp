@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include <map>
+#include <cmath>
+#include <filesystem>
 #include <spanstream>
 #include <string>
 #include <string_view>
@@ -26,13 +28,57 @@ struct world_data
 	std::map<std::string, feature> features;
 };
 
+static int l_sin(lua_State* L)
+{
+	auto const x = luaL_checknumber(L, 1);
+	lua_pushnumber(L, std::sin(x));
+	return 1;
+}
+
+static int l_dir(lua_State* L)
+{
+	auto const path = luaL_checkstring(L, 1);
+
+	auto ec = std::error_code{ };
+	auto dir = std::filesystem::directory_iterator(path, ec);
+	
+	if (ec)
+	{
+		lua_pushnil(L);
+		lua_pushstring(L, ec.message().c_str());
+		return 2;
+	}
+
+	lua_newtable(L);
+	int i = 1;
+
+	for (auto const& entry : dir)
+	{
+		lua_pushnumber(L, i++);
+		lua_pushstring(L, entry.path().string().c_str());
+		lua_settable(L, -3);
+	}
+
+	return 1;
+}
+
+static const struct luaL_Reg l_dir_lib[] = {
+	{ "dir", l_dir },
+	{ nullptr, nullptr }
+};
+
+static int load_l_dir_lib(lua_State* L)
+{
+	luaL_newlib(L, l_dir_lib);
+	return 1;
+}
+
 int main()
 {
 	using namespace luups;
 
 	auto alloc = lua_debug_allocator();
-
-	lua_state lua = new_state(alloc);
+	state lua = new_state(luups::debug_alloc, &alloc);
 
 	std::cout << "bytes allocated: " << alloc.allocated << std::endl;
 
@@ -128,11 +174,6 @@ int main()
 		std::cout << "LIGHT_BROWN: " << r << ", " << g << ", " << b << std::endl;
 
 	}
-
-	{
-		auto [rt, gt, bt] = std::tuple<int, float, int>{ 1, 2.0f, 3 };
-		std::cout << gt << std::endl;
-	}
 	
 	{
 		run(lua, "print('r1')");
@@ -222,17 +263,49 @@ int main()
 			std::cerr << "Failed to call string: " << lua.pop_string() << std::endl;
 			return EXIT_FAILURE;
 		}
+	}
 
-		// todo: default reader / writer implementations?
-		// todo: would be nice to support std::streams, std::string, std::vector, etc.
+	{
+		lua.push_cfunction(l_sin);
+		lua.set_global("testsin");
 
-		// how to control stream buffer?
+		if (lua.do_string("print('sin: ', testsin(0.5))") != lua_status::ok)
+		{
+			std::cerr << "Failed to call testsin: " << lua.pop_string() << std::endl;
+			return EXIT_FAILURE;
+		}
+	}
+
+	{
+		lua.register_fn("dir", l_dir);
+		run(lua, "local d = dir('.'); for i,v in ipairs(d) do print(i, v) end");
+	}
+
+	{
+		lua.require("dir2", load_l_dir_lib);
+		lua.pop();
+		run(lua, "local d = dir2.dir('.'); for i,v in ipairs(d) do print(i, v) end");
+	}
+
+	{
+		lua.new_library(l_dir_lib, 0);
+		lua.set_global("dir3");
+		run(lua, "local d = dir3.dir('.'); for i,v in ipairs(d) do print(i, v) end");
 	}
 
 	std::cout << "done!" << std::endl;
 }
 
+// todo: threads, yielding, continuations!
+
 // todo: organise code - split to separate files
 
-// todo: continuations
-// todo: buffers
+
+// todo: rewrite!
+	// use to* functions to convert to and from lua (following lua's rules)
+	// put luaL_ related functions *outside* the state class
+	// add luaL_check* functions
+
+// todo:
+	// organize tests better...
+	// put examples from lua book in namespaces, and call from main
