@@ -22,6 +22,66 @@ struct feature
 	color color;
 };
 
+namespace luups
+{
+
+	template<>
+	struct to_lua_impl<glm::vec4>
+	{
+		static void to_lua(state_view lua, glm::vec4 const& value)
+		{
+			lua.push_new_table();
+
+			for (auto i = 0; i != 4; ++i)
+			{
+				lua.push(value[i]);
+				lua.set_field(-2, i + 1);
+			}
+		}
+	};
+
+	template<>
+	struct from_lua_impl<glm::vec4>
+	{
+		static glm::vec4 from_lua(state_view lua, int index)
+		{
+			auto result = glm::vec4{ };
+
+			for (auto i = 0; i != 4; ++i)
+			{
+				lua.push_field_raw(index, i + 1);
+				result[i] = luups::from_lua<float>(lua, -1);
+				lua.pop();
+			}
+
+			return result;
+		}
+	};
+
+	template<>
+	struct from_lua_impl<feature>
+	{
+		static feature from_lua(state_view lua, int index)
+		{
+			lua.push_field(index, "description");
+			auto description = luups::from_lua<std::string>(lua, -1);
+			lua.pop();
+
+			lua.push_field(index, "symbol");
+			auto symbol = luups::from_lua<std::string>(lua, -1);
+			lua.pop();
+
+			lua.push_field(index, "color");
+			auto color = luups::from_lua<glm::vec4>(lua, -1);
+			lua.pop();
+
+			return { description, symbol, color };
+		
+		}
+	};
+
+} // luups
+
 struct world_data
 {
 	std::map<std::string, color> colors;
@@ -30,7 +90,11 @@ struct world_data
 
 static int l_sin(lua_State* L)
 {
-	auto const x = luaL_checknumber(L, 1);
+	// auto lua = luups::state_view(L);
+	// lua.push_number(std::sin(luups::check_number(lua, 1)));
+	// return 1;
+
+	auto x = luaL_checknumber(L, 1);
 	lua_pushnumber(L, std::sin(x));
 	return 1;
 }
@@ -109,7 +173,7 @@ int main()
 	try
 	{
 		(void)lua.do_string("return table.unpack(colors.LIGHT_BROWN)");
-		auto color = glm::vec3{ lua.get_number(-3), lua.get_number(-2), lua.get_number(-1) };
+		auto color = glm::vec3{ lua.to_number(-3), lua.to_number(-2), lua.to_number(-1) };
 		std::cout << glm::to_string(color) << std::endl;
 		lua.clear();
 	}
@@ -151,7 +215,7 @@ int main()
 			return EXIT_FAILURE;
 		}
 		
-		auto r = lua.get_number(-1);
+		auto r = lua.to_number(-1);
 		
 		if (lua.push_field(lb_tbl, 2) != lua_type::number)
 		{
@@ -159,7 +223,7 @@ int main()
 			return EXIT_FAILURE;
 		}
 
-		auto g = lua.get_number(-1);
+		auto g = lua.to_number(-1);
 		
 		if (lua.push_field(lb_tbl, 3) != lua_type::number)
 		{
@@ -167,7 +231,7 @@ int main()
 			return EXIT_FAILURE;
 		}
 
-		auto b = lua.get_number(-1);
+		auto b = lua.to_number(-1);
 
 		lua.clear();
 
@@ -293,18 +357,49 @@ int main()
 		run(lua, "local d = dir3.dir('.'); for i,v in ipairs(d) do print(i, v) end");
 	}
 
+	{
+		frun(lua, "data/features.lua");
+
+		run(lua, R"(
+			local t = _G
+			for k,v in pairs(t) do
+				io.write(string.format("%s: %s\n", k, type(v)))
+			end
+		)");
+
+		auto const features = run<std::map<std::string, feature>>(lua, "return features");
+		auto const& floor = features.at("floor");
+		
+		std::cout << "floor: " << floor.description << ", " << floor.symbol << ", " << glm::to_string(floor.color) << std::endl;
+	}
+
+	{
+		lua.push_global("colors");
+
+		lua.push("PALE_PINK");
+		lua.push(glm::vec4{ 0.95f, 0.83f, 0.84f, 1.f });
+		lua.set_field(-3);
+
+		lua.push("PALE_BLUE");
+		lua.push(glm::vec4{ 0.84f, 0.93f, 0.95f, 1.f });
+		lua.set_field(-3);
+
+		lua.push_field(-1, "PALE_BLUE");
+		auto const pb = lua.to<glm::vec4>();
+
+		lua.clear();
+
+		std::cout << "PALE_BLUE: " << glm::to_string(pb) << std::endl;
+	}
+
 	std::cout << "done!" << std::endl;
 }
 
-// todo: threads, yielding, continuations!
+// todo: threads, yielding, continuations?
 
-// todo: organise code - split to separate files
-
-
-// todo: rewrite!
-	// use to* functions to convert to and from lua (following lua's rules)
-	// put luaL_ related functions *outside* the state class
-	// add luaL_check* functions
+// todo:
+	// organise code - split to separate files
+	// put luaL_ related functions *outside* the state class?
 
 // todo:
 	// organize tests better...
