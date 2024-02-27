@@ -54,12 +54,6 @@ namespace luups
 		lua_warning(L, msg.data(), false);
 	}
 
-	std::string state_view::traceback(std::string const& prefix, int level)
-	{
-		luaL_traceback(L, L, prefix.data(), level);
-		return pop_string();
-	}
-
 	int state_view::dump(lua_writer writer, void* ud, bool strip_debug_info)
 	{
 		return lua_dump(L, writer, ud, strip_debug_info ? 1 : 0);
@@ -137,6 +131,12 @@ namespace luups
 		pop();
 
 		return result;
+	}
+	
+	std::string state_view::traceback(std::string const& prefix, int level)
+	{
+		luaL_traceback(L, L, prefix.data(), level);
+		return pop_string();
 	}
 
 	void state_view::set_allocator(lua_allocator alloc, void* ud)

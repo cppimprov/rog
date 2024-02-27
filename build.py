@@ -534,6 +534,7 @@ class PlatformMSVC:
 			glm.code_dir,
 			join_dir(sdl.code_dir, 'include'),
 			sdlmixer.code_dir,
+			lualib.code_dir,
 		]
 		bump.inc_dirs = bump.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		self.write_static_lib(n, build_type, bump)

@@ -213,13 +213,14 @@ namespace luups
 		lua_number version() const { return lua_version(L); }
 		lua_status status() const { return static_cast<lua_status>(::lua_status(L)); }
 
-		std::string traceback(std::string const& prefix = "", int level = 0);
-
 		int dump(lua_writer writer, void* ud = nullptr, bool strip_debug_info = false);
 
+		// todo: move to a luups::debug namespace
 		std::string print_value(int index) const;
 		std::string print_stack() const;
 		std::string print_globals();
+		
+		std::string traceback(std::string const& prefix = "", int level = 0);
 
 		lua_load_mode set_load_mode(lua_load_mode mode) { auto old_mode = load_mode; load_mode = mode; return old_mode; }
 		int set_msg_handler(int index) { auto old_msg_handler = msg_handler_idx; msg_handler_idx = index; return old_msg_handler; }
@@ -277,7 +278,7 @@ namespace luups
 		void concat(int num_elements);
 		void gsub(std::string const& str, std::string const& pattern, std::string const& replacement);
 		
-		[[nodiscard]] bool check(int num_elements); // name should be check_stack too???
+		[[nodiscard]] bool check(int num_elements);
 		void check_stack(int num_elements, std::string const& msg = "");
 		int to_abs_index(int index) const;
 
@@ -405,11 +406,6 @@ namespace luups
 
 		bool raw_eq(int index1, int index2);
 
-		// THREADS
-
-		state_view new_thread();
-		lua_status resume(state_view from, int num_args, int& num_results);
-
 	private:
 
 		// THE STATE
@@ -421,9 +417,8 @@ namespace luups
 		lua_load_mode load_mode = binary | text;
 
 		// MESSAGE HANDLER
+		
 		int msg_handler_idx = lua_no_msg_handler;
-
-		// STACK MANAGEMENT UTILS
 	};
 	
 	int throw_runtime_error(lua_State* L);
@@ -433,10 +428,16 @@ namespace luups
 	public:
 
 		state(): state_handle(), state_view() { }
-		explicit state(lua_State* L): state_handle(L), state_view(L) { if (is_open()) at_panic(&throw_runtime_error); }
-
 		using state_handle::is_open;
 		using state_handle::handle;
+
+	private:
+
+		// this is private to prevent state(L) being used by accident instead of state_view(L)
+		explicit state(lua_State* L): state_handle(L), state_view(L) { if (is_open()) at_panic(&throw_runtime_error); }
+
+		friend state new_state();
+		friend state new_state(lua_allocator alloc, void* ud);
 	};
 	
 	inline state new_state()

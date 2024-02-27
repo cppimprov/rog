@@ -218,9 +218,6 @@ luaL_typename
 luaL_unref
 *luaL_where
 
-// todo: register c functions (and setfuncs?)
-
 // todo: metatables
 // todo: threads
 // todo: upvalues
-// todo: libraries (newlib / newlibtable)

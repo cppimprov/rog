@@ -395,11 +395,12 @@ int main()
 	std::cout << "done!" << std::endl;
 }
 
-// todo: threads, yielding, continuations?
+// todo:
+	// hmm...
+	// 
 
 // todo:
 	// organise code - split to separate files
-	// put luaL_ related functions *outside* the state class?
 
 // todo:
 	// organize tests better...

@@ -63,7 +63,7 @@ namespace rog_ascii
 	}
 
 } // rog_ascii
-	
+
 int main(int argc, char** argv)
 {
 	if (argc != 6)
