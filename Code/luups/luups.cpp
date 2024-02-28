@@ -68,7 +68,7 @@ namespace luups
 			auto const leading_zero_bits = std::countl_zero(val);
 			auto const leading_zero_hex = leading_zero_bits / 4;
 
-			auto chars = std::array<char, 2 + sizeof(val) * 2 + 1>();
+			auto chars = std::array<char, 2 + sizeof(val) * 2 + 1>{ 0 };
 			auto result = std::to_chars(
 				chars.data() + 2 + leading_zero_hex, 
 				chars.data() + 2 + (sizeof(val) * 2), val, 16);

@@ -38,20 +38,6 @@ namespace bump
 			return lua_dump(L, writer, ud, strip_debug_info ? 1 : 0);
 		}
 
-		load_mode state_view::set_load_mode(lua::load_mode mode)
-		{
-			auto old_mode = load_mode;
-			load_mode = mode;
-			return old_mode;
-		}
-		
-		int state_view::set_msg_handler(int index)
-		{
-			auto old_msg_handler = msg_handler_idx;
-			msg_handler_idx = index;
-			return old_msg_handler;
-		}
-
 		void state_view::set_allocator(allocator_t alloc, void* ud)
 		{
 			lua_setallocf(L, alloc, ud);
@@ -173,34 +159,29 @@ namespace bump
 			pop(num_upvalues);
 		}
 
-		[[nodiscard]] status state_view::load(reader_t reader, std::string const& chunk_name, void* ud)
+		[[nodiscard]] status state_view::load(reader_t reader, load_mode mode, std::string const& chunk_name, void* ud)
 		{
-			auto const result = lua_load(L, reader, ud, chunk_name.data(), nullptr);
-			return static_cast<lua::status>(result);
+			return static_cast<lua::status>(lua_load(L, reader, ud, chunk_name.data(), detail::get_mode_str(mode)));
 		}
 
-		[[nodiscard]] status state_view::load_string(std::string const& code, std::string const& chunk_name)
+		[[nodiscard]] status state_view::load_string(std::string const& code, load_mode mode, std::string const& chunk_name)
 		{
-			auto const result = luaL_loadbufferx(L, code.data(), code.size(), chunk_name.data(), detail::get_mode_str(load_mode));
-			return static_cast<lua::status>(result);
+			return static_cast<lua::status>(luaL_loadbufferx(L, code.data(), code.size(), chunk_name.data(), detail::get_mode_str(mode)));
 		}
 
-		[[nodiscard]] status state_view::load_file(std::string const& path)
+		[[nodiscard]] status state_view::load_file(std::string const& path, load_mode mode)
 		{
-			auto const result = luaL_loadfilex(L, path.data(), detail::get_mode_str(load_mode));
-			return static_cast<lua::status>(result);
+			return static_cast<lua::status>(luaL_loadfilex(L, path.data(), detail::get_mode_str(mode)));
 		}
 
-		[[nodiscard]] status state_view::load_stdin()
+		[[nodiscard]] status state_view::load_stdin(load_mode mode)
 		{
-			auto const result = luaL_loadfilex(L, nullptr, detail::get_mode_str(load_mode));
-			return static_cast<lua::status>(result);
+			return static_cast<lua::status>(luaL_loadfilex(L, nullptr, detail::get_mode_str(mode)));
 		}
 
-		[[nodiscard]] status state_view::call(int num_args, int num_results)
+		[[nodiscard]] status state_view::call(int num_args, int num_results, int msg_handler_idx)
 		{
-			auto result = lua_pcall(L, num_args, num_results, msg_handler_idx);
-			return static_cast<lua::status>(result);
+			return static_cast<lua::status>(lua_pcall(L, num_args, num_results, msg_handler_idx));
 		}
 
 		[[nodiscard]] void state_view::call_unprotected(int num_args, int num_results)
@@ -208,9 +189,9 @@ namespace bump
 			lua_call(L, num_args, num_results);
 		}
 
-		[[nodiscard]] status state_view::do_string(std::string const& code, std::string const& chunk_name)
+		[[nodiscard]] status state_view::do_string(std::string const& code, load_mode mode, std::string const& chunk_name)
 		{
-			auto const load_result = load_string(code, chunk_name);
+			auto const load_result = load_string(code, mode, chunk_name);
 
 			if (load_result != lua::status::ok)
 				return load_result;
@@ -218,9 +199,9 @@ namespace bump
 			return call(0, multiple_return);
 		}
 
-		[[nodiscard]] status state_view::do_file(std::string const& path)
+		[[nodiscard]] status state_view::do_file(std::string const& path, load_mode mode)
 		{
-			auto const load_result = load_file(path);
+			auto const load_result = load_file(path, mode);
 
 			if (load_result != lua::status::ok)
 				return load_result;

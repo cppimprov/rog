@@ -69,9 +69,6 @@ namespace bump
 
 			int dump(writer_t writer, void* ud = nullptr, bool strip_debug_info = false);
 
-			load_mode set_load_mode(load_mode mode);
-			int set_msg_handler(int index);
-
 			// MEMORY
 
 			void set_allocator(allocator_t alloc, void* ud);
@@ -97,16 +94,16 @@ namespace bump
 
 			// LOAD / EXECUTE
 			
-			[[nodiscard]] lua::status load(reader_t reader, std::string const& chunk_name = "?", void* ud = nullptr);
-			[[nodiscard]] lua::status load_string(std::string const& code, std::string const& chunk_name = "?");
-			[[nodiscard]] lua::status load_file(std::string const& path);
-			[[nodiscard]] lua::status load_stdin();
+			[[nodiscard]] lua::status load(reader_t reader, load_mode mode = binary | text, std::string const& chunk_name = "?", void* ud = nullptr);
+			[[nodiscard]] lua::status load_string(std::string const& code, load_mode mode = binary | text, std::string const& chunk_name = "?");
+			[[nodiscard]] lua::status load_file(std::string const& path, load_mode mode = binary | text);
+			[[nodiscard]] lua::status load_stdin(load_mode mode = binary | text);
 			
-			[[nodiscard]] lua::status call(int num_args, int num_results);
+			[[nodiscard]] lua::status call(int num_args, int num_results, int msg_handler_idx = no_msg_handler);
 			[[nodiscard]] void call_unprotected(int num_args, int num_results);
 
-			[[nodiscard]] lua::status do_string(std::string const& code, std::string const& chunk_name = "?");
-			[[nodiscard]] lua::status do_file(std::string const& path);
+			[[nodiscard]] lua::status do_string(std::string const& code, load_mode mode = binary | text, std::string const& chunk_name = "?");
+			[[nodiscard]] lua::status do_file(std::string const& path, load_mode mode = binary | text);
 
 			// STACK - MANAGEMENT
 
@@ -258,17 +255,6 @@ namespace bump
 			// THE STATE
 
 			state_t* L;
-
-			// todo: these shouldn't be here? we end up with different message handlers / load modes for 
-			// state views that are supposed to be the same state :(
-
-			// LOADING
-
-			load_mode load_mode = binary | text;
-
-			// MESSAGE HANDLER
-			
-			int msg_handler_idx = lua_no_msg_handler;
 		};
 		
 		int throw_runtime_error(state_t* L);
