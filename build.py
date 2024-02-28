@@ -237,15 +237,6 @@ class PlatformMSVC:
 		json.defines = [ '_SILENCE_CXX20_CISO646_REMOVED_WARNING' ]
 		# header only - don't write
 
-		box2d = ProjectStaticLib.from_name('box2d', self, build_type)
-		box2d.inc_dirs = [ join_dir(box2d.code_dir, 'include'), join_dir(box2d.code_dir, 'src') ]
-		self.write_static_lib(n, build_type, box2d, '3')
-
-		enet = ProjectStaticLib.from_name('enet', self, build_type)
-		enet.defines = [ '_WINSOCK_DEPRECATED_NO_WARNINGS' ]
-		enet.inc_dirs = [ join_dir(enet.code_dir, 'include') ]
-		self.write_static_lib(n, build_type, enet, '3')
-		
 		freetype = ProjectStaticLib.from_name('freetype', self, build_type)
 		freetype.defines = [ '_LIB', '_CRT_SECURE_NO_WARNINGS', 'FT2_BUILD_LIBRARY', 'FT_CONFIG_OPTION_ERROR_STRINGS' ]
 		freetype.inc_dirs = [ join_dir(freetype.code_dir, 'include') ]
@@ -520,11 +511,10 @@ class PlatformMSVC:
 		bump_core_dirs = [ 'debug', 'io', 'math', 'net', 'util' ]
 
 		bump = ProjectStaticLib.from_name('bump', self, build_type)
-		bump.defines = entt.defines + enet.defines + freetype.defines + harfbuzz.defines + glew.defines + json.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
+		bump.defines = entt.defines + freetype.defines + harfbuzz.defines + glew.defines + json.defines + stb.defines + glm.defines + sdl.defines + [ 'MUSIC_WAV' ]  + [ 'BUMP_NET_WS2' ]
 		bump.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
-			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
@@ -548,7 +538,6 @@ class PlatformMSVC:
 		rog.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
-			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
@@ -560,7 +549,6 @@ class PlatformMSVC:
 		]
 		rog.inc_dirs = rog.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		rog.libs = [
-			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
@@ -583,135 +571,12 @@ class PlatformMSVC:
 		]
 		rog_ascii_gen.inc_dirs = rog_ascii_gen.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		rog_ascii_gen.libs = [
-			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
 			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
 		self.write_exe(n, build_type, rog_ascii_gen)
-
-		rog_server = ProjectExe.from_name('rog_server', self, build_type)
-		rog_server.defines = bump.defines
-		rog_server.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			glm.code_dir,
-		]
-		rog_server.inc_dirs = rog_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
-		rog_server.libs = [
-			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
-		]
-		rog_server.standard_libs = [ 'Ws2_32.lib' ]
-		self.write_exe(n, build_type, rog_server)
-
-		rog_chat_client = ProjectExe.from_name('rog_chat_client', self, build_type)
-		rog_chat_client.defines = bump.defines
-		rog_chat_client.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			glm.code_dir,
-		]
-		rog_chat_client.inc_dirs = rog_chat_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
-		rog_chat_client.libs = [
-			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
-		]
-		rog_chat_client.standard_libs = [ 'Ws2_32.lib' ]
-		self.write_exe(n, build_type, rog_chat_client)
-		
-		rog_chat_server = ProjectExe.from_name('rog_chat_server', self, build_type)
-		rog_chat_server.defines = bump.defines
-		rog_chat_server.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			glm.code_dir,
-		]
-		rog_chat_server.inc_dirs = rog_chat_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_core_dirs]
-		rog_chat_server.libs = [
-			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
-		]
-		rog_chat_server.standard_libs = [ 'Ws2_32.lib' ]
-		self.write_exe(n, build_type, rog_chat_server)
-
-		ta = ProjectStaticLib.from_name('ta', self, build_type)
-		ta.defines = bump.defines
-		ta.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			join_dir(box2d.code_dir, 'include'),
-			join_dir(enet.code_dir, 'include'),
-			glew.code_dir,
-			glm.code_dir,
-			join_dir(sdl.code_dir, 'include'),
-		]
-		ta.inc_dirs = ta.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
-		self.write_static_lib(n, build_type, ta)
-
-		ta_server = ProjectExe.from_name('ta_server', self, build_type)
-		ta_server.defines = bump.defines
-		ta_server.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			join_dir(box2d.code_dir, 'include'),
-			join_dir(enet.code_dir, 'include'),
-			join_dir(freetype.code_dir, 'include'),
-			join_dir(harfbuzz.code_dir, 'src'),
-			glew.code_dir,
-			stb.code_dir,
-			glm.code_dir,
-			join_dir(sdl.code_dir, 'include'),
-			sdlmixer.code_dir,
-			ta.code_dir,
-		]
-		ta_server.inc_dirs = ta_server.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
-		ta_server.libs = [
-			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
-			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
-			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
-			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
-			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
-			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
-			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
-			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
-			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
-			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
-			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
-		]
-		ta_server.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
-		self.write_exe(n, build_type, ta_server)
-
-		ta_client = ProjectExe.from_name('ta_client', self, build_type)
-		ta_client.defines = bump.defines
-		ta_client.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			join_dir(box2d.code_dir, 'include'),
-			join_dir(enet.code_dir, 'include'),
-			join_dir(freetype.code_dir, 'include'),
-			join_dir(harfbuzz.code_dir, 'src'),
-			glew.code_dir,
-			stb.code_dir,
-			glm.code_dir,
-			join_dir(sdl.code_dir, 'include'),
-			sdlmixer.code_dir,
-			ta.code_dir,
-		]
-		ta_client.inc_dirs = ta_client.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
-		ta_client.libs = [
-			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
-			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
-			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
-			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
-			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
-			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
-			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
-			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
-			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
-			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
-			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
-		]
-		ta_client.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
-		self.write_exe(n, build_type, ta_client)
 
 		# include all the test files (.test.cpp extension) in a source file so the linker doesn't
 		# think they are unreferenced and remove them
@@ -726,8 +591,6 @@ class PlatformMSVC:
 		test.inc_dirs = [
 			entt.code_dir,
 			json.code_dir,
-			join_dir(box2d.code_dir, 'include'),
-			join_dir(enet.code_dir, 'include'),
 			join_dir(freetype.code_dir, 'include'),
 			join_dir(gtest.code_dir, 'include'),
 			join_dir(harfbuzz.code_dir, 'src'),
@@ -736,12 +599,9 @@ class PlatformMSVC:
 			glm.code_dir,
 			join_dir(sdl.code_dir, 'include'),
 			sdlmixer.code_dir,
-			ta.code_dir,
 			bump.code_dir,
 		] + [join_dir(bump.code_dir, d) for d in bump_dirs]
 		test.libs = [
-			join_file(box2d.deploy_dir, self.get_lib_name(box2d.project_name)),
-			join_file(enet.deploy_dir, self.get_lib_name(enet.project_name)),
 			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
 			join_file(gtest.deploy_dir, self.get_lib_name(gtest.project_name)),
 			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
@@ -751,21 +611,9 @@ class PlatformMSVC:
 			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
 			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
-			join_file(ta.deploy_dir, self.get_lib_name(ta.project_name)),
 		]
 		test.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
 		self.write_exe(n, build_type, test)
-
-		luups = ProjectExe.from_name('luups', self, build_type)
-		luups.defines = lualib.defines + glm.defines
-		luups.inc_dirs = [ 
-			glm.code_dir,
-			lualib.code_dir,
-		]
-		luups.libs = [
-			join_file(lualib.deploy_dir, self.get_lib_name(lualib.project_name)),
-		]
-		self.write_exe(n, build_type, luups)
 
 class PlatformGCC:
 
@@ -908,44 +756,7 @@ class PlatformGCC:
 		bump_core.inc_dirs = bump_core.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
 		self.write_static_lib(n, build_type, bump_core)
 
-		rog_server = ProjectExe.from_name('rog_server', self, build_type)
-		rog_server.defines = bump_core.defines
-		rog_server.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			glm.code_dir,
-		]
-		rog_server.inc_dirs = rog_server.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
-		rog_server.libs = [
-			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
-		]
-		self.write_exe(n, build_type, rog_server)
-		
-		rog_chat_client = ProjectExe.from_name('rog_chat_client', self, build_type)
-		rog_chat_client.defines = bump_core.defines
-		rog_chat_client.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			glm.code_dir,
-		]
-		rog_chat_client.inc_dirs = rog_chat_client.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
-		rog_chat_client.libs = [
-			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
-		]
-		self.write_exe(n, build_type, rog_chat_client)
-		
-		rog_chat_server = ProjectExe.from_name('rog_chat_server', self, build_type)
-		rog_chat_server.defines = bump_core.defines
-		rog_chat_server.inc_dirs = [
-			entt.code_dir,
-			json.code_dir,
-			glm.code_dir,
-		]
-		rog_chat_server.inc_dirs = rog_chat_server.inc_dirs + [join_dir(bump_core.code_dir, d) for d in bump_core_dirs]
-		rog_chat_server.libs = [
-			join_file(bump_core.deploy_dir, self.get_lib_name(bump_core.project_name)),
-		]
-		self.write_exe(n, build_type, rog_chat_server)
+		# todo: update me!
 
 
 def write(platform, build_type, build_file_name):
@@ -1024,36 +835,6 @@ def main():
 			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
 			'Data/rog_ascii_gen', 
 			get_deploy_dir('rog_ascii_gen', platform_writer.get_platform_name(), build_type) + '/data'])
-			
-		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
-		if copy_result > 8:
-			print('failed to copy data files!')
-			return
-
-		copy_result = subprocess.call(['robocopy', 
-			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
-			'Data/ta_server', 
-			get_deploy_dir('ta_server', platform_writer.get_platform_name(), build_type) + '/data'])
-			
-		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
-		if copy_result > 8:
-			print('failed to copy data files!')
-			return
-		
-		copy_result = subprocess.call(['robocopy', 
-			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
-			'Data/ta_client', 
-			get_deploy_dir('ta_client', platform_writer.get_platform_name(), build_type) + '/data'])
-			
-		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
-		if copy_result > 8:
-			print('failed to copy data files!')
-			return
-		
-		copy_result = subprocess.call(['robocopy', 
-			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
-			'Data/luups', 
-			get_deploy_dir('luups', platform_writer.get_platform_name(), build_type) + '/data'])
 			
 		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
 		if copy_result > 8:
