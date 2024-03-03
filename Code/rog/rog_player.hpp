@@ -1,8 +1,6 @@
 #pragma once
 
 #include "rog_direction.hpp"
-#include "rog_feature.hpp"
-#include "rog_screen_cell.hpp"
 
 #include <bump_grid.hpp>
 #include <bump_math.hpp>

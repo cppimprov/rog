@@ -9,15 +9,15 @@ namespace rog
 	{
 		switch (dir)
 		{
-		case direction::LEFT_UP:    return { -1, -1 };
+		case direction::UP_LEFT:    return { -1, -1 };
 		case direction::UP:         return {  0, -1 };
-		case direction::RIGHT_UP:   return {  1, -1 };
+		case direction::UP_RIGHT:   return {  1, -1 };
 		case direction::LEFT:       return { -1,  0 };
 		case direction::NONE:       return {  0,  0 };
 		case direction::RIGHT:      return {  1,  0 };
-		case direction::LEFT_DOWN:  return { -1,  1 };
+		case direction::DOWN_LEFT:  return { -1,  1 };
 		case direction::DOWN:       return {  0,  1 };
-		case direction::RIGHT_DOWN: return {  1,  1 };
+		case direction::DOWN_RIGHT: return {  1,  1 };
 		}
 
 		bump::die();

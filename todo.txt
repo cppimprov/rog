@@ -1,8 +1,17 @@
 
-TODO:
+ * Simplify the tile renderer -> it should just take vectors of instance data,
+ rather than storing them internally, and converting from screen to instance data.
+ It shouldn't know anything about the screen buffer. Don't store tile size in tile
+ renderer... pass it in with the other data.
 
-NET:
-	* Create test server / client that run on both Windows and WSL.
+ * Move stuff out of `screen` namespace and give functions better names (e.g. draw_screen instead of screen::draw).
+
+ * Merge a bunch of headers / code together, so it's less fragmented...
+
+ * Change components to use c_* prefix, instead of comp_
+ * Put all the ecs stuff in one place?
+ * Put all the util stuff in a rog_defines.cpp file, instead of spreading it around.
+
 
 UI:
 

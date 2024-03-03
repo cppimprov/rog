@@ -7,15 +7,15 @@ namespace rog
 	
 	enum class direction
 	{
-		LEFT_UP,
+		UP_LEFT,
 		UP,
-		RIGHT_UP,
+		UP_RIGHT,
 		LEFT,
 		NONE,
 		RIGHT,
-		LEFT_DOWN,
+		DOWN_LEFT,
 		DOWN,
-		RIGHT_DOWN,
+		DOWN_RIGHT,
 	};
 
 	glm::ivec2 get_direction_vector(direction dir);

@@ -3,7 +3,7 @@
 #include "rog_colors.hpp"
 #include "rog_entity.hpp"
 #include "rog_level.hpp"
-#include "rog_screen_cell.hpp"
+#include "rog_screen.hpp"
 
 namespace rog
 {

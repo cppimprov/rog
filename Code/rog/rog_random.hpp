@@ -15,13 +15,6 @@ namespace rog
 
 		rng_t seed_rng();
 
-		template<class T>
-		T rand_01(rng_t& rng)
-		{
-			using dist_t = std::uniform_real_distribution<T>;
-			return dist_t(T{0}, T{1})(rng);
-		}
-
 		namespace impl
 		{
 			template<class T, class = void> struct rand_range_dist_t;
@@ -34,6 +27,7 @@ namespace rog
 		T rand_range(rng_t& rng, T min, T max)
 		{
 			using dist_t = impl::rand_range_dist_t<T>::type;
+
 			return dist_t(min, max)(rng);
 		}
 
@@ -41,12 +35,19 @@ namespace rog
 		glm::vec<S, T, Q> rand_range(rng_t& rng, glm::vec<S, T, Q> min, glm::vec<S, T, Q> max)
 		{
 			auto out = glm::vec<S, T, Q>();
+
 			for (auto i = glm::length_t{ 0 }; i != S; ++i)
 				out[i] = rand_range(rng, min[i], max[i]);
 			
 			return out;
 		}
 		
+		template<class T>
+		T rand_01(rng_t& rng)
+		{
+			return rand_range(rng, T{ 0 }, T{ 1 });
+		}
+
 	} // random
 	
 } // rog

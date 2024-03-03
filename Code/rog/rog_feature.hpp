@@ -1,7 +1,7 @@
 #pragma once
 
 #include "rog_colors.hpp"
-#include "rog_screen_cell.hpp"
+#include "rog_screen.hpp"
 
 #include <bump_grid.hpp>
 

@@ -51,13 +51,7 @@
             "options": [
                 "rog",
                 "rog_ascii_gen",
-                "rog_server",
-                "rog_chat_server",
-                "rog_chat_client",
-                "ta_server",
-                "ta_client",
                 "test",
-                "luups",
             ]
         },
         {

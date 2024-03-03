@@ -2,6 +2,7 @@
 #include "rog_actor.hpp"
 #include "rog_colors.hpp"
 #include "rog_direction.hpp"
+#include "rog_drawing.hpp"
 #include "rog_entity.hpp"
 #include "rog_feature.hpp"
 #include "rog_level_gen.hpp"
@@ -9,7 +10,7 @@
 #include "rog_player.hpp"
 #include "rog_player_action.hpp"
 #include "rog_random.hpp"
-#include "rog_screen_drawing.hpp"
+#include "rog_screen.hpp"
 #include "rog_tile_renderer.hpp"
 
 #include <bump_app.hpp>
@@ -50,10 +51,14 @@ namespace rog
 		auto rng = random::seed_rng();
 
 		auto const tile_size = glm::ivec2{ 24, 36 };
-		auto tile_renderer = rog::tile_renderer(app, glm::vec2(tile_size));
+		auto const& tile_shader = app.m_assets.m_shaders.at("tile");
+		auto const& tile_texture = app.m_assets.m_textures_2d_array.at("ascii_tiles");
+		auto tile_instances = tile_instance_data{ };
+		auto tile_renderer = rog::tile_renderer(tile_shader, tile_texture, glm::vec2(tile_size));
 
-		auto screen_buffer = bump::grid2<screen::cell>();
-		screen::resize(screen_buffer, app.m_window.get_size(), tile_size, { '#', colors::light_red, colors::dark_red });
+		auto screen = rog::screen();
+		auto const debug_cell = rog::screen::cell{ '#', colors::light_red, colors::dark_red };
+		screen.resize(glm::size2(app.m_window.get_size() / tile_size), debug_cell);
 
 		auto app_events   = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -93,7 +98,6 @@ namespace rog
 					{
 						auto const& p = std::get<ae::pause>(event);
 						app_paused = p.m_pause; // todo: mute audio, etc.
-
 						continue;
 					}
 
@@ -101,10 +105,7 @@ namespace rog
 					{
 						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
-
-						screen::resize(screen_buffer, window_size, tile_size, 
-							{ ' ', glm::vec3(1.0), glm::vec3(1.0, 0.0, 1.0) });
-
+						screen.resize(glm::size2(window_size / tile_size), debug_cell);
 						continue;
 					}
 				}
@@ -131,14 +132,14 @@ namespace rog
 							player_paused = !player_paused;
 
 						// action inputs
-						else if (k.m_key == kt::NUM7 && k.m_value) queued_action = player_actions::move{ direction::LEFT_UP };
+						else if (k.m_key == kt::NUM7 && k.m_value) queued_action = player_actions::move{ direction::UP_LEFT };
 						else if (k.m_key == kt::NUM8 && k.m_value) queued_action = player_actions::move{ direction::UP };
-						else if (k.m_key == kt::NUM9 && k.m_value) queued_action = player_actions::move{ direction::RIGHT_UP };
+						else if (k.m_key == kt::NUM9 && k.m_value) queued_action = player_actions::move{ direction::UP_RIGHT };
 						else if (k.m_key == kt::NUM4 && k.m_value) queued_action = player_actions::move{ direction::LEFT };
 						else if (k.m_key == kt::NUM6 && k.m_value) queued_action = player_actions::move{ direction::RIGHT };
-						else if (k.m_key == kt::NUM1 && k.m_value) queued_action = player_actions::move{ direction::LEFT_DOWN };
+						else if (k.m_key == kt::NUM1 && k.m_value) queued_action = player_actions::move{ direction::DOWN_LEFT };
 						else if (k.m_key == kt::NUM2 && k.m_value) queued_action = player_actions::move{ direction::DOWN };
-						else if (k.m_key == kt::NUM3 && k.m_value) queued_action = player_actions::move{ direction::RIGHT_DOWN };
+						else if (k.m_key == kt::NUM3 && k.m_value) queued_action = player_actions::move{ direction::DOWN_RIGHT };
 						else if (k.m_key == kt::DOT && k.m_value && k.m_mods.shift())   queued_action = player_actions::use_stairs{ stairs_direction::DOWN };
 						else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift()) queued_action = player_actions::use_stairs{ stairs_direction::UP };
 
@@ -153,7 +154,7 @@ namespace rog
 						auto const& m = std::get<ie::mouse_motion>(event);
 
 						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const origin = screen::get_panel_origin(level.m_grid.extents(), screen_buffer.extents(), player_pos);
+						auto const origin = get_panel_origin(level.m_grid.extents(), screen.m_buffer.extents(), player_pos);
 
 						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
 						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
@@ -176,7 +177,7 @@ namespace rog
 							continue;
 						
 						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const origin = screen::get_panel_origin(level.m_grid.extents(), screen_buffer.extents(), player_pos);
+						auto const origin = get_panel_origin(level.m_grid.extents(), screen.m_buffer.extents(), player_pos);
 
 						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
 						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
@@ -292,8 +293,9 @@ namespace rog
 			
 			// drawing - todo: only if something changes?
 			{
-				screen::fill(screen_buffer, { ' ', colors::black, colors::black });
-				screen::draw(screen_buffer, level, queued_path, hovered_tile);
+				screen.fill(debug_cell);
+
+				draw_level(screen, level, queued_path, hovered_tile);
 			}
 
 			// render
@@ -308,7 +310,15 @@ namespace rog
 				renderer.clear_depth_buffers();
 				renderer.set_viewport({ 0, 0 }, window_size_u);
 
-				tile_renderer.render(renderer, window_size_f, screen_buffer);
+				// todo: move this elsewhere?
+				auto camera = bump::orthographic_camera();
+				camera.m_projection.m_size = window_size_f;
+				camera.m_viewport.m_size = window_size_f;
+				bump::rotate_around_local_axis(camera.m_transform, glm::vec3{ 1.f, 0.f, 0.f }, glm::radians(-90.f));
+				auto const matrices = bump::camera_matrices(camera);
+
+				prepare_instance_data(screen, window_size_f, glm::vec2(tile_size), tile_instances);
+				tile_renderer.render(renderer, matrices, tile_instances);
 
 				app.m_window.swap_buffers();
 			}

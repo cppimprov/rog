@@ -16,8 +16,9 @@ namespace rog
 			std::generate_n(seq.begin(), rng_t::state_size, std::ref(rd));
 
 			auto seed = std::seed_seq(seq.begin(), seq.end());
+			auto rng = rng_t(seed);
 
-			return rng_t(seed);
+			return rng;
 		}
 		
 	} // random
