@@ -14,10 +14,10 @@ namespace bump
 	namespace grid_detail
 	{
 
-		template<std::size_t D, glm::qualifier Q>
-		constexpr std::size_t get_data_size(glm::vec<D, std::size_t, Q> extents)
+		template<std::size_t D, class L, glm::qualifier Q>
+		constexpr L get_data_size(glm::vec<D, L, Q> extents)
 		{
-			auto r = std::size_t{ 1 };
+			auto r = L{ 1 };
 
 			for (auto i : range(0, D))
 				r *= extents[i];
@@ -25,11 +25,11 @@ namespace bump
 			return r;
 		}
 
-		template<std::size_t D, glm::qualifier Q>
-		constexpr glm::vec<D, std::size_t, Q> get_dimension_multipliers(glm::vec<D, std::size_t, Q> extents)
+		template<std::size_t D, class L, glm::qualifier Q>
+		constexpr glm::vec<D, L, Q> get_dimension_multipliers(glm::vec<D, L, Q> extents)
 		{
-			auto sum = std::size_t{ 1 };
-			auto multipliers = glm::vec<D, std::size_t, Q>(0);
+			auto sum = L{ 1 };
+			auto multipliers = glm::vec<D, L, Q>(0);
 
 			for (auto i : range(0, D))
 			{
@@ -43,24 +43,25 @@ namespace bump
 			return multipliers;
 		}
 
-		template<std::size_t D, glm::qualifier Q>
-		constexpr std::size_t to_index(glm::vec<D, std::size_t, Q> extents, glm::vec<D, std::size_t, Q> coords)
+		template<std::size_t D, class L, glm::qualifier Q>
+		constexpr L to_index(glm::vec<D, L, Q> extents, glm::vec<D, L, Q> coords)
 		{
 			auto const multipliers = get_dimension_multipliers(extents);
 
-			auto r = std::size_t{ 0 };
+			auto r = L{ 0 };
+
 			for (auto i : range(0, D))
 				r += coords[i] * multipliers[i];
 			
 			return r;
 		}
 		
-		template<std::size_t D, glm::qualifier Q>
-		constexpr glm::vec<D, std::size_t, Q> to_coords(glm::vec<D, std::size_t, Q> extents, std::size_t index)
+		template<std::size_t D, class L, glm::qualifier Q>
+		constexpr glm::vec<D, L, Q> to_coords(glm::vec<D, L, Q> extents, L index)
 		{
 			auto const multipliers = get_dimension_multipliers(extents);
 
-			auto r = glm::vec<D, std::size_t, Q>(0);
+			auto r = glm::vec<D, L, Q>(0);
 
 			for (auto i : range(0, D))
 			{
@@ -74,7 +75,7 @@ namespace bump
 
 	} // grid_detail
 
-	template<class T, std::size_t D, glm::qualifier Q = glm::defaultp>
+	template<class T, std::size_t D, class C = glm::vec<D, glm::length_t, glm::defaultp> >
 	class grid
 	{
 	public:
@@ -82,8 +83,8 @@ namespace bump
 		static_assert(D > 0, "grid<T, D>: dimensions must not be zero.");
 
 		using value_type = T;
-		using size_type = std::size_t;
-		using extents_type = glm::vec<D, std::size_t, Q>;
+		using size_type = typename C::length_type;
+		using coords_type = C;
 		using data_type = std::vector<value_type>;
 		using iterator = typename data_type::iterator;
 		using const_iterator = typename data_type::const_iterator;
@@ -93,10 +94,10 @@ namespace bump
 		constexpr grid():
 			m_extents(0), m_data() { }
 
-		explicit constexpr grid(extents_type extents):
+		explicit constexpr grid(coords_type extents):
 			grid(extents, value_type()) { }
 
-		explicit constexpr grid(extents_type extents, value_type const& value):
+		explicit constexpr grid(coords_type extents, value_type const& value):
 			m_extents(extents), m_data(size(), value) { }
 
 		constexpr grid(grid const&) = default;
@@ -105,15 +106,15 @@ namespace bump
 		constexpr grid& operator=(grid&&) = default;
 
 		constexpr size_type size() const { return grid_detail::get_data_size(m_extents); }
-		constexpr extents_type extents() const { return m_extents; }
+		constexpr coords_type extents() const { return m_extents; }
 		static constexpr std::size_t dimensions() { return D; }
 
-		constexpr void resize(extents_type extents)
+		constexpr void resize(coords_type extents)
 		{
 			resize(extents, value_type());
 		}
 
-		constexpr void resize(extents_type extents, value_type const& value)
+		constexpr void resize(coords_type extents, value_type const& value)
 		{
 			m_extents = extents;
 			m_data.resize(size(), value);
@@ -121,17 +122,17 @@ namespace bump
 
 		constexpr void clear()
 		{
-			m_extents = extents_type(0);
+			m_extents = coords_type(0);
 			m_data.clear();
 		}
 
 		constexpr value_type& at(size_type index) { return m_data[index]; }
 		constexpr value_type const& at(size_type index) const { return m_data[index]; }
 
-		constexpr value_type& at(extents_type coords) { return at(to_index(coords)); }
-		constexpr value_type const& at(extents_type coords) const { return at(to_index(coords)); }
+		constexpr value_type& at(coords_type coords) { return at(to_index(coords)); }
+		constexpr value_type const& at(coords_type coords) const { return at(to_index(coords)); }
 
-		constexpr size_type to_index(extents_type coords) const { return grid_detail::to_index(m_extents, coords); }
+		constexpr size_type to_index(coords_type coords) const { return grid_detail::to_index(m_extents, coords); }
 		constexpr size_type to_coords(size_type index) const { return grid_detail::to_coords(m_extents, index); }
 
 		iterator begin() { return m_data.begin(); }
@@ -149,7 +150,7 @@ namespace bump
 
 	private:
 
-		extents_type m_extents;
+		coords_type m_extents;
 		data_type m_data;
 	};
 

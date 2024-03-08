@@ -104,8 +104,8 @@ namespace rog
 
 		bool place_monster(level& level, entt::handle monster_handle, random::rng_t& rng)
 		{
-			auto const level_size = level.m_grid.extents();
-			bump::die_if(level_size == glm::size2(0));
+			auto const level_size = level.size();
+			bump::die_if(level_size == glm::ivec2(0));
 
 			auto const pos = [&] ()
 			{
@@ -113,13 +113,13 @@ namespace rog
 				auto constexpr MAX_TRIES = 1000;
 				for (auto t = 0; t != MAX_TRIES; ++t)
 				{
-					auto const pos = random::rand_range(rng, glm::size2{ 0, 0 }, level_size - glm::size2(1));
+					auto const pos = random::rand_range(rng, glm::ivec2(0), level_size - glm::ivec2(1));
 
 					if (is_walkable(level, pos) && !is_occupied(level, pos))
-						return std::optional<glm::size2>(pos);
+						return std::optional<glm::ivec2>(pos);
 				}
 
-				return std::optional<glm::size2>();
+				return std::optional<glm::ivec2>();
 			}();
 
 			if (!pos)
@@ -127,7 +127,7 @@ namespace rog
 
 			monster_handle.get<comp_position>().m_pos = pos.value();
 
-			level.m_actors.at(pos.value()) = monster_handle.entity();
+			level.m_actors.at(glm::size2(pos.value())) = monster_handle.entity();
 
 			return true;
 		}

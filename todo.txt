@@ -1,10 +1,15 @@
 
- * Simplify the tile renderer -> it should just take vectors of instance data,
- rather than storing them internally, and converting from screen to instance data.
- It shouldn't know anything about the screen buffer. Don't store tile size in tile
- renderer... pass it in with the other data.
+ * hovered tile must take sb_origin_px into account!
+ * mouse to sb calculations should use conversion functions!
+ * should hovered tile and queued path really be in level?
+ * move the code to set up the hovered tile / queued path out of main (to level??)
 
- * Move stuff out of `screen` namespace and give functions better names (e.g. draw_screen instead of screen::draw).
+ * use aabb to store rects, instead of separate ivec2s
+ * change get_map_panel_origin to get_map_panel and return aabb
+ * test rendering with different ui panel origins / sizes
+
+ * tidy panel stuff (want to define multiple "panels" or screen areas for ui, etc.)
+ * change grids to use glm::ivec2 coords instead of glm::size2 (specify coord type)
 
  * Merge a bunch of headers / code together, so it's less fragmented...
 
@@ -21,8 +26,4 @@ UI:
 PATHFINDING:
 
 	* Bigger level with more obstacles.
-
-DRAWING:
-
-	* Define screenbuffer region for drawing the level instead of using the whole screen.
-
+	* Varying movement costs for different terrain types.

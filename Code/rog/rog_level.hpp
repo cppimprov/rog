@@ -2,6 +2,7 @@
 
 #include "rog_direction.hpp"
 
+#include <bump_aabb.hpp>
 #include <bump_grid.hpp>
 
 #include <entt.hpp>
@@ -16,20 +17,26 @@ namespace rog
 
 	struct level
 	{
+		glm::ivec2 size() const { return glm::ivec2(m_grid.extents()); }
+		bool in_bounds(glm::ivec2 pos) const { return bump::iaabb2{ glm::ivec2(0), size() }.contains(pos); }
+
 		std::int32_t m_depth;
 		bump::grid2<feature> m_grid;
 
 		entt::registry m_registry;
 		entt::entity m_player;
 		bump::grid2<entt::entity> m_actors;
+
+		std::optional<glm::ivec2> m_hovered_tile;
+		std::vector<glm::ivec2> m_queued_path;
 	};
 
-	bool is_walkable(level const& level, glm::size2 pos);
-	bool is_occupied(level const& level, glm::size2 pos);
+	bool is_walkable(level const& level, glm::ivec2 pos);
+	bool is_occupied(level const& level, glm::ivec2 pos);
 
-	bool move_actor(level& level, entt::entity entity, comp_position& pos, glm::size2 target);
+	bool move_actor(level& level, entt::entity entity, comp_position& pos, glm::ivec2 target);
 	bool move_actor(level& level, entt::entity entity, comp_position& pos, direction dir);
 
-	std::vector<glm::size2> find_path(bump::grid2<feature> const& grid, glm::size2 src, glm::size2 dst);
+	std::vector<glm::ivec2> find_path(bump::grid2<feature> const& grid, glm::ivec2 src, glm::ivec2 dst);
 
 } // rog

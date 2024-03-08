@@ -8,6 +8,12 @@
             "defines": [
                 "LUA_USE_APICHECK",
                 "__cplusplus",
+
+                "GLM_FORCE_EXPLICIT_CTOR",
+                "GLM_FORCE_XYZW_ONLY", 
+                "GLM_FORCE_SIZE_T_LENGTH",
+                "GLM_FORCE_SILENT_WARNINGS",
+                "GLM_FORCE_CTOR_INIT=2",
                 
                 "_DEBUG",
                 "UNICODE",
@@ -28,6 +34,12 @@
             "defines": [
                 "LUA_USE_APICHECK",
                 "__cplusplus",
+                
+                "GLM_FORCE_EXPLICIT_CTOR",
+                "GLM_FORCE_XYZW_ONLY", 
+                "GLM_FORCE_SIZE_T_LENGTH",
+                "GLM_FORCE_SILENT_WARNINGS",
+                "GLM_FORCE_CTOR_INIT=2",
 
                 "_DEBUG",
                 "UNICODE",

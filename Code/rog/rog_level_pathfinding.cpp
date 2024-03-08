@@ -26,16 +26,15 @@ namespace rog
 		return coords.x >= min.x && coords.x < max.x && coords.y >= min.y && coords.y < max.y;
 	}
 
-	std::vector<glm::size2> reconstruct_path(std::unordered_map<glm::ivec2, glm::ivec2> const& parents, glm::size2 src, glm::size2 dst)
+	std::vector<glm::ivec2> reconstruct_path(std::unordered_map<glm::ivec2, glm::ivec2> const& parents, glm::ivec2 src, glm::ivec2 dst)
 	{
-		auto path = std::vector<glm::size2>();
-
+		auto path = std::vector<glm::ivec2>();
 		auto current = dst;
 
 		while (current != src)
 		{
 			path.push_back(current);
-			current = parents.at(glm::ivec2(current));
+			current = parents.at(current);
 		}
 
 		//std::reverse(path.begin(), path.end());
@@ -43,7 +42,7 @@ namespace rog
 		return path;
 	}
 
-	std::vector<glm::size2> find_path(bump::grid2<feature> const& grid, glm::size2 src, glm::size2 dst)
+	std::vector<glm::ivec2> find_path(bump::grid2<feature> const& grid, glm::ivec2 src, glm::ivec2 dst)
 	{
 		bump::die_if(src.x >= grid.extents().x);
 		bump::die_if(src.y >= grid.extents().y);

@@ -20,7 +20,7 @@ namespace rog
 			STAIRS_UP =   1u << 4,
 		};
 		
-		screen::cell m_cell;
+		screen_cell m_cell;
 		flags m_flags;
 	};
 

@@ -2,7 +2,6 @@
 #include "rog_actor.hpp"
 #include "rog_colors.hpp"
 #include "rog_direction.hpp"
-#include "rog_drawing.hpp"
 #include "rog_entity.hpp"
 #include "rog_feature.hpp"
 #include "rog_level_gen.hpp"
@@ -11,7 +10,6 @@
 #include "rog_player_action.hpp"
 #include "rog_random.hpp"
 #include "rog_screen.hpp"
-#include "rog_tile_renderer.hpp"
 
 #include <bump_app.hpp>
 #include <bump_assets.hpp>
@@ -51,14 +49,12 @@ namespace rog
 		auto rng = random::seed_rng();
 
 		auto const tile_size = glm::ivec2{ 24, 36 };
-		auto const& tile_shader = app.m_assets.m_shaders.at("tile");
-		auto const& tile_texture = app.m_assets.m_textures_2d_array.at("ascii_tiles");
-		auto tile_instances = tile_instance_data{ };
-		auto tile_renderer = rog::tile_renderer(tile_shader, tile_texture, glm::vec2(tile_size));
 
-		auto screen = rog::screen();
-		auto const debug_cell = rog::screen::cell{ '#', colors::light_red, colors::dark_red };
-		screen.resize(glm::size2(app.m_window.get_size() / tile_size), debug_cell);
+		auto screen = rog::screen(
+			app.m_assets.m_shaders.at("tile"),
+			app.m_assets.m_textures_2d_array.at("ascii_tiles"),
+			app.m_window.get_size(),
+			tile_size);
 
 		auto app_events   = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -73,9 +69,6 @@ namespace rog
 
 		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
 		auto time_accumulator = bump::high_res_duration_t{ 0 };
-
-		auto hovered_tile = std::optional<glm::size2>();
-		auto queued_path = std::vector<glm::size2>();
 
 		while (true)
 		{
@@ -105,7 +98,7 @@ namespace rog
 					{
 						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
-						screen.resize(glm::size2(window_size / tile_size), debug_cell);
+						screen.resize(window_size, tile_size);
 						continue;
 					}
 				}
@@ -144,7 +137,7 @@ namespace rog
 						else if (k.m_key == kt::COMMA && k.m_value && k.m_mods.shift()) queued_action = player_actions::use_stairs{ stairs_direction::UP };
 
 						if (queued_action.has_value())
-							queued_path.clear();
+							level.m_queued_path.clear();
 
 						continue;
 					}
@@ -154,15 +147,15 @@ namespace rog
 						auto const& m = std::get<ie::mouse_motion>(event);
 
 						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const origin = get_panel_origin(level.m_grid.extents(), screen.m_buffer.extents(), player_pos);
+						auto const origin = get_map_panel_origin(level.size(), screen.size(), player_pos);
 
 						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
 						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
 
 						auto const level_size = level.m_grid.extents();
-						auto const tile = origin + glm::size2(mouse_pos_tiles);
+						auto const tile = origin + mouse_pos_tiles;
 
-						hovered_tile = (tile.x < level_size.x && tile.y < level_size.y) ? std::optional<glm::size2>(tile) : std::optional<glm::size2>(std::nullopt);
+						level.m_hovered_tile = (tile.x < level_size.x && tile.y < level_size.y) ? std::optional<glm::size2>(tile) : std::optional<glm::size2>(std::nullopt);
 
 						continue;
 					}
@@ -177,17 +170,18 @@ namespace rog
 							continue;
 						
 						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const origin = get_panel_origin(level.m_grid.extents(), screen.m_buffer.extents(), player_pos);
+						auto const origin = get_map_panel_origin(level.size(), screen.size(), player_pos);
 
 						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
 						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
 
 						auto const level_size = level.m_grid.extents();
-						auto const tile = origin + glm::size2(mouse_pos_tiles);
+						auto const tile = origin + mouse_pos_tiles;
 
 						if (tile.x < level_size.x && tile.y < level_size.y)
 						{
-							queued_path = find_path(level.m_grid, player_pos, tile);
+							// todo: change find_path to take ivec2
+							level.m_queued_path = find_path(level.m_grid, player_pos, tile);
 							queued_action.reset();
 						}
 
@@ -197,7 +191,7 @@ namespace rog
 			}
 
 			// update
-			{	
+			{
 				if (app_paused || player_paused)
 					time_accumulator = bump::high_res_duration_t{ 0 };
 				else
@@ -253,17 +247,17 @@ namespace rog
 								}
 							}
 						}
-						else if (!queued_path.empty())
+						else if (!level.m_queued_path.empty())
 						{
 							auto& pos = level.m_registry.get<comp_position>(level.m_player);
 
-							auto target = queued_path.back();
-							queued_path.pop_back();
+							auto target = level.m_queued_path.back();
+							level.m_queued_path.pop_back();
 
 							if (!move_actor(level, level.m_player, pos, target))
 							{
 								bump::log_info("There is something in the way.");
-								queued_path.clear();
+								level.m_queued_path.clear();
 							}
 						}
 
@@ -293,34 +287,21 @@ namespace rog
 			
 			// drawing - todo: only if something changes?
 			{
-				screen.fill(debug_cell);
-
-				draw_level(screen, level, queued_path, hovered_tile);
+				screen.draw(level);
 			}
 
 			// render
 			{
-				auto const& window_size = app.m_window.get_size();
-				auto const window_size_f = glm::vec2(window_size);
-				auto const window_size_u = glm::uvec2(window_size);
-
+				auto& window = app.m_window;
 				auto& renderer = app.m_renderer;
 
 				renderer.clear_color_buffers({ 0.f, 0.f, 0.f, 1.f });
 				renderer.clear_depth_buffers();
-				renderer.set_viewport({ 0, 0 }, window_size_u);
+				renderer.set_viewport({ 0, 0 }, glm::uvec2(window.get_size()));
 
-				// todo: move this elsewhere?
-				auto camera = bump::orthographic_camera();
-				camera.m_projection.m_size = window_size_f;
-				camera.m_viewport.m_size = window_size_f;
-				bump::rotate_around_local_axis(camera.m_transform, glm::vec3{ 1.f, 0.f, 0.f }, glm::radians(-90.f));
-				auto const matrices = bump::camera_matrices(camera);
+				screen.render(renderer);
 
-				prepare_instance_data(screen, window_size_f, glm::vec2(tile_size), tile_instances);
-				tile_renderer.render(renderer, matrices, tile_instances);
-
-				app.m_window.swap_buffers();
+				window.swap_buffers();
 			}
 
 			timer.tick();

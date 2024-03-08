@@ -7,20 +7,19 @@
 namespace rog
 {
 	
-	bool is_walkable(level const& level, glm::size2 pos)
+	bool is_walkable(level const& level, glm::ivec2 pos)
 	{
-		return !(level.m_grid.at(pos).m_flags & feature::flags::NO_WALK);
+		return !(level.m_grid.at(glm::size2(pos)).m_flags & feature::flags::NO_WALK);
 	}
 
-	bool is_occupied(level const& level, glm::size2 pos)
+	bool is_occupied(level const& level, glm::ivec2 pos)
 	{
-		return level.m_actors.at(pos) != entt::null;
+		return level.m_actors.at(glm::size2(pos)) != entt::null;
 	}
 
-	bool move_actor(level& level, entt::entity entity, comp_position& pos, glm::size2 target)
+	bool move_actor(level& level, entt::entity entity, comp_position& pos, glm::ivec2 target)
 	{
-		auto const& grid = level.m_grid;
-		auto const level_size = grid.extents();
+		auto const level_size = level.size();
 
 		bump::die_if(level_size.x == 0 || level_size.y == 0);
 		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
@@ -30,9 +29,9 @@ namespace rog
 
 		if (!is_walkable(level, target) || is_occupied(level, target)) return false;
 
-		level.m_actors.at(pos.m_pos) = entt::null;
+		level.m_actors.at(glm::size2(pos.m_pos)) = entt::null;
 		pos.m_pos = target;
-		level.m_actors.at(pos.m_pos) = entity;
+		level.m_actors.at(glm::size2(pos.m_pos)) = entity;
 
 		return true;
 	}
@@ -40,8 +39,7 @@ namespace rog
 	bool move_actor(level& level, entt::entity entity, comp_position& pos, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);
-		auto const& grid = level.m_grid;
-		auto const level_size = grid.extents();
+		auto const level_size = level.size();
 
 		bump::die_if(level_size.x == 0 || level_size.y == 0);
 		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
@@ -51,13 +49,13 @@ namespace rog
 		if (pos.m_pos.y == 0 && vec.y < 0) return false;
 		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return false;
 
-		auto const target = pos.m_pos + glm::size2(vec);
+		auto const target = pos.m_pos + vec;
 
 		if (!is_walkable(level, target) || is_occupied(level, target)) return false;
 
-		level.m_actors.at(pos.m_pos) = entt::null;
+		level.m_actors.at(glm::size2(pos.m_pos)) = entt::null;
 		pos.m_pos = target;
-		level.m_actors.at(pos.m_pos) = entity;
+		level.m_actors.at(glm::size2(pos.m_pos)) = entity;
 
 		return true;
 	}
