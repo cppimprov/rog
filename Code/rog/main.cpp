@@ -147,15 +147,12 @@ namespace rog
 						auto const& m = std::get<ie::mouse_motion>(event);
 
 						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const origin = get_map_panel_origin(level.size(), screen.size(), player_pos);
+						auto const map_panel_origin_lv = get_map_panel_origin(level.size(), screen.size(), player_pos);
+						auto const mouse_pos_sb = screen_px_to_buffer_cell(m.m_position, screen.m_sb_origin_px, screen.m_tile_size_px, screen.size());
+						auto const mouse_pos_pn = buffer_cell_to_panel_cell(mouse_pos_sb, { 0, 0 });
+						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_origin_lv);
 
-						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
-						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
-
-						auto const level_size = level.m_grid.extents();
-						auto const tile = origin + mouse_pos_tiles;
-
-						level.m_hovered_tile = (tile.x < level_size.x && tile.y < level_size.y) ? std::optional<glm::size2>(tile) : std::optional<glm::size2>(std::nullopt);
+						level.m_hovered_tile = level.in_bounds(mouse_pos_lv) ? std::optional<glm::ivec2>(mouse_pos_lv) : std::optional<glm::ivec2>();
 
 						continue;
 					}
@@ -169,19 +166,15 @@ namespace rog
 						if (m.m_button != bt::LEFT)
 							continue;
 						
-						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const origin = get_map_panel_origin(level.size(), screen.size(), player_pos);
+						auto const player_pos_lv = level.m_registry.get<comp_position>(level.m_player).m_pos;
+						auto const map_panel_origin_lv = get_map_panel_origin(level.size(), screen.size(), player_pos_lv);
+						auto const mouse_pos_sb = screen_px_to_buffer_cell(m.m_position, screen.m_sb_origin_px, screen.m_tile_size_px, screen.size());
+						auto const mouse_pos_pn = buffer_cell_to_panel_cell(mouse_pos_sb, { 0, 0 });
+						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_origin_lv);
 
-						auto const mouse_pos_px = glm::ivec2{ m.m_position.x, (app.m_window.get_size().y - 1) - m.m_position.y };
-						auto const mouse_pos_tiles = mouse_pos_px / tile_size;
-
-						auto const level_size = level.m_grid.extents();
-						auto const tile = origin + mouse_pos_tiles;
-
-						if (tile.x < level_size.x && tile.y < level_size.y)
+						if (level.in_bounds(mouse_pos_lv))
 						{
-							// todo: change find_path to take ivec2
-							level.m_queued_path = find_path(level.m_grid, player_pos, tile);
+							level.m_queued_path = find_path(level.m_grid, player_pos_lv, mouse_pos_lv);
 							queued_action.reset();
 						}
 

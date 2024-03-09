@@ -81,22 +81,11 @@ namespace rog
 	/*
 	 * Coordinate systems:
 	 *
-	 * window: (0, 0) is top-left (SDL convention)
 	 * screen: (0, 0) is bottom-left (OpenGL convention)
 	 * screenbuffer: (0, 0) is top-left
 	 * level: (0, 0) is top-left
 	 * 
 	 */
-
-	inline glm::ivec2 window_px_to_screen_px(glm::ivec2 px, glm::ivec2 window_size_px)
-	{
-		return { px.x, (window_size_px.y - 1) - px.y };
-	}
-	
-	inline glm::ivec2 screen_px_to_window_px(glm::ivec2 px, glm::ivec2 window_size_px)
-	{
-		return { px.x, (window_size_px.y - 1) - px.y };
-	}
 
 	inline glm::ivec2 screen_px_to_buffer_cell(glm::ivec2 px, glm::ivec2 sb_origin_px, glm::ivec2 tile_size_px, glm::ivec2 sb_size_sb)
 	{
@@ -145,8 +134,6 @@ namespace rog
 
 		void draw(level& level);
 		void render(bump::gl::renderer& renderer);
-
-	private:
 
 		glm::ivec2 m_window_size_px;
 		glm::ivec2 m_tile_size_px;
