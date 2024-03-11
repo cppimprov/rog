@@ -2,8 +2,6 @@
 
 #include "rog_ecs.hpp"
 #include "rog_feature.hpp"
-#include "rog_monster.hpp"
-#include "rog_player.hpp"
 #include "rog_random.hpp"
 
 #include <bump_die.hpp>

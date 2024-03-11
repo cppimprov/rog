@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rog_direction.hpp"
+#include "rog_feature.hpp"
 
 #include <bump_aabb.hpp>
 #include <bump_grid.hpp>
@@ -13,7 +14,6 @@ namespace rog
 {
 
 	struct c_position;
-	struct feature;
 	struct screen_buffer;
 
 	struct level
