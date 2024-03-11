@@ -1,9 +1,4 @@
 
-now:
-
- * add border rendering code to highlight tiles (under mouse, queued action).
- * put is_walkable, is_occupied and move_actor functions into level.
-
 message log:
  * add msg_log to show messages, with draw function to show in screenbuffer (add function to draw clipped text to a specified area).
  * add boolean flag to show expanded log, with scrolling to view message history.

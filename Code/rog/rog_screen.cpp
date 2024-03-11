@@ -97,10 +97,85 @@ namespace rog
 		renderer.clear_program();
 	}
 
-	screen::screen(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture, glm::ivec2 window_size_px, glm::ivec2 tile_size_px):
+	tile_border_renderable::tile_border_renderable(bump::gl::shader_program const& shader):
+		m_shader(&shader),
+		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
+		m_in_VertexLerp(shader.get_attribute_location("in_VertexLerp")),
+		m_in_BorderPosition(shader.get_attribute_location("in_BorderPosition")),
+		m_in_BorderWidth(shader.get_attribute_location("in_BorderWidth")),
+		m_in_BorderColor(shader.get_attribute_location("in_BorderColor")),
+		m_u_TileSize(shader.get_uniform_location("u_TileSize")),
+		m_u_MVP(shader.get_uniform_location("u_MVP"))
+	{
+		auto const vertices =
+		{
+			0.f, 0.f,  1.f, 0.f,  1.f, 0.f,  0.f, 0.f,  1.f, 0.f,  0.f, 0.f,  
+			1.f, 0.f,  1.f, 1.f,  1.f, 1.f,  1.f, 0.f,  1.f, 1.f,  1.f, 0.f,  
+			1.f, 1.f,  0.f, 1.f,  0.f, 1.f,  1.f, 1.f,  0.f, 1.f,  1.f, 1.f,  
+			0.f, 1.f,  0.f, 0.f,  0.f, 0.f,  0.f, 1.f,  0.f, 0.f,  0.f, 1.f,  
+		};
+
+		m_vertex_buffer.set_data(GL_ARRAY_BUFFER, vertices.begin(), 2, 24, GL_STATIC_DRAW);
+		m_vertex_array.set_array_buffer(m_in_VertexPosition, m_vertex_buffer);
+
+		auto const vertex_lerp =
+		{
+			0.f, 0.f, 1.f, 0.f, 1.f, 1.f,
+			0.f, 0.f, 1.f, 0.f, 1.f, 1.f,
+			0.f, 0.f, 1.f, 0.f, 1.f, 1.f,
+			0.f, 0.f, 1.f, 0.f, 1.f, 1.f,
+		};
+
+		m_vertex_lerp_buffer.set_data(GL_ARRAY_BUFFER, vertex_lerp.begin(), 1, 24, GL_STATIC_DRAW);
+		m_vertex_array.set_array_buffer(m_in_VertexLerp, m_vertex_lerp_buffer);
+
+		m_border_positions_buffer.set_data(GL_ARRAY_BUFFER, (float*)nullptr, 2, 0, GL_STREAM_DRAW);
+		m_vertex_array.set_array_buffer(m_in_BorderPosition, m_border_positions_buffer, 1);
+
+		m_border_widths_buffer.set_data(GL_ARRAY_BUFFER, (float*)nullptr, 1, 0, GL_STREAM_DRAW);
+		m_vertex_array.set_array_buffer(m_in_BorderWidth, m_border_widths_buffer, 1);
+		
+		m_border_colors_buffer.set_data(GL_ARRAY_BUFFER, (float*)nullptr, 3, 0, GL_STREAM_DRAW);
+		m_vertex_array.set_array_buffer(m_in_BorderColor, m_border_colors_buffer, 1);
+	}
+
+	void tile_border_renderable::render(
+		bump::gl::renderer& renderer,
+		bump::camera_matrices const& matrices,
+		tile_border_instance_data const& instances,
+		glm::vec2 tile_size_px)
+	{
+		auto const instance_count = instances.positions.size();
+
+		bump::die_if(instances.widths.size() != instance_count);
+		bump::die_if(instances.colors.size() != instance_count);
+
+		if (instance_count == 0)
+			return;
+
+		m_border_positions_buffer.set_data(GL_ARRAY_BUFFER, glm::value_ptr(instances.positions.front()), 2, instance_count, GL_STREAM_DRAW);
+		m_border_widths_buffer.set_data(GL_ARRAY_BUFFER, &instances.widths.front(), 1, instance_count, GL_STREAM_DRAW);
+		m_border_colors_buffer.set_data(GL_ARRAY_BUFFER, glm::value_ptr(instances.colors.front()), 3, instance_count, GL_STREAM_DRAW);
+
+		renderer.set_program(*m_shader);
+		renderer.set_uniform_2f(m_u_TileSize, tile_size_px);
+		renderer.set_uniform_4x4f(m_u_MVP, matrices.model_view_projection_matrix(glm::identity<glm::mat4>()));
+		renderer.set_vertex_array(m_vertex_array);
+
+		renderer.draw_arrays(GL_TRIANGLES, m_vertex_buffer.get_element_count(), instance_count);
+
+		renderer.clear_vertex_array();
+		renderer.clear_program();
+	}
+
+	screen::screen(
+		bump::gl::shader_program const& tile_shader, bump::gl::texture_2d_array const& texture, 
+		bump::gl::shader_program const& border_shader,
+		glm::ivec2 window_size_px, glm::ivec2 tile_size_px):
 		m_window_size_px(window_size_px),
 		m_tile_size_px(tile_size_px),
-		m_tile_renderable(shader, texture)
+		m_tile_renderable(tile_shader, texture),
+		m_tile_border_renderable(border_shader)
 	{
 		resize(window_size_px, tile_size_px);
 	}
@@ -134,7 +209,7 @@ namespace rog
 			return bump::camera_matrices(camera);
 		}
 		
-		void prepare_instances(screen_buffer const& buffer, bump::iaabb2 const& sb_area_px, glm::ivec2 tile_size_px, glm::ivec2 sb_size_sb, tile_instance_data& instances)
+		void prepare_tile_instances(screen_buffer const& buffer, bump::iaabb2 const& sb_area_px, glm::ivec2 tile_size_px, glm::ivec2 sb_size_sb, tile_instance_data& instances)
 		{
 			instances.clear();
 			instances.reserve(buffer.m_data.size());
@@ -156,13 +231,41 @@ namespace rog
 			}
 		}
 
+		void prepare_tile_border_instances(screen_buffer const& buffer, bump::iaabb2 const& sb_area_px, glm::ivec2 tile_size_px, glm::ivec2 sb_size_sb, tile_border_instance_data& instances)
+		{
+			instances.clear();
+			instances.reserve(buffer.m_data.size());
+
+			for (auto y : bump::range(0, buffer.m_data.extents().y))
+			{
+				for (auto x : bump::range(0, buffer.m_data.extents().x))
+				{
+					auto const& cell = buffer.m_data.at({ x, y });
+
+					auto const pos_sb = glm::ivec2{ x, y };
+					auto const pos_px = buffer_cell_to_screen_px(pos_sb, sb_area_px.m_origin, tile_size_px, sb_size_sb);
+
+					if (cell.m_border_width > 0)
+					{
+						instances.positions.push_back(glm::vec2(pos_px));
+						instances.widths.push_back(static_cast<float>(cell.m_border_width));
+						instances.colors.push_back(cell.m_border);
+					}
+				}
+			}
+		}
+
 	} // unnamed
 
 	void screen::render(bump::gl::renderer& renderer)
 	{
 		auto const matrices = prepare_camera(glm::vec2(m_window_size_px));
-		prepare_instances(m_buffer, m_sb_area_px, m_tile_size_px, m_buffer.size(), m_tile_instances);
+
+		prepare_tile_instances(m_buffer, m_sb_area_px, m_tile_size_px, m_buffer.size(), m_tile_instances);
 		m_tile_renderable.render(renderer, matrices, m_tile_instances, glm::vec2(m_tile_size_px));
+
+		prepare_tile_border_instances(m_buffer, m_sb_area_px, m_tile_size_px, m_buffer.size(), m_tile_border_instances);
+		m_tile_border_renderable.render(renderer, matrices, m_tile_border_instances, glm::vec2(m_tile_size_px));
 	}
 
 } // rog

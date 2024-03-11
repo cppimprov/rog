@@ -32,6 +32,7 @@ namespace rog
 		auto screen = rog::screen(
 			app.m_assets.m_shaders.at("tile"),
 			app.m_assets.m_textures_2d_array.at("ascii_tiles"),
+			app.m_assets.m_shaders.at("tile_border"),
 			app.m_window.get_size(),
 			tile_size_px);
 
@@ -259,7 +260,7 @@ namespace rog
 			
 			// drawing - todo: only if something changes?
 			{
-				screen.buffer().fill(screen_cell_blank);
+				screen.buffer().fill(screen_cell_debug);
 				level.draw(screen.buffer(), ui_main.m_map_sb);
 			}
 

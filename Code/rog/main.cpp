@@ -29,6 +29,7 @@ int main(int , char* [])
 			// shaders
 			{
 				{ "tile", { "tile.vert", "tile.frag" } },
+				{ "tile_border", { "tile_border.vert", "tile_border.frag" } },
 			},
 			// models
 			{

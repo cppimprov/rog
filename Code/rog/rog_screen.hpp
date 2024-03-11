@@ -21,10 +21,12 @@ namespace rog
 		std::uint8_t m_value = ' ';
 		glm::vec3 m_fg = glm::vec3(0.f);
 		glm::vec3 m_bg = glm::vec3(0.f);
+		glm::vec3 m_border = glm::vec3(0.f);
+		std::uint32_t m_border_width = 0;
 	};
 
-	auto static constexpr screen_cell_blank = screen_cell{ ' ', colors::white, colors::black };
-	auto static constexpr screen_cell_debug = screen_cell{ '#', colors::violet, colors::dark_red };
+	auto static constexpr screen_cell_blank = screen_cell{ ' ', colors::white, colors::black, colors::black, 0 };
+	auto static constexpr screen_cell_debug = screen_cell{ '#', colors::violet, colors::dark_red, colors::violet, 1 };
 
 	struct screen_buffer
 	{
@@ -82,6 +84,48 @@ namespace rog
 		bump::gl::vertex_array m_vertex_array;
 	};
 
+	struct tile_border_instance_data
+	{
+		std::vector<glm::vec2> positions;
+		std::vector<float> widths;
+		std::vector<glm::vec3> colors;
+
+		void clear() { positions.clear(); widths.clear(); colors.clear(); }
+		void reserve(std::size_t count) { positions.reserve(count); widths.reserve(count); colors.reserve(count); }
+	};
+
+	class tile_border_renderable
+	{
+	public:
+
+		explicit tile_border_renderable(bump::gl::shader_program const& shader);
+
+		void render(
+			bump::gl::renderer& renderer,
+			bump::camera_matrices const& matrices,
+			tile_border_instance_data const& instances,
+			glm::vec2 tile_size_px);
+
+	private:
+
+		bump::gl::shader_program const* m_shader;
+
+		GLint m_in_VertexPosition;
+		GLint m_in_VertexLerp;
+		GLint m_in_BorderPosition;
+		GLint m_in_BorderWidth;
+		GLint m_in_BorderColor;
+		GLint m_u_TileSize;
+		GLint m_u_MVP;
+
+		bump::gl::buffer m_vertex_buffer;
+		bump::gl::buffer m_vertex_lerp_buffer;
+		bump::gl::buffer m_border_positions_buffer;
+		bump::gl::buffer m_border_widths_buffer;
+		bump::gl::buffer m_border_colors_buffer;
+		bump::gl::vertex_array m_vertex_array;
+	};
+
 	/*
 	 * Coordinate systems:
 	 * 
@@ -128,7 +172,10 @@ namespace rog
 	{
 	public:
 
-		explicit screen(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture, glm::ivec2 window_size_px, glm::ivec2 tile_size_px);
+		explicit screen(
+			bump::gl::shader_program const& tile_shader, bump::gl::texture_2d_array const& tile_texture,
+			bump::gl::shader_program const& border_shader,
+			glm::ivec2 window_size_px, glm::ivec2 tile_size_px);
 
 		glm::ivec2 size() const { return m_buffer.m_data.extents(); }
 		glm::ivec2 tile_size() const { return m_tile_size_px; }
@@ -154,6 +201,8 @@ namespace rog
 		screen_buffer m_buffer;
 		tile_instance_data m_tile_instances;
 		tile_renderable m_tile_renderable;
+		tile_border_instance_data m_tile_border_instances;
+		tile_border_renderable m_tile_border_renderable;
 	};
 
 } // rog
