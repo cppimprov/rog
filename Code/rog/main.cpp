@@ -101,6 +101,7 @@ namespace rog
 						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
 						screen.resize(window_size, screen.tile_size());
+						ui = calc_ui_layout(screen.size());
 						continue;
 					}
 				}
