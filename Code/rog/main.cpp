@@ -10,6 +10,7 @@
 #include "rog_player_action.hpp"
 #include "rog_random.hpp"
 #include "rog_screen.hpp"
+#include "rog_ui.hpp"
 
 #include <bump_app.hpp>
 #include <bump_assets.hpp>
@@ -56,7 +57,7 @@ namespace rog
 			app.m_window.get_size(),
 			tile_size_px);
 
-		auto ui = calc_ui_layout(screen.size());
+		auto ui_main = calc_ui_layout_main(screen.size());
 
 		auto app_events   = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -101,7 +102,7 @@ namespace rog
 						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
 						screen.resize(window_size, screen.tile_size());
-						ui = calc_ui_layout(screen.size());
+						ui_main = calc_ui_layout_main(screen.size());
 						continue;
 					}
 				}
@@ -149,8 +150,8 @@ namespace rog
 					{
 						auto const& m = std::get<ie::mouse_motion>(event);
 
-						auto const map_panel_lv = level.get_map_panel(ui.m_map_sb.m_size);
-						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui.m_map_sb.m_origin);
+						auto const map_panel_lv = level.get_map_panel(ui_main.m_map_sb.m_size);
+						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui_main.m_map_sb.m_origin);
 						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
 
 						level.m_hovered_tile = level.in_bounds(mouse_pos_lv) ? std::optional<glm::ivec2>(mouse_pos_lv) : std::optional<glm::ivec2>();
@@ -167,8 +168,8 @@ namespace rog
 						if (m.m_button != bt::LEFT)
 							continue;
 						
-						auto const map_panel_lv = level.get_map_panel(ui.m_map_sb.m_size);
-						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui.m_map_sb.m_origin);
+						auto const map_panel_lv = level.get_map_panel(ui_main.m_map_sb.m_size);
+						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui_main.m_map_sb.m_origin);
 						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
 
 						if (level.in_bounds(mouse_pos_lv))
@@ -281,7 +282,7 @@ namespace rog
 			// drawing - todo: only if something changes?
 			{
 				screen.buffer().fill(screen_cell_debug);
-				level.draw(screen.buffer(), ui.m_map_sb);
+				level.draw(screen.buffer(), ui_main.m_map_sb);
 			}
 
 			// render

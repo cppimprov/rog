@@ -165,22 +165,4 @@ namespace rog
 		m_tile_renderable.render(renderer, matrices, m_tile_instances, glm::vec2(m_tile_size_px));
 	}
 
-	ui_layout calc_ui_layout(glm::ivec2 sb_size)
-	{
-		auto const py_panel_width = 12;
-
-		auto ui = ui_layout();
-
-		ui.m_py_name_sb = { { 0, 0 }, { py_panel_width, 1 } };
-		ui.m_py_info_sb = { { 0, ui.m_py_name_sb.m_origin.y + ui.m_py_name_sb.m_size.y + 1 }, { py_panel_width, 3 } };
-		ui.m_py_stats_sb = { { 0, ui.m_py_info_sb.m_origin.y + ui.m_py_info_sb.m_size.y + 1 }, { py_panel_width, 6 } };
-		ui.m_py_hp_sb = { { 0, ui.m_py_stats_sb.m_origin.y + ui.m_py_stats_sb.m_size.y + 1 }, { py_panel_width, 2 } };
-
-		ui.m_msg_sb = { { py_panel_width + 1, 0 }, { sb_size.x - py_panel_width - 1, 1 } };
-		ui.m_location_sb = { { sb_size.x - 12, sb_size.y - 1 }, { 12, 1 } };
-		ui.m_map_sb = { { py_panel_width + 1, 1 }, { sb_size.x - py_panel_width - 1, sb_size.y - 2 } };
-
-		return ui;
-	}
-
 } // rog

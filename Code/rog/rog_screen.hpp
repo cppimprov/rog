@@ -23,6 +23,7 @@ namespace rog
 		glm::vec3 m_bg = glm::vec3(0.f);
 	};
 
+	auto static constexpr screen_cell_blank = screen_cell{ ' ', colors::white, colors::black };
 	auto static constexpr screen_cell_debug = screen_cell{ '#', colors::violet, colors::dark_red };
 
 	struct screen_buffer
@@ -154,19 +155,5 @@ namespace rog
 		tile_instance_data m_tile_instances;
 		tile_renderable m_tile_renderable;
 	};
-
-	struct ui_layout
-	{
-		bump::iaabb2 m_py_name_sb;
-		bump::iaabb2 m_py_info_sb;
-		bump::iaabb2 m_py_stats_sb;
-		bump::iaabb2 m_py_hp_sb;
-
-		bump::iaabb2 m_msg_sb;
-		bump::iaabb2 m_map_sb;
-		bump::iaabb2 m_location_sb;
-	};
-
-	ui_layout calc_ui_layout(glm::ivec2 sb_size);
 
 } // rog

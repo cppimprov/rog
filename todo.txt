@@ -1,15 +1,15 @@
 
+now:
+
+ * Move main_loop out of main.cpp and rename to dungeon.
+ * Only take player actor energy on successful move.
+
+
+
+
+SOMETIME:
 
  * change grids to use glm::ivec2 coords instead of glm::size2 (specify coord type)
-
- * move the code to set up the hovered tile / queued path out of main (to level??)
-
- * Merge a bunch of headers / code together, so it's less fragmented...
-
- * Change components to use c_* prefix, instead of comp_
- * Put all the ecs stuff in one place?
- * Put all the util stuff in a rog_defines.cpp file, instead of spreading it around.
-
 
 UI:
 
@@ -20,3 +20,5 @@ PATHFINDING:
 
 	* Bigger level with more obstacles.
 	* Varying movement costs for different terrain types.
+
+// ...
