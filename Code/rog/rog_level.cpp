@@ -8,6 +8,38 @@
 namespace rog
 {
 
+	bool level::is_walkable(glm::ivec2 pos) const
+	{
+		return !(m_grid.at(pos).m_flags & feature::flags::NO_WALK);
+	}
+
+	bool level::is_occupied(glm::ivec2 pos) const
+	{
+		return m_actors.at(pos) != entt::null;
+	}
+	
+	bool level::move_actor(entt::entity entity, c_position& pos, glm::ivec2 target)
+	{
+		bump::die_if(!in_bounds(pos.m_pos));
+
+		if (!in_bounds(target))
+			return false;
+
+		if (!is_walkable(target) || is_occupied(target))
+			return false;
+
+		m_actors.at(pos.m_pos) = entt::null;
+		pos.m_pos = target;
+		m_actors.at(pos.m_pos) = entity;
+
+		return true;
+	}
+
+	bool level::move_actor(entt::entity entity, c_position& pos, direction dir)
+	{
+		return move_actor(entity, pos, pos.m_pos + get_direction_vector(dir));
+	}
+
 	namespace
 	{
 
@@ -158,59 +190,6 @@ namespace rog
 		draw_monsters(sb, map_panel_sb, map_panel_lv);
 		draw_queued_path(sb, map_panel_sb, map_panel_lv);
 		draw_hovered_tile(sb, map_panel_sb, map_panel_lv);
-	}
-	
-	bool is_walkable(level const& level, glm::ivec2 pos)
-	{
-		return !(level.m_grid.at(pos).m_flags & feature::flags::NO_WALK);
-	}
-
-	bool is_occupied(level const& level, glm::ivec2 pos)
-	{
-		return level.m_actors.at(pos) != entt::null;
-	}
-
-	bool move_actor(level& level, entt::entity entity, c_position& pos, glm::ivec2 target)
-	{
-		auto const level_size = level.size();
-
-		bump::die_if(level_size.x == 0 || level_size.y == 0);
-		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
-		
-		if (target.x >= level_size.x) return false;
-		if (target.y >= level_size.y) return false;
-
-		if (!is_walkable(level, target) || is_occupied(level, target)) return false;
-
-		level.m_actors.at(pos.m_pos) = entt::null;
-		pos.m_pos = target;
-		level.m_actors.at(pos.m_pos) = entity;
-
-		return true;
-	}
-
-	bool move_actor(level& level, entt::entity entity, c_position& pos, direction dir)
-	{
-		auto const vec = get_direction_vector(dir);
-		auto const level_size = level.size();
-
-		bump::die_if(level_size.x == 0 || level_size.y == 0);
-		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);
-
-		if (pos.m_pos.x == 0 && vec.x < 0) return false;
-		if (pos.m_pos.x == level_size.x - 1 && vec.x > 0) return false;
-		if (pos.m_pos.y == 0 && vec.y < 0) return false;
-		if (pos.m_pos.y == level_size.y - 1 && vec.y > 0) return false;
-
-		auto const target = pos.m_pos + vec;
-
-		if (!is_walkable(level, target) || is_occupied(level, target)) return false;
-
-		level.m_actors.at(pos.m_pos) = entt::null;
-		pos.m_pos = target;
-		level.m_actors.at(pos.m_pos) = entity;
-
-		return true;
 	}
 
 } // rog

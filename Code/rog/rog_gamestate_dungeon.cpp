@@ -176,7 +176,7 @@ namespace rog
 
 					bump::log_info("cycle");
 
-					// add cycle energy
+					// add actor cycle energy
 					{
 						auto view = level.m_registry.view<c_actor>();
 
@@ -202,7 +202,7 @@ namespace rog
 								auto const& move = std::get<pa::move>(action);
 
 								auto& pos = level.m_registry.get<c_position>(level.m_player);
-								if (!move_actor(level, level.m_player, pos, move.m_dir))
+								if (!level.move_actor(level.m_player, pos, move.m_dir))
 								{
 									bump::log_info("There is something in the way.");
 								}
@@ -226,7 +226,7 @@ namespace rog
 							auto target = level.m_queued_path.back();
 							level.m_queued_path.pop_back();
 
-							if (!move_actor(level, level.m_player, pos, target))
+							if (!level.move_actor(level.m_player, pos, target))
 							{
 								bump::log_info("There is something in the way.");
 								level.m_queued_path.clear();

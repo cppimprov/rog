@@ -70,7 +70,7 @@ namespace rog
 		auto const dir_idx = random::rand_range(rng, 0, 8);
 		auto const dir = static_cast<direction>(dir_idx);
 
-		(void)move_actor(level, monster, pos, dir); // todo: try a different direction?
+		(void)level.move_actor(monster, pos, dir); // todo: try a different direction?
 	}
 
 } // rog

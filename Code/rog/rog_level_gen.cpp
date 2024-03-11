@@ -84,7 +84,7 @@ namespace rog
 				// find the top-leftmost empty square
 				for (auto y : bump::range(0, level_size.y))
 					for (auto x : bump::range(0, level_size.x))
-						if (is_walkable(level, { x, y }) && !is_occupied(level, { x, y }))
+						if (level.is_walkable({ x, y }) && !level.is_occupied({ x, y }))
 							return std::optional<glm::ivec2>({ x, y });
 
 				return std::optional<glm::ivec2>();
@@ -113,7 +113,7 @@ namespace rog
 				{
 					auto const pos = random::rand_range(rng, glm::ivec2(0), level_size - glm::ivec2(1));
 
-					if (is_walkable(level, pos) && !is_occupied(level, pos))
+					if (level.is_walkable(pos) && !level.is_occupied(pos))
 						return std::optional<glm::ivec2>(pos);
 				}
 

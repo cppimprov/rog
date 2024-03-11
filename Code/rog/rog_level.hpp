@@ -23,6 +23,12 @@ namespace rog
 		glm::ivec2 size() const { return m_grid.extents(); }
 		bool in_bounds(glm::ivec2 pos) const { return bump::iaabb2{ glm::ivec2(0), size() }.contains(pos); }
 
+		bool is_walkable(glm::ivec2 pos) const;
+		bool is_occupied(glm::ivec2 pos) const;
+
+		bool move_actor(entt::entity entity, c_position& pos, glm::ivec2 target);
+		bool move_actor(entt::entity entity, c_position& pos, direction dir);
+
 		bump::iaabb2 get_map_panel(glm::ivec2 panel_size, glm::ivec2 focus_lv) const;
 		bump::iaabb2 get_map_panel(glm::ivec2 panel_size) const;
 
@@ -46,12 +52,6 @@ namespace rog
 		void draw_queued_path(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
 		void draw_hovered_tile(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
 	};
-
-	bool is_walkable(level const& level, glm::ivec2 pos);
-	bool is_occupied(level const& level, glm::ivec2 pos);
-
-	bool move_actor(level& level, entt::entity entity, c_position& pos, glm::ivec2 target);
-	bool move_actor(level& level, entt::entity entity, c_position& pos, direction dir);
 
 	std::vector<glm::ivec2> find_path(bump::grid2<feature, glm::ivec2> const& grid, glm::ivec2 src, glm::ivec2 dst);
 
