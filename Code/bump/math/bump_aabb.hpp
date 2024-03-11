@@ -12,14 +12,14 @@ namespace bump
 	{
 		using vec_type = glm::vec<D, T, Q>;
 
-		vec_type m_min;
+		vec_type m_origin;
 		vec_type m_size;
 
 		bool valid() const { return m_size.x >= 0 && m_size.y >= 0; }
 
 		bool contains(vec_type const& point) const
 		{
-			return all_gte(point, m_min) && all_lt(point, m_min + m_size);
+			return all_gte(point, m_origin) && all_lt(point, m_origin + m_size);
 		}
 
 	};

@@ -14,11 +14,23 @@ namespace rog
 
 	struct comp_position;
 	struct feature;
+	struct screen_buffer;
 
 	struct level
 	{
 		glm::ivec2 size() const { return glm::ivec2(m_grid.extents()); }
 		bool in_bounds(glm::ivec2 pos) const { return bump::iaabb2{ glm::ivec2(0), size() }.contains(pos); }
+
+		bump::iaabb2 get_map_panel(glm::ivec2 panel_size, glm::ivec2 focus_lv) const;
+		bump::iaabb2 get_map_panel(glm::ivec2 panel_size) const;
+
+		void draw_map(screen_buffer& sb, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
+		void draw_player(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
+		void draw_monsters(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
+		void draw_queued_path(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
+		void draw_hovered_tile(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const;
+
+		void draw(screen_buffer& sb, bump::iaabb2 const& map_panel_sb) const;
 
 		std::int32_t m_depth;
 		bump::grid2<feature> m_grid;

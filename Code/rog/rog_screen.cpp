@@ -35,7 +35,7 @@ namespace rog
 		m_data.resize(glm::size2(size), cell);
 	}
 
-	tile_renderer::tile_renderer(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture):
+	tile_renderable::tile_renderable(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture):
 		m_shader(&shader),
 		m_texture(&texture),
 		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
@@ -64,7 +64,7 @@ namespace rog
 		m_vertex_array.set_array_buffer(m_in_TileBGColor, m_tile_bg_colors_buffer, 1);
 	}
 	
-	void tile_renderer::render(
+	void tile_renderable::render(
 		bump::gl::renderer& renderer,
 		bump::camera_matrices const& matrices,
 		tile_instance_data const& instances,
@@ -100,7 +100,7 @@ namespace rog
 	screen::screen(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture, glm::ivec2 window_size_px, glm::ivec2 tile_size_px):
 		m_window_size_px(window_size_px),
 		m_tile_size_px(tile_size_px),
-		m_tile_renderer(shader, texture)
+		m_tile_renderable(shader, texture)
 	{
 		resize(window_size_px, tile_size_px);
 	}
@@ -113,167 +113,10 @@ namespace rog
 		m_window_size_px = window_size_px;
 		m_tile_size_px = tile_size_px;
 
-		m_buffer.resize(window_size_px / tile_size_px, debug_cell);
+		m_buffer.resize(window_size_px / tile_size_px, screen_cell_debug);
 
-		m_sb_size_px = tile_size_px * glm::ivec2(m_buffer.m_data.extents());
-		m_sb_origin_px = (window_size_px - m_sb_size_px) / glm::ivec2(2);
-	}
-
-	/* get_panel_origin()
-	* 
-	* Calculates the origin of a viewing rectangle of `panel_size` in level
-	* coordinates "centered" on the point `focus` (also level coordinates).
-	* 
-	* If the level is smaller than the panel { 0, 0 } is returned (so it
-	* will be displayed in the top left.
-	* 
-	* Modular arithmetic is used to find the panel that covers the `focus`
-	* point. Then, if the `focus` is near the edge of the panel, the panel
-	* origin is moved by 1/2 `panel_size` to place it nearer the center.
-	* Thus `focus` should be kept in the middle 1/2 of the viewing panel.
-	* 
-	*/
-	std::size_t get_map_panel_origin(std::size_t level_size, std::size_t panel_size, std::size_t focus)
-	{
-		if (level_size <= panel_size)
-			return 0;
-
-		auto const border_size = panel_size / std::size_t{ 4 };
-		auto const half_panel_size = panel_size / std::size_t{ 2 };
-
-		auto panel_origin = (focus / panel_size) * panel_size;
-		auto const panel_focus = focus % panel_size;
-
-		// handle scrolling in border region
-		if (panel_focus <= border_size)
-		{
-			// subtract half panel size (or set to zero)
-			panel_origin = panel_origin > half_panel_size ? panel_origin - half_panel_size : 0;
-		}
-		else if ((panel_size - 1) - panel_focus <= border_size)
-		{
-			// add half panel size
-			panel_origin = panel_origin + half_panel_size;
-		}
-
-		// keep the bottom right of the level at the bottom right of the screen
-		auto const max_panel_origin = level_size - panel_size;
-		panel_origin = std::min(panel_origin, max_panel_origin);
-		
-		return panel_origin;
-	}
-
-	// todo: move these to the level class!
-	glm::ivec2 get_map_panel_origin(glm::ivec2 level_size, glm::ivec2 panel_size, glm::ivec2 focus)
-	{
-		bump::die_if(level_size.x <= 0 || level_size.y <= 0);
-		bump::die_if(panel_size.x <= 0 || panel_size.y <= 0);
-		bump::die_if(focus.x < 0 || focus.y < 0);
-		bump::die_if(focus.x >= level_size.x || focus.y >= level_size.y);
-
-		return
-		{ 
-			get_map_panel_origin(level_size.x, panel_size.x, focus.x),
-			get_map_panel_origin(level_size.y, panel_size.y, focus.y)
-		};
-	}
-
-	namespace
-	{
-
-		void draw_map(screen_buffer& screen, level& level, glm::ivec2 panel_origin_sb, glm::ivec2 panel_origin_lv, glm::ivec2 panel_size_lv)
-		{
-			for (auto y : bump::range(0, panel_size_lv.y))
-			{
-				for (auto x : bump::range(0, panel_size_lv.x))
-				{
-					auto const pos = glm::ivec2{ x, y };
-					auto const pos_sb = glm::size2(panel_origin_sb + pos);
-					auto const pos_lv = glm::size2(panel_origin_lv + pos);
-					screen.m_data.at(pos_sb) = level.m_grid.at(pos_lv).m_cell;
-				}
-			}
-		}
-
-		void draw_player(screen_buffer& screen, level& level, glm::ivec2 panel_origin_sb, glm::ivec2 panel_origin_lv, glm::ivec2 panel_size_lv)
-		{
-			auto const [pp, pv] = level.m_registry.get<comp_position, comp_visual>(level.m_player);
-
-			if (!bump::iaabb2{ panel_origin_lv, panel_size_lv }.contains(pp.m_pos))
-				return;
-
-			auto const player_pos_pn = map_coords_to_panel_cell(pp.m_pos, panel_origin_lv);
-			auto const player_pos_sb = panel_cell_to_buffer_cell(player_pos_pn, panel_origin_sb);
-			screen.m_data.at(glm::size2(player_pos_sb)) = pv.m_cell;
-		}
-
-		void draw_monsters(screen_buffer& screen, level& level, glm::ivec2 panel_origin_sb, glm::ivec2 panel_origin_lv, glm::ivec2 panel_size_lv)
-		{
-			auto view = level.m_registry.view<comp_position, comp_visual, comp_monster_tag>();
-
-			for (auto const m : view)
-			{
-				auto [pos, vis] = view.get<comp_position, comp_visual>(m);
-
-				auto const pos_lv = pos.m_pos;
-
-				if (!bump::iaabb2{ panel_origin_lv, panel_size_lv }.contains(pos_lv))
-					continue;
-
-				auto const pos_pn = map_coords_to_panel_cell(pos.m_pos, panel_origin_lv);
-				auto const pos_sb = panel_cell_to_buffer_cell(pos_pn, panel_origin_sb);
-				screen.m_data.at(glm::size2(pos_sb)) = vis.m_cell;
-			}
-		}
-
-		void draw_queued_path(screen_buffer& screen, level& level, glm::ivec2 panel_origin_sb, glm::ivec2 panel_origin_lv, glm::ivec2 panel_size_lv)
-		{
-			for (auto const& p : level.m_queued_path)
-			{
-				if (!bump::iaabb2{ panel_origin_lv, panel_size_lv }.contains(p))
-					continue;
-
-				auto const p_pn = map_coords_to_panel_cell(p, panel_origin_lv);
-				auto const p_sb = panel_cell_to_buffer_cell(p_pn, panel_origin_sb);
-				screen.m_data.at(glm::size2(p_sb)).m_bg = colors::dark_red;
-			}
-		}
-
-		void draw_hovered_tile(screen_buffer& screen, level& level, glm::ivec2 panel_origin_sb, glm::ivec2 panel_origin_lv, glm::ivec2 panel_size_lv)
-		{
-			if (!level.m_hovered_tile.has_value())
-				return;
-
-			auto const ht = level.m_hovered_tile.value();
-
-			if (!bump::iaabb2{ panel_origin_lv, panel_size_lv }.contains(ht))
-				return;
-
-			auto const ht_pn = map_coords_to_panel_cell(ht, panel_origin_lv);
-			auto const ht_sb = panel_cell_to_buffer_cell(ht_pn, panel_origin_sb);
-			screen.m_data.at(glm::size2(ht_sb)).m_bg = colors::orange;
-		}
-
-	} // unnamed
-
-	void screen::draw(level& level)
-	{
-		// todo: use actual panel coords / size
-		auto const panel_origin_sb = glm::ivec2(0);
-		auto const panel_size_sb = glm::ivec2(m_buffer.m_data.extents());
-
-		auto const& player_pos_lv = level.m_registry.get<comp_position>(level.m_player).m_pos;
-
-		// calculate origin of panel in level coords
-		auto const panel_origin_lv = get_map_panel_origin(level.size(), panel_size_sb, player_pos_lv);
-		auto const panel_max_lv = glm::min(panel_origin_lv + panel_size_sb, level.size());
-		auto const panel_size_lv = (panel_max_lv - panel_origin_lv);
-
-		draw_map(m_buffer, level, panel_origin_sb, panel_origin_lv, panel_size_lv);
-		draw_player(m_buffer, level, panel_origin_sb, panel_origin_lv, panel_size_lv);
-		draw_monsters(m_buffer, level, panel_origin_sb, panel_origin_lv, panel_size_lv);
-		draw_queued_path(m_buffer, level, panel_origin_sb, panel_origin_lv, panel_size_lv);
-		draw_hovered_tile(m_buffer, level, panel_origin_sb, panel_origin_lv, panel_size_lv);
+		auto const sb_size_px = tile_size_px * glm::ivec2(m_buffer.m_data.extents());
+		m_sb_area_px = { (window_size_px - sb_size_px) / glm::ivec2(2), sb_size_px };
 	}
 
 	namespace
@@ -291,7 +134,7 @@ namespace rog
 			return bump::camera_matrices(camera);
 		}
 		
-		void prepare_instances(screen_buffer const& buffer, glm::ivec2 sb_origin_px, glm::ivec2 tile_size_px, glm::ivec2 sb_size_sb, tile_instance_data& instances)
+		void prepare_instances(screen_buffer const& buffer, bump::iaabb2 const& sb_area_px, glm::ivec2 tile_size_px, glm::ivec2 sb_size_sb, tile_instance_data& instances)
 		{
 			instances.clear();
 			instances.reserve(buffer.m_data.size());
@@ -303,7 +146,7 @@ namespace rog
 					auto const& cell = buffer.m_data.at({ x, y });
 
 					auto const pos_sb = glm::ivec2{ x, y };
-					auto const pos_px = buffer_cell_to_screen_px(pos_sb, sb_origin_px, tile_size_px, sb_size_sb);
+					auto const pos_px = buffer_cell_to_screen_px(pos_sb, sb_area_px.m_origin, tile_size_px, sb_size_sb);
 					
 					instances.positions.push_back(glm::vec2(pos_px));
 					instances.layers.push_back(static_cast<float>(cell.m_value));
@@ -318,8 +161,26 @@ namespace rog
 	void screen::render(bump::gl::renderer& renderer)
 	{
 		auto const matrices = prepare_camera(glm::vec2(m_window_size_px));
-		prepare_instances(m_buffer, m_sb_origin_px, m_tile_size_px, m_buffer.size(), m_tile_instances);
-		m_tile_renderer.render(renderer, matrices, m_tile_instances, glm::vec2(m_tile_size_px));
+		prepare_instances(m_buffer, m_sb_area_px, m_tile_size_px, m_buffer.size(), m_tile_instances);
+		m_tile_renderable.render(renderer, matrices, m_tile_instances, glm::vec2(m_tile_size_px));
+	}
+
+	ui_layout calc_ui_layout(glm::ivec2 sb_size)
+	{
+		auto const py_panel_width = 12;
+
+		auto ui = ui_layout();
+
+		ui.m_py_name_sb = { { 0, 0 }, { py_panel_width, 1 } };
+		ui.m_py_info_sb = { { 0, ui.m_py_name_sb.m_origin.y + ui.m_py_name_sb.m_size.y + 1 }, { py_panel_width, 3 } };
+		ui.m_py_stats_sb = { { 0, ui.m_py_info_sb.m_origin.y + ui.m_py_info_sb.m_size.y + 1 }, { py_panel_width, 6 } };
+		ui.m_py_hp_sb = { { 0, ui.m_py_stats_sb.m_origin.y + ui.m_py_stats_sb.m_size.y + 1 }, { py_panel_width, 2 } };
+
+		ui.m_msg_sb = { { py_panel_width + 1, 0 }, { sb_size.x - py_panel_width - 1, 1 } };
+		ui.m_location_sb = { { sb_size.x - 12, sb_size.y - 1 }, { 12, 1 } };
+		ui.m_map_sb = { { py_panel_width + 1, 1 }, { sb_size.x - py_panel_width - 1, sb_size.y - 2 } };
+
+		return ui;
 	}
 
 } // rog

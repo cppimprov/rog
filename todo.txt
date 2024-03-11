@@ -1,11 +1,8 @@
 
- * hovered tile must take sb_origin_px into account!
- * mouse to sb calculations should use conversion functions!
- * should hovered tile and queued path really be in level?
+
  * move the code to set up the hovered tile / queued path out of main (to level??)
 
  * use aabb to store rects, instead of separate ivec2s
- * change get_map_panel_origin to get_map_panel and return aabb
  * test rendering with different ui panel origins / sizes
 
  * tidy panel stuff (want to define multiple "panels" or screen areas for ui, etc.)
@@ -27,3 +24,8 @@ PATHFINDING:
 
 	* Bigger level with more obstacles.
 	* Varying movement costs for different terrain types.
+
+
+
+// map_panel_sb should be stored in screen class
+// level should handle pn_to_lv?

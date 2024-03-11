@@ -2,6 +2,7 @@
 
 #include "rog_colors.hpp"
 
+#include <bump_aabb.hpp>
 #include <bump_camera.hpp>
 #include <bump_gl.hpp>
 #include <bump_grid.hpp>
@@ -21,6 +22,8 @@ namespace rog
 		glm::vec3 m_fg = glm::vec3(0.f);
 		glm::vec3 m_bg = glm::vec3(0.f);
 	};
+
+	auto static constexpr screen_cell_debug = screen_cell{ '#', colors::violet, colors::dark_red };
 
 	struct screen_buffer
 	{
@@ -44,11 +47,11 @@ namespace rog
 		void reserve(std::size_t count) { positions.reserve(count); layers.reserve(count); fg_colors.reserve(count); bg_colors.reserve(count); }
 	};
 
-	class tile_renderer
+	class tile_renderable
 	{
 	public:
 
-		explicit tile_renderer(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture);
+		explicit tile_renderable(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture);
 
 		void render(
 			bump::gl::renderer& renderer, 
@@ -80,10 +83,11 @@ namespace rog
 
 	/*
 	 * Coordinate systems:
-	 *
-	 * screen: (0, 0) is bottom-left (OpenGL convention)
-	 * screenbuffer: (0, 0) is top-left
-	 * level: (0, 0) is top-left
+	 * 
+	 * px - screen: (0, 0) is bottom-left (OpenGL convention)
+	 * sb - screenbuffer: (0, 0) is top-left
+	 * pn - panel: (0, 0) is top-left (local area inside screenbuffer)
+	 * lv - level: (0, 0) is top-left (map coords)
 	 * 
 	 */
 
@@ -119,9 +123,6 @@ namespace rog
 		return lv - pn_origin_lv;
 	}
 
-	// temp:
-	glm::ivec2 get_map_panel_origin(glm::ivec2 level_size, glm::ivec2 panel_size, glm::ivec2 focus);
-
 	class screen
 	{
 	public:
@@ -129,22 +130,43 @@ namespace rog
 		explicit screen(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture, glm::ivec2 window_size_px, glm::ivec2 tile_size_px);
 
 		glm::ivec2 size() const { return glm::ivec2(m_buffer.m_data.extents()); }
+		glm::ivec2 tile_size() const { return m_tile_size_px; }
 
 		void resize(glm::ivec2 window_size_px, glm::ivec2 tile_size_px);
 
-		void draw(level& level);
 		void render(bump::gl::renderer& renderer);
+
+		glm::ivec2 px_to_sb(glm::ivec2 px) const { return screen_px_to_buffer_cell(px, m_sb_area_px.m_origin, tile_size(), size()); }
+		glm::ivec2 sb_to_px(glm::ivec2 sb) const { return buffer_cell_to_screen_px(sb, m_sb_area_px.m_origin, tile_size(), size()); }
+		glm::ivec2 sb_to_pn(glm::ivec2 sb, glm::ivec2 panel_origin_sb) const { return buffer_cell_to_panel_cell(sb, panel_origin_sb); }
+		glm::ivec2 pn_to_sb(glm::ivec2 pn, glm::ivec2 panel_origin_sb) const { return panel_cell_to_buffer_cell(pn, panel_origin_sb); }
+
+		screen_buffer& buffer() { return m_buffer; }
+		screen_buffer const& buffer() const { return m_buffer; }
+
+	private:
 
 		glm::ivec2 m_window_size_px;
 		glm::ivec2 m_tile_size_px;
-		glm::ivec2 m_sb_origin_px;
-		glm::ivec2 m_sb_size_px;
+		bump::iaabb2 m_sb_area_px;
 
 		screen_buffer m_buffer;
 		tile_instance_data m_tile_instances;
-		tile_renderer m_tile_renderer;
-
-		static constexpr screen_cell debug_cell = { '#', colors::violet, colors::dark_red };
+		tile_renderable m_tile_renderable;
 	};
+
+	struct ui_layout
+	{
+		bump::iaabb2 m_py_name_sb;
+		bump::iaabb2 m_py_info_sb;
+		bump::iaabb2 m_py_stats_sb;
+		bump::iaabb2 m_py_hp_sb;
+
+		bump::iaabb2 m_msg_sb;
+		bump::iaabb2 m_map_sb;
+		bump::iaabb2 m_location_sb;
+	};
+
+	ui_layout calc_ui_layout(glm::ivec2 sb_size);
 
 } // rog

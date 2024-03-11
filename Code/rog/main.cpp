@@ -48,13 +48,15 @@ namespace rog
 		// setup
 		auto rng = random::seed_rng();
 
-		auto const tile_size = glm::ivec2{ 24, 36 };
+		auto const tile_size_px = glm::ivec2{ 24, 36 };
 
 		auto screen = rog::screen(
 			app.m_assets.m_shaders.at("tile"),
 			app.m_assets.m_textures_2d_array.at("ascii_tiles"),
 			app.m_window.get_size(),
-			tile_size);
+			tile_size_px);
+
+		auto ui = calc_ui_layout(screen.size());
 
 		auto app_events   = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -98,7 +100,7 @@ namespace rog
 					{
 						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
-						screen.resize(window_size, tile_size);
+						screen.resize(window_size, screen.tile_size());
 						continue;
 					}
 				}
@@ -146,11 +148,9 @@ namespace rog
 					{
 						auto const& m = std::get<ie::mouse_motion>(event);
 
-						auto const player_pos = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const map_panel_origin_lv = get_map_panel_origin(level.size(), screen.size(), player_pos);
-						auto const mouse_pos_sb = screen_px_to_buffer_cell(m.m_position, screen.m_sb_origin_px, screen.m_tile_size_px, screen.size());
-						auto const mouse_pos_pn = buffer_cell_to_panel_cell(mouse_pos_sb, { 0, 0 });
-						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_origin_lv);
+						auto const map_panel_lv = level.get_map_panel(ui.m_map_sb.m_size);
+						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui.m_map_sb.m_origin);
+						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
 
 						level.m_hovered_tile = level.in_bounds(mouse_pos_lv) ? std::optional<glm::ivec2>(mouse_pos_lv) : std::optional<glm::ivec2>();
 
@@ -166,14 +166,13 @@ namespace rog
 						if (m.m_button != bt::LEFT)
 							continue;
 						
-						auto const player_pos_lv = level.m_registry.get<comp_position>(level.m_player).m_pos;
-						auto const map_panel_origin_lv = get_map_panel_origin(level.size(), screen.size(), player_pos_lv);
-						auto const mouse_pos_sb = screen_px_to_buffer_cell(m.m_position, screen.m_sb_origin_px, screen.m_tile_size_px, screen.size());
-						auto const mouse_pos_pn = buffer_cell_to_panel_cell(mouse_pos_sb, { 0, 0 });
-						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_origin_lv);
+						auto const map_panel_lv = level.get_map_panel(ui.m_map_sb.m_size);
+						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui.m_map_sb.m_origin);
+						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
 
 						if (level.in_bounds(mouse_pos_lv))
 						{
+							auto const& player_pos_lv = level.m_registry.get<comp_position>(level.m_player).m_pos;
 							level.m_queued_path = find_path(level.m_grid, player_pos_lv, mouse_pos_lv);
 							queued_action.reset();
 						}
@@ -280,7 +279,8 @@ namespace rog
 			
 			// drawing - todo: only if something changes?
 			{
-				screen.draw(level);
+				screen.buffer().fill(screen_cell_debug);
+				level.draw(screen.buffer(), ui.m_map_sb);
 			}
 
 			// render
