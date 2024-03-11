@@ -1,12 +1,8 @@
 
 
- * move the code to set up the hovered tile / queued path out of main (to level??)
-
- * use aabb to store rects, instead of separate ivec2s
- * test rendering with different ui panel origins / sizes
-
- * tidy panel stuff (want to define multiple "panels" or screen areas for ui, etc.)
  * change grids to use glm::ivec2 coords instead of glm::size2 (specify coord type)
+
+ * move the code to set up the hovered tile / queued path out of main (to level??)
 
  * Merge a bunch of headers / code together, so it's less fragmented...
 
@@ -24,8 +20,3 @@ PATHFINDING:
 
 	* Bigger level with more obstacles.
 	* Varying movement costs for different terrain types.
-
-
-
-// map_panel_sb should be stored in screen class
-// level should handle pn_to_lv?

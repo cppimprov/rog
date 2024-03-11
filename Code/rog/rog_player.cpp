@@ -1,6 +1,6 @@
 #include "rog_player.hpp"
 
-#include "rog_entity.hpp"
+#include "rog_ecs.hpp"
 #include "rog_feature.hpp"
 #include "rog_level.hpp"
 #include "rog_screen.hpp"
@@ -14,10 +14,10 @@ namespace rog
 	{
 		auto player = registry.create();
 		
-		registry.emplace<comp_player_tag>(player);
-		registry.emplace<comp_position>(player, glm::ivec2(0));
-		registry.emplace<comp_visual>(player, screen_cell{ '@', colors::yellow, colors::black });
-		registry.emplace<comp_actor>(player, 100); // start with enough energy to move
+		registry.emplace<c_player_tag>(player);
+		registry.emplace<c_position>(player, glm::ivec2(0));
+		registry.emplace<c_visual>(player, screen_cell{ '@', colors::yellow, colors::black });
+		registry.emplace<c_actor>(player, 100); // start with enough energy to move
 
 		return player;
 	}
@@ -27,7 +27,7 @@ namespace rog
 		auto const& grid = level.m_grid;
 		auto const level_size = grid.extents();
 
-		auto const& pos = level.m_registry.get<comp_position>(level.m_player);
+		auto const& pos = level.m_registry.get<c_position>(level.m_player);
 
 		bump::die_if(level_size.x == 0 || level_size.y == 0);
 		bump::die_if(pos.m_pos.x >= level_size.x || pos.m_pos.y >= level_size.y);

@@ -1,7 +1,7 @@
 #include "rog_level.hpp"
 
 #include "rog_direction.hpp"
-#include "rog_entity.hpp"
+#include "rog_ecs.hpp"
 #include "rog_feature.hpp"
 #include "rog_screen.hpp"
 
@@ -71,7 +71,7 @@ namespace rog
 
 	bump::iaabb2 level::get_map_panel(glm::ivec2 panel_size) const
 	{
-		return get_map_panel(panel_size, m_registry.get<comp_position>(m_player).m_pos);
+		return get_map_panel(panel_size, m_registry.get<c_position>(m_player).m_pos);
 	}
 
 	void level::draw_map(screen_buffer& sb, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const
@@ -92,7 +92,7 @@ namespace rog
 
 	void level::draw_player(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const
 	{
-		auto const [pp, pv] = m_registry.get<comp_position, comp_visual>(m_player);
+		auto const [pp, pv] = m_registry.get<c_position, c_visual>(m_player);
 
 		if (!map_panel_lv.contains(pp.m_pos))
 			return;
@@ -104,11 +104,11 @@ namespace rog
 
 	void level::draw_monsters(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const
 	{
-		auto view = m_registry.view<comp_position const, comp_visual const, comp_monster_tag const>();
+		auto view = m_registry.view<c_position const, c_visual const, c_monster_tag const>();
 
 		for (auto const m : view)
 		{
-			auto [pos, vis] = view.get<comp_position const, comp_visual const>(m);
+			auto [pos, vis] = view.get<c_position const, c_visual const>(m);
 
 			auto const pos_lv = pos.m_pos;
 
@@ -170,7 +170,7 @@ namespace rog
 		return level.m_actors.at(glm::size2(pos)) != entt::null;
 	}
 
-	bool move_actor(level& level, entt::entity entity, comp_position& pos, glm::ivec2 target)
+	bool move_actor(level& level, entt::entity entity, c_position& pos, glm::ivec2 target)
 	{
 		auto const level_size = level.size();
 
@@ -189,7 +189,7 @@ namespace rog
 		return true;
 	}
 
-	bool move_actor(level& level, entt::entity entity, comp_position& pos, direction dir)
+	bool move_actor(level& level, entt::entity entity, c_position& pos, direction dir)
 	{
 		auto const vec = get_direction_vector(dir);
 		auto const level_size = level.size();

@@ -12,7 +12,7 @@
 namespace rog
 {
 
-	struct comp_position;
+	struct c_position;
 	struct feature;
 	struct screen_buffer;
 
@@ -46,8 +46,8 @@ namespace rog
 	bool is_walkable(level const& level, glm::ivec2 pos);
 	bool is_occupied(level const& level, glm::ivec2 pos);
 
-	bool move_actor(level& level, entt::entity entity, comp_position& pos, glm::ivec2 target);
-	bool move_actor(level& level, entt::entity entity, comp_position& pos, direction dir);
+	bool move_actor(level& level, entt::entity entity, c_position& pos, glm::ivec2 target);
+	bool move_actor(level& level, entt::entity entity, c_position& pos, direction dir);
 
 	std::vector<glm::ivec2> find_path(bump::grid2<feature> const& grid, glm::ivec2 src, glm::ivec2 dst);
 

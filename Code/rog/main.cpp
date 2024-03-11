@@ -2,7 +2,7 @@
 #include "rog_actor.hpp"
 #include "rog_colors.hpp"
 #include "rog_direction.hpp"
-#include "rog_entity.hpp"
+#include "rog_ecs.hpp"
 #include "rog_feature.hpp"
 #include "rog_level_gen.hpp"
 #include "rog_monster.hpp"
@@ -173,7 +173,7 @@ namespace rog
 
 						if (level.in_bounds(mouse_pos_lv))
 						{
-							auto const& player_pos_lv = level.m_registry.get<comp_position>(level.m_player).m_pos;
+							auto const& player_pos_lv = level.m_registry.get<c_position>(level.m_player).m_pos;
 							level.m_queued_path = find_path(level.m_grid, player_pos_lv, mouse_pos_lv);
 							queued_action.reset();
 						}
@@ -199,14 +199,14 @@ namespace rog
 
 					// add cycle energy
 					{
-						auto view = level.m_registry.view<comp_actor>();
+						auto view = level.m_registry.view<c_actor>();
 
 						for (auto a : view)
-							actor_add_energy(view.get<comp_actor>(a));
+							actor_add_energy(view.get<c_actor>(a));
 					}
 
 					// player turn
-					if (actor_has_turn_energy(level.m_registry.get<comp_actor>(level.m_player)))
+					if (actor_has_turn_energy(level.m_registry.get<c_actor>(level.m_player)))
 					{
 						bump::log_info("player turn!");
 
@@ -222,7 +222,7 @@ namespace rog
 							{
 								auto const& move = std::get<pa::move>(action);
 
-								auto& pos = level.m_registry.get<comp_position>(level.m_player);
+								auto& pos = level.m_registry.get<c_position>(level.m_player);
 								if (!move_actor(level, level.m_player, pos, move.m_dir))
 								{
 									bump::log_info("There is something in the way.");
@@ -242,7 +242,7 @@ namespace rog
 						}
 						else if (!level.m_queued_path.empty())
 						{
-							auto& pos = level.m_registry.get<comp_position>(level.m_player);
+							auto& pos = level.m_registry.get<c_position>(level.m_player);
 
 							auto target = level.m_queued_path.back();
 							level.m_queued_path.pop_back();
@@ -254,16 +254,16 @@ namespace rog
 							}
 						}
 
-						actor_take_turn_energy(level.m_registry.get<comp_actor>(level.m_player));
+						actor_take_turn_energy(level.m_registry.get<c_actor>(level.m_player));
 					}
 
 					// monster turn
 					{
-						auto view = level.m_registry.view<comp_actor, comp_monster_tag, comp_position>();
+						auto view = level.m_registry.view<c_actor, c_monster_tag, c_position>();
 
 						for (auto m : view)
 						{
-							auto [p, a] = view.get<comp_position, comp_actor>(m);
+							auto [p, a] = view.get<c_position, c_actor>(m);
 
 							if (!actor_has_turn_energy(a))
 								continue;

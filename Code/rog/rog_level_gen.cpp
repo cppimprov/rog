@@ -1,6 +1,6 @@
 #include "rog_level_gen.hpp"
 
-#include "rog_entity.hpp"
+#include "rog_ecs.hpp"
 #include "rog_feature.hpp"
 #include "rog_monster.hpp"
 #include "rog_player.hpp"
@@ -95,7 +95,7 @@ namespace rog
 			if (!pos)
 				return false;
 
-			level.m_registry.get<comp_position>(level.m_player).m_pos = pos.value();
+			level.m_registry.get<c_position>(level.m_player).m_pos = pos.value();
 
 			level.m_actors.at(pos.value()) = level.m_player;
 
@@ -125,7 +125,7 @@ namespace rog
 			if (!pos)
 				return false;
 
-			monster_handle.get<comp_position>().m_pos = pos.value();
+			monster_handle.get<c_position>().m_pos = pos.value();
 
 			level.m_actors.at(glm::size2(pos.value())) = monster_handle.entity();
 
