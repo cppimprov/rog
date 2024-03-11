@@ -18,7 +18,7 @@ namespace rog
 	namespace level_gen
 	{
 
-		bump::grid2<feature> level_from_string(glm::size2 size, std::string const& in)
+		bump::grid2<feature, glm::ivec2> level_from_string(glm::ivec2 size, std::string const& in)
 		{
 			bump::die_if(in.size() != size.x * size.y);
 			
@@ -30,7 +30,7 @@ namespace rog
 				{ '>', features::stairs_down },
 			};
 
-			auto grid = bump::grid2<feature>(size, features::floor);
+			auto grid = bump::grid2<feature, glm::ivec2>(size, features::floor);
 
 			for (auto const y : bump::range(0, size.y))
 			{
@@ -85,9 +85,9 @@ namespace rog
 				for (auto y : bump::range(0, level_size.y))
 					for (auto x : bump::range(0, level_size.x))
 						if (is_walkable(level, { x, y }) && !is_occupied(level, { x, y }))
-							return std::optional<glm::size2>({ x, y });
+							return std::optional<glm::ivec2>({ x, y });
 
-				return std::optional<glm::size2>();
+				return std::optional<glm::ivec2>();
 			}();
 
 			if (!pos)
@@ -125,7 +125,7 @@ namespace rog
 
 			monster_handle.get<c_position>().m_pos = pos.value();
 
-			level.m_actors.at(glm::size2(pos.value())) = monster_handle.entity();
+			level.m_actors.at(pos.value()) = monster_handle.entity();
 
 			return true;
 		}
@@ -143,7 +143,7 @@ namespace rog
 				.m_grid = map,
 				.m_registry = {},
 				.m_player = entt::null,
-				.m_actors = bump::grid2<entt::entity>(map.extents(), entt::null),
+				.m_actors = bump::grid2<entt::entity, glm::ivec2>(map.extents(), entt::null),
 			};
 
 			// add player

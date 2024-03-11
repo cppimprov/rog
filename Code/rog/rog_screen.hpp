@@ -11,7 +11,7 @@
 #include <cstdint>
 
 namespace bump { class app; }
-namespace rog { struct level; }
+namespace rog { class level; }
 
 namespace rog
 {
@@ -34,7 +34,7 @@ namespace rog
 		glm::ivec2 size() const { return glm::ivec2(m_data.extents()); }
 		void resize(glm::ivec2 size, screen_cell const& cell);
 
-		bump::grid2<screen_cell> m_data;
+		bump::grid2<screen_cell, glm::ivec2> m_data;
 	};
 	
 	struct tile_instance_data
@@ -130,7 +130,7 @@ namespace rog
 
 		explicit screen(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture, glm::ivec2 window_size_px, glm::ivec2 tile_size_px);
 
-		glm::ivec2 size() const { return glm::ivec2(m_buffer.m_data.extents()); }
+		glm::ivec2 size() const { return m_buffer.m_data.extents(); }
 		glm::ivec2 tile_size() const { return m_tile_size_px; }
 
 		void resize(glm::ivec2 window_size_px, glm::ivec2 tile_size_px);

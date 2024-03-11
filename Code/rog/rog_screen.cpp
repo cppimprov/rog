@@ -32,7 +32,7 @@ namespace rog
 	void screen_buffer::resize(glm::ivec2 size, screen_cell const& cell)
 	{
 		bump::die_if(size.x <= 0 || size.y <= 0);
-		m_data.resize(glm::size2(size), cell);
+		m_data.resize(size, cell);
 	}
 
 	tile_renderable::tile_renderable(bump::gl::shader_program const& shader, bump::gl::texture_2d_array const& texture):

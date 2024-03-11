@@ -154,7 +154,7 @@ namespace bump
 		data_type m_data;
 	};
 
-	template<class T> using grid2 = grid<T, 2>;
-	template<class T> using grid3 = grid<T, 3>;
+	template<class T, class C = glm::vec<2, glm::length_t, glm::defaultp> > using grid2 = grid<T, 2, C>;
+	template<class T, class C = glm::vec<3, glm::length_t, glm::defaultp> > using grid3 = grid<T, 3, C>;
 
 } // bump

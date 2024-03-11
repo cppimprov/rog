@@ -1,15 +1,8 @@
 
 now:
 
- * Move main_loop out of main.cpp and rename to dungeon.
  * Only take player actor energy on successful move.
 
-
-
-
-SOMETIME:
-
- * change grids to use glm::ivec2 coords instead of glm::size2 (specify coord type)
 
 UI:
 

@@ -85,7 +85,7 @@ namespace rog
 			{
 				auto const pos_lv = glm::ivec2{ x, y };
 				auto const pos_sb = panel_cell_to_buffer_cell(map_coords_to_panel_cell(pos_lv, map_panel_lv.m_origin), map_panel_sb.m_origin);
-				sb.m_data.at(glm::size2(pos_sb)) = m_grid.at(glm::size2(pos_lv)).m_cell;
+				sb.m_data.at(pos_sb) = m_grid.at(pos_lv).m_cell;
 			}
 		}
 	}
@@ -99,7 +99,7 @@ namespace rog
 
 		auto const player_pos_pn = map_coords_to_panel_cell(pp.m_pos, map_panel_lv.m_origin);
 		auto const player_pos_sb = panel_cell_to_buffer_cell(player_pos_pn, map_panel_sb.m_origin);
-		screen.m_data.at(glm::size2(player_pos_sb)) = pv.m_cell;
+		screen.m_data.at(player_pos_sb) = pv.m_cell;
 	}
 
 	void level::draw_monsters(screen_buffer& screen, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv) const
@@ -117,7 +117,7 @@ namespace rog
 
 			auto const pos_pn = map_coords_to_panel_cell(pos.m_pos, map_panel_lv.m_origin);
 			auto const pos_sb = panel_cell_to_buffer_cell(pos_pn, map_panel_sb.m_origin);
-			screen.m_data.at(glm::size2(pos_sb)) = vis.m_cell;
+			screen.m_data.at(pos_sb) = vis.m_cell;
 		}
 	}
 
@@ -130,7 +130,7 @@ namespace rog
 
 			auto const p_pn = map_coords_to_panel_cell(p, map_panel_lv.m_origin);
 			auto const p_sb = panel_cell_to_buffer_cell(p_pn, map_panel_sb.m_origin);
-			screen.m_data.at(glm::size2(p_sb)).m_bg = colors::dark_red;
+			screen.m_data.at(p_sb).m_bg = colors::dark_red;
 		}
 	}
 
@@ -146,7 +146,7 @@ namespace rog
 
 		auto const ht_pn = map_coords_to_panel_cell(ht, map_panel_lv.m_origin);
 		auto const ht_sb = panel_cell_to_buffer_cell(ht_pn, map_panel_sb.m_origin);
-		screen.m_data.at(glm::size2(ht_sb)).m_bg = colors::orange;
+		screen.m_data.at(ht_sb).m_bg = colors::orange;
 	}
 
 	void level::draw(screen_buffer& sb, bump::iaabb2 const& map_panel_sb) const
@@ -162,12 +162,12 @@ namespace rog
 	
 	bool is_walkable(level const& level, glm::ivec2 pos)
 	{
-		return !(level.m_grid.at(glm::size2(pos)).m_flags & feature::flags::NO_WALK);
+		return !(level.m_grid.at(pos).m_flags & feature::flags::NO_WALK);
 	}
 
 	bool is_occupied(level const& level, glm::ivec2 pos)
 	{
-		return level.m_actors.at(glm::size2(pos)) != entt::null;
+		return level.m_actors.at(pos) != entt::null;
 	}
 
 	bool move_actor(level& level, entt::entity entity, c_position& pos, glm::ivec2 target)
@@ -182,9 +182,9 @@ namespace rog
 
 		if (!is_walkable(level, target) || is_occupied(level, target)) return false;
 
-		level.m_actors.at(glm::size2(pos.m_pos)) = entt::null;
+		level.m_actors.at(pos.m_pos) = entt::null;
 		pos.m_pos = target;
-		level.m_actors.at(glm::size2(pos.m_pos)) = entity;
+		level.m_actors.at(pos.m_pos) = entity;
 
 		return true;
 	}
@@ -206,9 +206,9 @@ namespace rog
 
 		if (!is_walkable(level, target) || is_occupied(level, target)) return false;
 
-		level.m_actors.at(glm::size2(pos.m_pos)) = entt::null;
+		level.m_actors.at(pos.m_pos) = entt::null;
 		pos.m_pos = target;
-		level.m_actors.at(glm::size2(pos.m_pos)) = entity;
+		level.m_actors.at(pos.m_pos) = entity;
 
 		return true;
 	}

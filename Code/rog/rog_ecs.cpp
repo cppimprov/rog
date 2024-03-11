@@ -32,7 +32,7 @@ namespace rog
 
 		if (dir == stairs_direction::UP)
 		{
-			if (!(grid.at(glm::size2(pos.m_pos)).m_flags & feature::flags::STAIRS_UP))
+			if (!(grid.at(pos.m_pos).m_flags & feature::flags::STAIRS_UP))
 			{
 				bump::log_info("There are no upward stairs here.");
 				return false;
@@ -42,7 +42,7 @@ namespace rog
 		}
 		else
 		{
-			if (!(grid.at(glm::size2(pos.m_pos)).m_flags & feature::flags::STAIRS_DOWN))
+			if (!(grid.at(pos.m_pos).m_flags & feature::flags::STAIRS_DOWN))
 			{
 				bump::log_info("There are no downward stairs here.");
 				return false;

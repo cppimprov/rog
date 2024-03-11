@@ -11,7 +11,7 @@
 namespace rog
 {
 
-	struct level;
+	class level;
 
 	// COMPONENTS:
 

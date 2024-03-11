@@ -11,12 +11,12 @@
 namespace rog
 {
 
-	bool is_walkable(bump::grid2<feature> const& grid, glm::size2 pos)
+	bool is_walkable(bump::grid2<feature, glm::ivec2> const& grid, glm::ivec2 pos)
 	{
 		return !(grid.at(pos).m_flags & feature::flags::NO_WALK);
 	}
 
-	bool in_bounds(glm::size2 coords, glm::size2 extents)
+	bool in_bounds(glm::ivec2 coords, glm::ivec2 extents)
 	{
 		return (coords.x < extents.x && coords.y < extents.y);
 	}
@@ -42,7 +42,7 @@ namespace rog
 		return path;
 	}
 
-	std::vector<glm::ivec2> find_path(bump::grid2<feature> const& grid, glm::ivec2 src, glm::ivec2 dst)
+	std::vector<glm::ivec2> find_path(bump::grid2<feature, glm::ivec2> const& grid, glm::ivec2 src, glm::ivec2 dst)
 	{
 		bump::die_if(src.x >= grid.extents().x);
 		bump::die_if(src.y >= grid.extents().y);
@@ -96,7 +96,7 @@ namespace rog
 				if (!in_bounds(next, { 0, 0 }, coords_t(grid.extents())))
 					continue;
 				
-				if (!is_walkable(grid, glm::size2(next)))
+				if (!is_walkable(grid, next))
 					continue;
 
 				auto const cost = costs.at(current) + 1;
