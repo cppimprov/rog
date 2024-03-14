@@ -7,7 +7,7 @@ namespace rog
 {
 
 	struct c_player_char_info;
-	struct c_exp;
+	struct c_xp;
 
 	struct level;
 	struct screen_buffer;
@@ -31,7 +31,7 @@ namespace rog
 	ui_layout_main calc_ui_layout_main(glm::ivec2 sb_size);
 
 	void draw_player_char_info(screen_buffer& sb, c_player_char_info const& char_info, bump::iaabb2 const& name_panel_sb, bump::iaabb2 const& title_panel_sb);
-	void draw_player_exp(screen_buffer& sb, c_exp const& exp, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& exp_panel_sb);
+	void draw_player_exp(screen_buffer& sb, c_xp const& exp, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& exp_panel_sb);
 	void draw_level(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb);
 
 } // rog

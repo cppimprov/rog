@@ -36,6 +36,8 @@ namespace rog
 		glm::ivec2 size() const { return glm::ivec2(m_data.extents()); }
 		void resize(glm::ivec2 size, screen_cell const& cell);
 
+		bool in_bounds(glm::ivec2 pos) const { return bump::iaabb2{ { 0, 0 }, m_data.extents() }.contains(pos); }
+
 		bump::grid2<screen_cell, glm::ivec2> m_data;
 	};
 	

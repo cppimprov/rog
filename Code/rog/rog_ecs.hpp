@@ -21,9 +21,9 @@ namespace rog
 		std::string m_title;
 	};
 
-	struct c_exp
+	struct c_xp
 	{
-		std::uint32_t m_exp = 0;
+		std::uint32_t m_xp = 0;
 		std::uint32_t m_level = 1;
 	};
 

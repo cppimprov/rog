@@ -263,7 +263,7 @@ namespace rog
 				screen.buffer().fill(screen_cell_blank);
 
 				draw_player_char_info(screen.buffer(), level.m_registry.get<c_player_char_info>(level.m_player), ui_main.m_py_name_sb, ui_main.m_py_title_sb);
-				draw_player_exp(screen.buffer(), level.m_registry.get<c_exp>(level.m_player), ui_main.m_py_level_sb, ui_main.m_py_exp_sb);
+				draw_player_exp(screen.buffer(), level.m_registry.get<c_xp>(level.m_player), ui_main.m_py_level_sb, ui_main.m_py_exp_sb);
 
 				draw_level(screen.buffer(), level, ui_main.m_map_sb);
 			}

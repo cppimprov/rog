@@ -33,7 +33,16 @@ namespace rog
 		RIGHT
 	};
 
-	void draw_clipped_text(screen_buffer& sb, std::string const& text, bump::iaabb2 const& panel_sb, glm::vec3 fg_color, glm::vec3 bg_color)
+	int align_text(int length, int clip_length, text_align align)
+	{
+		return
+		    align == text_align::LEFT ? 0 :
+		    align == text_align::CENTER ? (length - clip_length) / 2 :
+		    align == text_align::RIGHT ? length - clip_length :
+		    (bump::die(), 0);
+	}
+
+	void draw_clipped_text(screen_buffer& sb, std::string const& text, bump::iaabb2 const& panel_sb, glm::vec3 fg_color, glm::vec3 bg_color, text_align align = text_align::LEFT)
 	{
 		if (text.empty())
 			return;
@@ -41,36 +50,43 @@ namespace rog
 		if (panel_sb.m_size.x < 1 || panel_sb.m_size.y < 1)
 			return;
 
-		auto x = 0;
+		auto const length = static_cast<int>(text.size());
+		auto const clip_length = std::min(length, panel_sb.m_size.x);
 
-		for (auto c : text)
+		auto const start_sb = panel_sb.m_origin.x + align_text(panel_sb.m_size.x, clip_length, align);
+		auto const end_sb = start_sb + clip_length;
+
+		auto const start_t = align_text(length, clip_length, align);
+		auto const end_t = start_t + clip_length;
+
+		for (auto x = start_sb, i = start_t; x != end_sb && i != end_t; ++x, ++i)
 		{
-			auto const pos = panel_sb.m_origin + glm::ivec2{ x++, 0 };
-			auto const cell = screen_cell{ static_cast<std::uint8_t>(c), fg_color, bg_color };
-			sb.m_data.at(pos) = cell;
+			auto const pos = glm::ivec2{ x, panel_sb.m_origin.y };
 
-			if (x >= panel_sb.m_size.x)
-				break;
+			if (!sb.in_bounds(pos))
+				continue;
+
+			sb.m_data.at(pos) = screen_cell{ static_cast<std::uint8_t>(text[i]), fg_color, bg_color };
 		}
 	}
 
 	void draw_player_char_info(screen_buffer& sb, c_player_char_info const& n, bump::iaabb2 const& name_panel_sb, bump::iaabb2 const& title_panel_sb)
 	{
-		draw_clipped_text(sb, n.m_name, name_panel_sb, colors::white, colors::black);
+		draw_clipped_text(sb, n.m_name, name_panel_sb, colors::white, colors::black, text_align::LEFT);
 		draw_clipped_text(sb, n.m_title, title_panel_sb, colors::white, colors::black);
 	}
 
-	void draw_player_exp(screen_buffer& sb, c_exp const& e, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& exp_panel_sb)
+	void draw_player_exp(screen_buffer& sb, c_xp const& e, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& xp_panel_sb)
 	{
 		draw_clipped_text(sb, "LEVEL:", lvl_panel_sb, colors::white, colors::black);
 
-		//auto const lvl_str = std::to_string(e.m_level);
-		//draw_clipped_text(sb, lvl_str, lvl_panel_sb, colors::white, colors::black);
+		auto const lvl_str = std::to_string(e.m_level);
+		draw_clipped_text(sb, lvl_str, lvl_panel_sb, colors::white, colors::black, text_align::RIGHT);
 
-		draw_clipped_text(sb, "EXP:", exp_panel_sb, colors::white, colors::black);
+		draw_clipped_text(sb, "XP:", xp_panel_sb, colors::white, colors::black);
 
-		//auto const exp_str = std::to_string(e.m_exp);
-		//draw_clipped_text(sb, exp_str, exp_panel_sb, colors::white, colors::black);
+		auto const exp_str = std::to_string(e.m_xp);
+		draw_clipped_text(sb, exp_str, xp_panel_sb, colors::white, colors::black, text_align::RIGHT);
 	}
 
 	void draw_map(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
@@ -89,7 +105,7 @@ namespace rog
 		}
 	}
 
-	void draw_player(screen_buffer& screen, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
+	void draw_player(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
 	{
 		auto const [pp, pv] = level.m_registry.get<c_position, c_visual>(level.m_player);
 
@@ -98,10 +114,10 @@ namespace rog
 
 		auto const player_pos_pn = map_coords_to_panel_cell(pp.m_pos, map_panel_lv.m_origin);
 		auto const player_pos_sb = panel_cell_to_buffer_cell(player_pos_pn, map_panel_sb.m_origin);
-		screen.m_data.at(player_pos_sb) = pv.m_cell;
+		sb.m_data.at(player_pos_sb) = pv.m_cell;
 	}
 
-	void draw_monsters(screen_buffer& screen, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
+	void draw_monsters(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
 	{
 		auto view = level.m_registry.view<c_position const, c_visual const, c_monster_tag const>();
 
@@ -116,11 +132,11 @@ namespace rog
 
 			auto const pos_pn = map_coords_to_panel_cell(pos.m_pos, map_panel_lv.m_origin);
 			auto const pos_sb = panel_cell_to_buffer_cell(pos_pn, map_panel_sb.m_origin);
-			screen.m_data.at(pos_sb) = vis.m_cell;
+			sb.m_data.at(pos_sb) = vis.m_cell;
 		}
 	}
 
-	void draw_queued_path(screen_buffer& screen, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
+	void draw_queued_path(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
 	{
 		for (auto const& p : level.m_queued_path)
 		{
@@ -129,11 +145,11 @@ namespace rog
 
 			auto const p_pn = map_coords_to_panel_cell(p, map_panel_lv.m_origin);
 			auto const p_sb = panel_cell_to_buffer_cell(p_pn, map_panel_sb.m_origin);
-			screen.m_data.at(p_sb).m_bg = colors::dark_red;
+			sb.m_data.at(p_sb).m_bg = colors::dark_red;
 		}
 	}
 
-	void draw_hovered_tile(screen_buffer& screen, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
+	void draw_hovered_tile(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
 	{
 		if (!level.m_hovered_tile.has_value())
 			return;
@@ -145,7 +161,7 @@ namespace rog
 
 		auto const ht_pn = map_coords_to_panel_cell(ht, map_panel_lv.m_origin);
 		auto const ht_sb = panel_cell_to_buffer_cell(ht_pn, map_panel_sb.m_origin);
-		screen.m_data.at(ht_sb).m_bg = colors::orange;
+		sb.m_data.at(ht_sb).m_bg = colors::orange;
 	}
 
 	void draw_level(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb)
