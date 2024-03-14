@@ -11,9 +11,21 @@
 namespace rog
 {
 
-	class level;
+	struct level;
 
 	// COMPONENTS:
+
+	struct c_player_char_info
+	{
+		std::string m_name;
+		std::string m_title;
+	};
+
+	struct c_exp
+	{
+		std::uint32_t m_exp = 0;
+		std::uint32_t m_level = 1;
+	};
 
 	struct c_position
 	{

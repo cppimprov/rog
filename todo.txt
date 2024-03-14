@@ -1,8 +1,13 @@
 
-message log:
- * add msg_log to show messages, with draw function to show in screenbuffer (add function to draw clipped text to a specified area).
- * add boolean flag to show expanded log, with scrolling to view message history.
- * condense identical messages with (x2) etc.
+BORDERS:
+
+	* Use borders!
+
+MESSAGE LOG:
+
+	* add msg_log to show messages, with draw function to show in screenbuffer (add function to draw clipped text to a specified area).
+	* add boolean flag to show expanded log, with scrolling to view message history.
+	* condense identical messages with (x2) etc.
 
 UI:
 
@@ -13,5 +18,3 @@ PATHFINDING:
 
 	* Bigger level with more obstacles.
 	* Varying movement costs for different terrain types.
-
-// ...

@@ -13,6 +13,8 @@ namespace rog
 		auto player = registry.create();
 		
 		registry.emplace<c_player_tag>(player);
+		registry.emplace<c_player_char_info>(player, "Player", "Adventurer");
+		registry.emplace<c_exp>(player);
 		registry.emplace<c_position>(player, glm::ivec2(0));
 		registry.emplace<c_visual>(player, screen_cell{ '@', colors::yellow, colors::black });
 		registry.emplace<c_actor>(player, 100); // start with enough energy to move

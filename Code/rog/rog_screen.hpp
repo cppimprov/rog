@@ -11,7 +11,7 @@
 #include <cstdint>
 
 namespace bump { class app; }
-namespace rog { class level; }
+namespace rog { struct level; }
 
 namespace rog
 {
@@ -19,7 +19,7 @@ namespace rog
 	struct screen_cell
 	{
 		std::uint8_t m_value = ' ';
-		glm::vec3 m_fg = glm::vec3(0.f);
+		glm::vec3 m_fg = glm::vec3(1.f);
 		glm::vec3 m_bg = glm::vec3(0.f);
 		glm::vec3 m_border = glm::vec3(0.f);
 		std::uint32_t m_border_width = 0;
