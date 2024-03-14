@@ -10,7 +10,7 @@ namespace rog
 	struct c_xp;
 	struct c_stats;
 	struct c_hp;
-	struct c_sp;
+	struct c_mp;
 
 	struct level;
 	struct screen_buffer;
@@ -25,7 +25,7 @@ namespace rog
 		bump::iaabb2 m_py_exp_sb;
 		bump::iaabb2 m_py_stats_sb;
 		bump::iaabb2 m_py_hp_sb;
-		bump::iaabb2 m_py_sp_sb;
+		bump::iaabb2 m_py_mp_sb;
 
 		bump::iaabb2 m_msg_sb;
 		bump::iaabb2 m_map_sb;
@@ -38,7 +38,7 @@ namespace rog
 	void draw_player_xp(screen_buffer& sb, c_xp const& xp, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& xp_panel_sb);
 	void draw_player_stats(screen_buffer& sb, c_stats const& stats, bump::iaabb2 const& stats_panel_sb);
 	void draw_player_hp(screen_buffer& sb, c_hp const& hp, bump::iaabb2 const& hp_panel_sb);
-	void draw_player_sp(screen_buffer& sb, c_sp const& sp, bump::iaabb2 const& sp_panel_sb);
+	void draw_player_mp(screen_buffer& sb, c_mp const& mp, bump::iaabb2 const& mp_panel_sb);
 	void draw_level(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb);
 
 } // rog

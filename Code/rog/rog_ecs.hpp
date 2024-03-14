@@ -43,7 +43,7 @@ namespace rog
 		std::int32_t m_max = 10;
 	};
 
-	struct c_sp
+	struct c_mp
 	{
 		std::int32_t m_current = 10;
 		std::int32_t m_max = 10;

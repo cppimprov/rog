@@ -266,7 +266,7 @@ namespace rog
 				draw_player_xp(screen.buffer(), level.m_registry.get<c_xp>(level.m_player), ui_main.m_py_level_sb, ui_main.m_py_exp_sb);
 				draw_player_stats(screen.buffer(), level.m_registry.get<c_stats>(level.m_player), ui_main.m_py_stats_sb);
 				draw_player_hp(screen.buffer(), level.m_registry.get<c_hp>(level.m_player), ui_main.m_py_hp_sb);
-				draw_player_sp(screen.buffer(), level.m_registry.get<c_sp>(level.m_player), ui_main.m_py_sp_sb);
+				draw_player_mp(screen.buffer(), level.m_registry.get<c_mp>(level.m_player), ui_main.m_py_mp_sb);
 
 				draw_level(screen.buffer(), level, ui_main.m_map_sb);
 			}

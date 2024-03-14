@@ -18,7 +18,7 @@ namespace rog
 		ui.m_py_exp_sb = { { 0, ui.m_py_level_sb.m_origin.y + ui.m_py_level_sb.m_size.y }, { py_panel_width, 1 } };
 		ui.m_py_stats_sb = { { 0, ui.m_py_exp_sb.m_origin.y + ui.m_py_exp_sb.m_size.y + 1 }, { py_panel_width, 6 } };
 		ui.m_py_hp_sb = { { 0, ui.m_py_stats_sb.m_origin.y + ui.m_py_stats_sb.m_size.y + 1 }, { py_panel_width, 1 } };
-		ui.m_py_sp_sb = { { 0, ui.m_py_hp_sb.m_origin.y + ui.m_py_hp_sb.m_size.y }, { py_panel_width, 1 } };
+		ui.m_py_mp_sb = { { 0, ui.m_py_hp_sb.m_origin.y + ui.m_py_hp_sb.m_size.y }, { py_panel_width, 1 } };
 
 		ui.m_msg_sb = { { py_panel_width + 1, 0 }, { sb_size.x - py_panel_width - 1, 1 } };
 		ui.m_location_sb = { { sb_size.x - 12, sb_size.y - 1 }, { 12, 1 } };
@@ -133,13 +133,13 @@ namespace rog
 		draw_clipped_text(sb, hp_cur_str, hp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
 	}
 
-	void draw_player_sp(screen_buffer& sb, c_sp const& sp, bump::iaabb2 const& sp_panel_sb)
+	void draw_player_mp(screen_buffer& sb, c_mp const& mp, bump::iaabb2 const& mp_panel_sb)
 	{
-		auto const sp_max_str = std::to_string(sp.m_max) + std::string("/    ");
-		auto const sp_cur_str = std::to_string(sp.m_current);
-		draw_clipped_text(sb, "SP:", sp_panel_sb, colors::light_blue, colors::black);
-		draw_clipped_text(sb, sp_max_str, sp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
-		draw_clipped_text(sb, sp_cur_str, sp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
+		auto const mp_max_str = std::to_string(mp.m_max) + std::string("/    ");
+		auto const mp_cur_str = std::to_string(mp.m_current);
+		draw_clipped_text(sb, "MP:", mp_panel_sb, colors::light_blue, colors::black);
+		draw_clipped_text(sb, mp_max_str, mp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
+		draw_clipped_text(sb, mp_cur_str, mp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
 	}
 
 	void draw_map(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)
