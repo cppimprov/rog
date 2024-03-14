@@ -17,7 +17,8 @@ namespace rog
 		ui.m_py_level_sb = { { 0, ui.m_py_title_sb.m_origin.y + ui.m_py_title_sb.m_size.y }, { py_panel_width, 1 } };
 		ui.m_py_exp_sb = { { 0, ui.m_py_level_sb.m_origin.y + ui.m_py_level_sb.m_size.y }, { py_panel_width, 1 } };
 		ui.m_py_stats_sb = { { 0, ui.m_py_exp_sb.m_origin.y + ui.m_py_exp_sb.m_size.y + 1 }, { py_panel_width, 6 } };
-		ui.m_py_hp_sb = { { 0, ui.m_py_stats_sb.m_origin.y + ui.m_py_stats_sb.m_size.y + 1 }, { py_panel_width, 2 } };
+		ui.m_py_hp_sb = { { 0, ui.m_py_stats_sb.m_origin.y + ui.m_py_stats_sb.m_size.y + 1 }, { py_panel_width, 1 } };
+		ui.m_py_sp_sb = { { 0, ui.m_py_hp_sb.m_origin.y + ui.m_py_hp_sb.m_size.y }, { py_panel_width, 1 } };
 
 		ui.m_msg_sb = { { py_panel_width + 1, 0 }, { sb_size.x - py_panel_width - 1, 1 } };
 		ui.m_location_sb = { { sb_size.x - 12, sb_size.y - 1 }, { 12, 1 } };
@@ -75,18 +76,70 @@ namespace rog
 		draw_clipped_text(sb, n.m_name, name_panel_sb, colors::white, colors::black, text_align::LEFT);
 		draw_clipped_text(sb, n.m_title, title_panel_sb, colors::white, colors::black);
 	}
-
-	void draw_player_exp(screen_buffer& sb, c_xp const& e, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& xp_panel_sb)
+	
+	void draw_player_xp(screen_buffer& sb, c_xp const& xp, bump::iaabb2 const& lvl_panel_sb, bump::iaabb2 const& xp_panel_sb)
 	{
+		auto const lvl_str = std::to_string(xp.m_level);
 		draw_clipped_text(sb, "LEVEL:", lvl_panel_sb, colors::white, colors::black);
+		draw_clipped_text(sb, lvl_str, lvl_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
 
-		auto const lvl_str = std::to_string(e.m_level);
-		draw_clipped_text(sb, lvl_str, lvl_panel_sb, colors::white, colors::black, text_align::RIGHT);
-
+		auto const exp_str = std::to_string(xp.m_xp);
 		draw_clipped_text(sb, "XP:", xp_panel_sb, colors::white, colors::black);
+		draw_clipped_text(sb, exp_str, xp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
+	}
 
-		auto const exp_str = std::to_string(e.m_xp);
-		draw_clipped_text(sb, exp_str, xp_panel_sb, colors::white, colors::black, text_align::RIGHT);
+	void draw_player_stats(screen_buffer& sb, c_stats const& stats, bump::iaabb2 const& stats_panel_sb)
+	{
+		auto const origin = stats_panel_sb.m_origin;
+		auto const size = stats_panel_sb.m_size;
+
+		auto const str_str = std::to_string(stats.m_str);
+		auto const str_ofs = glm::ivec2{ 0, 0 };
+		draw_clipped_text(sb, "STR: ", { origin + str_ofs, size }, colors::white, colors::black);
+		draw_clipped_text(sb, str_str, { origin + str_ofs, size }, colors::light_green, colors::black, text_align::RIGHT);
+
+		auto const dex_str = std::to_string(stats.m_dex);
+		auto const dex_ofs = glm::ivec2{ 0, 1 };
+		draw_clipped_text(sb, "DEX: ", { origin + dex_ofs, size }, colors::white, colors::black);
+		draw_clipped_text(sb, dex_str, { origin + dex_ofs, size }, colors::light_green, colors::black, text_align::RIGHT);
+
+		auto const con_str = std::to_string(stats.m_con);
+		auto const con_ofs = glm::ivec2{ 0, 2 };
+		draw_clipped_text(sb, "CON: ", { origin + con_ofs, size }, colors::white, colors::black);
+		draw_clipped_text(sb, con_str, { origin + con_ofs, size }, colors::light_green, colors::black, text_align::RIGHT);
+
+		auto const int_str = std::to_string(stats.m_int);
+		auto const int_ofs = glm::ivec2{ 0, 3 };
+		draw_clipped_text(sb, "INT: ", { origin + int_ofs, size }, colors::white, colors::black);
+		draw_clipped_text(sb, int_str, { origin + int_ofs, size }, colors::light_green, colors::black, text_align::RIGHT);
+
+		auto const wis_str = std::to_string(stats.m_wis);
+		auto const wis_ofs = glm::ivec2{ 0, 4 };
+		draw_clipped_text(sb, "WIS: ", { origin + wis_ofs, size }, colors::white, colors::black);
+		draw_clipped_text(sb, wis_str, { origin + wis_ofs, size }, colors::light_green, colors::black, text_align::RIGHT);
+
+		auto const cha_str = std::to_string(stats.m_cha);
+		auto const cha_ofs = glm::ivec2{ 0, 5 };
+		draw_clipped_text(sb, "CHA: ", { origin + cha_ofs, size }, colors::white, colors::black);
+		draw_clipped_text(sb, cha_str, { origin + cha_ofs, size }, colors::light_green, colors::black, text_align::RIGHT);
+	}
+	
+	void draw_player_hp(screen_buffer& sb, c_hp const& hp, bump::iaabb2 const& hp_panel_sb)
+	{
+		auto const hp_max_str = std::to_string(hp.m_max) + std::string("/    ");
+		auto const hp_cur_str = std::to_string(hp.m_current);
+		draw_clipped_text(sb, "HP:", hp_panel_sb, colors::light_red, colors::black);
+		draw_clipped_text(sb, hp_max_str, hp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
+		draw_clipped_text(sb, hp_cur_str, hp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
+	}
+
+	void draw_player_sp(screen_buffer& sb, c_sp const& sp, bump::iaabb2 const& sp_panel_sb)
+	{
+		auto const sp_max_str = std::to_string(sp.m_max) + std::string("/    ");
+		auto const sp_cur_str = std::to_string(sp.m_current);
+		draw_clipped_text(sb, "SP:", sp_panel_sb, colors::light_blue, colors::black);
+		draw_clipped_text(sb, sp_max_str, sp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
+		draw_clipped_text(sb, sp_cur_str, sp_panel_sb, colors::light_green, colors::black, text_align::RIGHT);
 	}
 
 	void draw_map(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb, bump::iaabb2 const& map_panel_lv)

@@ -27,6 +27,28 @@ namespace rog
 		std::uint32_t m_level = 1;
 	};
 
+	struct c_stats
+	{
+		std::int32_t m_str = 10;
+		std::int32_t m_dex = 10;
+		std::int32_t m_con = 10;
+		std::int32_t m_int = 10;
+		std::int32_t m_wis = 10;
+		std::int32_t m_cha = 10;
+	};
+
+	struct c_hp
+	{
+		std::int32_t m_current = 10;
+		std::int32_t m_max = 10;
+	};
+
+	struct c_sp
+	{
+		std::int32_t m_current = 10;
+		std::int32_t m_max = 10;
+	};
+
 	struct c_position
 	{
 		glm::ivec2 m_pos;
