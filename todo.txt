@@ -1,11 +1,18 @@
 
+REDESIGN!
+
+	* throw away the ui code! 
+	* we don't actually want to use the screenbuffer for ui... it looks really bad with the square tiles...
+	* but we want to keep the square tiles for gameplay!
+	* so... we'll need proper boxes with normal font rendering to display info.
+
 BORDERS:
 
 	* Use borders!
 
 MESSAGE LOG:
 
-	* add msg_log to show messages, with draw function to show in screenbuffer (add function to draw clipped text to a specified area).
+	* add msg_log to show messages.
 	* add boolean flag to show expanded log, with scrolling to view message history.
 	* condense identical messages with (x2) etc.
 
@@ -18,3 +25,6 @@ PATHFINDING:
 
 	* Bigger level with more obstacles.
 	* Varying movement costs for different terrain types.
+
+// ...
+

@@ -206,5 +206,7 @@ namespace rog
 		tile_border_instance_data m_tile_border_instances;
 		tile_border_renderable m_tile_border_renderable;
 	};
+	
+	void draw_level(screen_buffer& sb, level const& level, bump::iaabb2 const& map_panel_sb);
 
 } // rog

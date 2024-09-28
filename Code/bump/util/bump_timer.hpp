@@ -5,7 +5,7 @@
 namespace bump
 {
 
-	template<class ClockT = high_res_clock_t>
+	template<class ClockT = clock_t>
 	class timer
 	{
 	public:
@@ -25,7 +25,7 @@ namespace bump
 		typename clock_t::time_point m_start;
 	};
 
-	template<class ClockT = high_res_clock_t>
+	template<class ClockT = clock_t>
 	class frame_timer
 	{
 	public:

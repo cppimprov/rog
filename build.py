@@ -507,7 +507,7 @@ class PlatformMSVC:
 		luac.inc_dirs = lualib.inc_dirs
 		self.write_exe(n, build_type, luac, '2', '/TP')
 
-		bump_dirs = [ 'debug', 'enet', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'util' ]
+		bump_dirs = [ 'debug', 'enet', 'engine', 'font', 'gl', 'io', 'math', 'net', 'sdl', 'ui', 'util' ]
 		bump_core_dirs = [ 'debug', 'io', 'math', 'net', 'util' ]
 
 		bump = ProjectStaticLib.from_name('bump', self, build_type)
@@ -577,6 +577,31 @@ class PlatformMSVC:
 			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
 		]
 		self.write_exe(n, build_type, rog_ascii_gen)
+
+		smirc = ProjectExe.from_name('smirc', self, build_type)
+		smirc.defines = bump.defines
+		smirc.inc_dirs = [
+			join_dir(freetype.code_dir, 'include'),
+			join_dir(harfbuzz.code_dir, 'src'),
+			glew.code_dir,
+			stb.code_dir,
+			glm.code_dir,
+			join_dir(sdl.code_dir, 'include'),
+			sdlmixer.code_dir,
+		]
+		smirc.inc_dirs = smirc.inc_dirs + [join_dir(bump.code_dir, d) for d in bump_dirs]
+		smirc.libs = [
+			join_file(freetype.deploy_dir, self.get_lib_name(freetype.project_name)),
+			join_file(harfbuzz.deploy_dir, self.get_lib_name(harfbuzz.project_name)),
+			join_file(glew.deploy_dir, self.get_lib_name(glew.project_name)),
+			join_file(stb.deploy_dir, self.get_lib_name(stb.project_name)),
+			join_file(sdlmain.deploy_dir, self.get_lib_name(sdlmain.project_name)),
+			join_file(sdl.deploy_dir, self.get_lib_name(sdl.project_name)),
+			join_file(sdlmixer.deploy_dir, self.get_lib_name(sdlmixer.project_name)),
+			join_file(bump.deploy_dir, self.get_lib_name(bump.project_name)),
+		]
+		smirc.standard_libs = [ 'User32.lib', 'Shell32.lib', 'Ole32.lib', 'OpenGL32.lib', 'gdi32.lib', 'Winmm.lib', 'Advapi32.lib', 'Version.lib', 'Imm32.lib', 'Setupapi.lib', 'OleAut32.lib', 'Ws2_32.lib' ]
+		self.write_exe(n, build_type, smirc)
 
 		# include all the test files (.test.cpp extension) in a source file so the linker doesn't
 		# think they are unreferenced and remove them
@@ -835,6 +860,16 @@ def main():
 			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
 			'Data/rog_ascii_gen', 
 			get_deploy_dir('rog_ascii_gen', platform_writer.get_platform_name(), build_type) + '/data'])
+			
+		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+		if copy_result > 8:
+			print('failed to copy data files!')
+			return
+		
+		copy_result = subprocess.call(['robocopy', 
+			'/w:1', '/mir', '/njh', '/njs', '/ndl', '/nc', '/ns', '/np',
+			'Data/smirc', 
+			get_deploy_dir('smirc', platform_writer.get_platform_name(), build_type) + '/data'])
 			
 		# see: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
 		if copy_result > 8:

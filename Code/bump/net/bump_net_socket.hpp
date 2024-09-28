@@ -71,6 +71,8 @@ namespace bump
 			result<std::size_t, std::system_error> send_to(endpoint const& remote, std::span<std::uint8_t const> data) const;
 			result<std::size_t, std::system_error> receive(std::span<std::uint8_t> buffer) const;
 			result<std::tuple<endpoint, std::size_t>, std::system_error> receive_from(std::span<std::uint8_t> buffer) const;
+			result<endpoint, std::system_error> get_remote_endpoint() const;
+			result<endpoint, std::system_error> get_local_endpoint() const;
 
 			bool is_open() const;
 			result<void, std::system_error> close();

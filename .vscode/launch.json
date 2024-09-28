@@ -51,6 +51,7 @@
             "options": [
                 "rog",
                 "rog_ascii_gen",
+                "smirc",
                 "test",
             ]
         },

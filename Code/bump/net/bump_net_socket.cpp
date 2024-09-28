@@ -201,6 +201,30 @@ namespace bump
 				return make_ok(std::tuple<endpoint, std::size_t>{ endpoint(addr, addr_len), narrow_cast<std::size_t>(result) });
 			}
 
+			result<endpoint, std::system_error> get_remote_endpoint(socket const& s)
+			{
+				auto addr = ::sockaddr_storage();
+				auto addr_len = socklen_t{ sizeof(::sockaddr_storage) };
+				auto const result = ::getpeername(s.get_handle(), reinterpret_cast<sockaddr*>(&addr), &addr_len);
+
+				if (result == socket_error)
+					return make_err(get_last_error());
+
+				return make_ok(endpoint(addr, addr_len));
+			}
+			
+			result<endpoint, std::system_error> get_local_endpoint(socket const& s)
+			{
+				auto addr = ::sockaddr_storage();
+				auto addr_len = socklen_t{ sizeof(::sockaddr_storage) };
+				auto const result = ::getsockname(s.get_handle(), reinterpret_cast<sockaddr*>(&addr), &addr_len);
+
+				if (result == socket_error)
+					return make_err(get_last_error());
+
+				return make_ok(endpoint(addr, addr_len));
+			}
+
 		} // platform
 		
 		socket::socket():
@@ -309,6 +333,16 @@ namespace bump
 		result<std::tuple<endpoint, std::size_t>, std::system_error> socket::receive_from(std::span<std::uint8_t> buffer) const
 		{
 			return platform::receive_from(*this, buffer);
+		}
+		
+		result<endpoint, std::system_error> socket::get_remote_endpoint() const
+		{
+			return platform::get_remote_endpoint(*this);
+		}
+
+		result<endpoint, std::system_error> socket::get_local_endpoint() const
+		{
+			return platform::get_local_endpoint(*this);
 		}
 
 		result<socket, std::system_error> make_tcp_stream(endpoint const& remote, blocking_mode mode)

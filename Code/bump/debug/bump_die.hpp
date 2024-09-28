@@ -14,7 +14,7 @@ namespace bump
 
 #else
 
-#include <signal.h>
+#include <cstdlib>
 
 namespace bump
 {

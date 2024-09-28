@@ -6,7 +6,6 @@
 #include "rog_player_action.hpp"
 #include "rog_random.hpp"
 #include "rog_screen.hpp"
-#include "rog_ui.hpp"
 
 #include <bump_app.hpp>
 #include <bump_input.hpp>
@@ -29,14 +28,16 @@ namespace rog
 
 		auto const tile_size_px = glm::ivec2{ 24, 36 };
 
+		// todo: screen needs to be "map_panel" or something (i.e. origin_px, size_px)
+		// todo: set map panel px size to min of window / map size (for now) and center it (for now)
+		// todo: convert mouse coords from window px to map panel px, then onwards...
+
 		auto screen = rog::screen(
 			app.m_assets.m_shaders.at("tile"),
 			app.m_assets.m_textures_2d_array.at("ascii_tiles"),
 			app.m_assets.m_shaders.at("tile_border"),
 			app.m_window.get_size(),
 			tile_size_px);
-
-		auto ui_main = calc_ui_layout_main(screen.size());
 
 		auto app_events   = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -49,8 +50,8 @@ namespace rog
 
 		auto queued_action = std::optional<player_action>();
 
-		auto timer = bump::frame_timer(bump::high_res_duration_t{ 0 });
-		auto time_accumulator = bump::high_res_duration_t{ 0 };
+		auto timer = bump::frame_timer(bump::duration_t{ 0 });
+		auto time_accumulator = bump::duration_t{ 0 };
 
 		while (true)
 		{
@@ -81,7 +82,6 @@ namespace rog
 						auto const& r = std::get<ae::resize>(event);
 						auto const& window_size = r.m_size;
 						screen.resize(window_size, screen.tile_size());
-						ui_main = calc_ui_layout_main(screen.size());
 						continue;
 					}
 				}
@@ -127,13 +127,13 @@ namespace rog
 
 					if (std::holds_alternative<ie::mouse_motion>(event))
 					{
-						auto const& m = std::get<ie::mouse_motion>(event);
+						// auto const& m = std::get<ie::mouse_motion>(event);
 
-						auto const map_panel_lv = level.get_map_panel(ui_main.m_map_sb.m_size);
-						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui_main.m_map_sb.m_origin);
-						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
+						// auto const map_panel_lv = level.get_map_panel(ui_main.m_map_sb.m_size);
+						// auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui_main.m_map_sb.m_origin);
+						// auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
 
-						level.m_hovered_tile = level.in_bounds(mouse_pos_lv) ? std::optional<glm::ivec2>(mouse_pos_lv) : std::optional<glm::ivec2>();
+						// level.m_hovered_tile = level.in_bounds(mouse_pos_lv) ? std::optional<glm::ivec2>(mouse_pos_lv) : std::optional<glm::ivec2>();
 
 						continue;
 					}
@@ -147,16 +147,16 @@ namespace rog
 						if (m.m_button != bt::LEFT)
 							continue;
 						
-						auto const map_panel_lv = level.get_map_panel(ui_main.m_map_sb.m_size);
-						auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui_main.m_map_sb.m_origin);
-						auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
+						// auto const map_panel_lv = level.get_map_panel(ui_main.m_map_sb.m_size);
+						// auto const mouse_pos_pn = screen.sb_to_pn(screen.px_to_sb(m.m_position), ui_main.m_map_sb.m_origin);
+						// auto const mouse_pos_lv = panel_cell_to_map_coords(mouse_pos_pn, map_panel_lv.m_origin);
 
-						if (level.in_bounds(mouse_pos_lv))
-						{
-							auto const& player_pos_lv = level.m_registry.get<c_position>(level.m_player).m_pos;
-							level.m_queued_path = find_path(level.m_grid, player_pos_lv, mouse_pos_lv);
-							queued_action.reset();
-						}
+						// if (level.in_bounds(mouse_pos_lv))
+						// {
+						// 	auto const& player_pos_lv = level.m_registry.get<c_position>(level.m_player).m_pos;
+						// 	level.m_queued_path = find_path(level.m_grid, player_pos_lv, mouse_pos_lv);
+						// 	queued_action.reset();
+						// }
 
 						continue;
 					}
@@ -166,7 +166,7 @@ namespace rog
 			// update
 			{
 				if (app_paused || player_paused)
-					time_accumulator = bump::high_res_duration_t{ 0 };
+					time_accumulator = bump::duration_t{ 0 };
 				else
 					time_accumulator += timer.get_last_frame_time();
 
@@ -262,13 +262,9 @@ namespace rog
 			{
 				screen.buffer().fill(screen_cell_blank);
 
-				draw_player_char_info(screen.buffer(), level.m_registry.get<c_player_char_info>(level.m_player), ui_main.m_py_name_sb, ui_main.m_py_title_sb);
-				draw_player_xp(screen.buffer(), level.m_registry.get<c_xp>(level.m_player), ui_main.m_py_level_sb, ui_main.m_py_exp_sb);
-				draw_player_stats(screen.buffer(), level.m_registry.get<c_stats>(level.m_player), ui_main.m_py_stats_sb);
-				draw_player_hp(screen.buffer(), level.m_registry.get<c_hp>(level.m_player), ui_main.m_py_hp_sb);
-				draw_player_mp(screen.buffer(), level.m_registry.get<c_mp>(level.m_player), ui_main.m_py_mp_sb);
+				// todo: draw ui
 
-				draw_level(screen.buffer(), level, ui_main.m_map_sb);
+				//draw_level(screen.buffer(), level, ui_main.m_map_sb);
 			}
 
 			// render
