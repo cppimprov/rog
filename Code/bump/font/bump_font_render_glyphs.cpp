@@ -50,6 +50,9 @@ namespace bump
 
 		void blit_image(image<std::uint8_t>& dst, glm::size2 dst_pos, image<std::uint8_t> const& src, blit_mode mode)
 		{
+			if (src.size() == glm::size2(0)) // nothing to do!
+				return;
+
 			die_if(dst.channels() != src.channels());
 			die_if(glm::any(glm::greaterThan(dst_pos + src.size(), dst.size())));
 

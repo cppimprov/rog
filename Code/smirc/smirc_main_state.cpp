@@ -4,6 +4,7 @@
 #include <bump_app.hpp>
 #include <bump_gamestate.hpp>
 #include <bump_log.hpp>
+#include <bump_render_text.hpp>
 #include <bump_transform.hpp>
 #include <bump_ui.hpp>
 
@@ -45,13 +46,23 @@ namespace smirc
 		auto ui_test_quad1 = std::make_shared<ui::quad>(app.m_assets.m_shaders.at("ui_quad"));
 		ui_test_quad1->size = { 50, 50 };
 		ui_test_quad1->color = { 1.f, 0.8f, 0.2f, 1.f };
+
 		auto ui_test_quad2 = std::make_shared<ui::quad>(app.m_assets.m_shaders.at("ui_quad"));
 		ui_test_quad2->size = { 100, 50 };
 		ui_test_quad2->color = { 0.6f, 0.6f, 1.f, 1.f };
-		
-		auto ui_test_vec = std::make_shared<ui::vector_v>();
-		ui_test_vec->children.push_back(ui_test_quad1);
-		ui_test_vec->children.push_back(ui_test_quad2);
+
+		auto ui_test_quad3 = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), app.m_assets.m_textures_2d.at("plus"));
+
+		auto const text = bump::render_text_to_gl_texture(app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test label");
+		auto ui_test_quad4 = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), text.m_texture);
+		ui_test_quad4->margin_pre = { 20, 20 };
+	
+		auto ui_test_grid = std::make_shared<ui::grid>();
+		ui_test_grid->children.resize({ 2, 2 });
+		ui_test_grid->children.at({ 0, 0 }) = ui_test_quad1;
+		ui_test_grid->children.at({ 1, 0 }) = ui_test_quad2;
+		ui_test_grid->children.at({ 0, 1 }) = ui_test_quad3;
+		ui_test_grid->children.at({ 1, 1 }) = ui_test_quad4;
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -104,8 +115,8 @@ namespace smirc
 			// update
 			{
 				// layout ui
-				ui_test_vec->measure();
-				ui_test_vec->place({ 0, 0 }, app.m_window.get_size());
+				ui_test_grid->measure();
+				ui_test_grid->place({ 0, 0 }, app.m_window.get_size());
 			}
 
 			// drawing
@@ -132,7 +143,7 @@ namespace smirc
 				camera.m_viewport.m_size = window_size_f;
 
 				// render
-				ui_test_vec->render(renderer, camera);
+				ui_test_grid->render(renderer, camera);
 
 				window.swap_buffers();
 			}

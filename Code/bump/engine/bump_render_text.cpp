@@ -48,7 +48,7 @@ namespace bump
 
 		auto glyphs = render_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
 		auto image = blit_glyphs(glyphs, font::blit_mode::MAX);
-		
+
 		return { image.m_pos, text_image_to_gl_texture(image.m_image) };
 	}
 	

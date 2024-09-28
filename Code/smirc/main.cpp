@@ -13,7 +13,7 @@ int main(int , char*[] )
 		{
 			// fonts
 			{
-				// { "tiles", "RobotoMono-SemiBold.ttf", 30 },
+				{ "menu", "RobotoMono-SemiBold.ttf", 30 },
 			},
 			// sounds
 			{
@@ -26,6 +26,7 @@ int main(int , char*[] )
 			// shaders
 			{
 				{ "ui_quad", { "ui_quad.vert", "ui_quad.frag" } },
+				{ "ui_textured_quad", { "ui_textured_quad.vert", "ui_textured_quad.frag" } },
 			},
 			// models
 			{
@@ -33,7 +34,7 @@ int main(int , char*[] )
 			},
 			// 2d textures
 			{
-				// { "sprite", "sprite.png", { GL_R8, GL_RED } },
+				{ "plus", "plus.png", { GL_RGBA8, GL_RGBA } },
 			},
 			// 2d array textures
 			{
