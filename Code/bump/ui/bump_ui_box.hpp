@@ -23,20 +23,21 @@ namespace bump::ui
 
 	using fill_vec = glm::vec<2, fill, glm::defaultp>;
 
+	using margin_vec = glm::vec<4, vec::value_type, glm::defaultp>;
+
 	struct box
 	{
 		// n.b. margin is not included in size
 		// n.b. position is absolute (i.e. relative to the screen, not the parent widget)
-		// n.b. position is the bottom(?)-left corner of the widget
+		// n.b. position is the top-left corner of the widget
 
 		origin_vec origin = origin_vec(origin::left);
 		fill_vec fill = fill_vec(fill::shrink);
-		vec margin_pre = vec(0);
-		vec margin_post = vec(0);
+		margin_vec margins = margin_vec(0); // x: left, y: top, z: right, w: bottom
 		vec size = vec(0);
 		vec position = vec(0);
 
-		vec get_total_size() const { return margin_pre + size + margin_post; }
+		vec get_total_size() const { return size + vec{ margins.x + margins.z, margins.y + margins.w }; }
 
 	protected:
 
@@ -50,21 +51,21 @@ namespace bump::ui
 		{
 			// set size to fill the space in the cell
 			// todo: could end up with a negative size here? do we need to clamp the output or something?
-			if (fill.x == fill::expand) size.x = cell_size.x - (margin_pre.x + margin_post.x);
-			if (fill.y == fill::expand) size.y = cell_size.y - (margin_pre.y + margin_post.y);
+			if (fill.x == fill::expand) size.x = cell_size.x - (margins.x + margins.z);
+			if (fill.y == fill::expand) size.y = cell_size.y - (margins.y + margins.w);
 
 			// set the position from the origin and size
 			switch (origin.x)
 			{
-			case origin::left:   position.x = cell_pos.x + margin_pre.x; break;
-			case origin::center: position.x = cell_pos.x + (cell_size.x + margin_pre.x - size.x) / vec::value_type{ 2 }; break;
-			case origin::right:  position.x = cell_pos.x + cell_size.x - (size.x + margin_post.x); break;
+			case origin::left:   position.x = cell_pos.x + margins.x; break;
+			case origin::center: position.x = cell_pos.x + (cell_size.x - size.x) / vec::value_type{ 2 }; break;
+			case origin::right:  position.x = cell_pos.x + cell_size.x - (size.x + margins.z); break;
 			}
 			switch (origin.y)
 			{
-			case origin::left:   position.y = cell_pos.y + margin_pre.y; break;
-			case origin::center: position.y = cell_pos.y + (cell_size.y + margin_pre.y - size.y) / vec::value_type{ 2 }; break;
-			case origin::right:  position.y = cell_pos.y + cell_size.y - (size.y + margin_post.y); break;
+			case origin::left:   position.y = cell_pos.y + margins.y; break;
+			case origin::center: position.y = cell_pos.y + (cell_size.y + size.y) / vec::value_type{ 2 }; break;
+			case origin::right:  position.y = cell_pos.y + cell_size.y - (size.y + margins.w); break;
 			}
 		}
 	};

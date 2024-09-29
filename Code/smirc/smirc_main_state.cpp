@@ -53,9 +53,8 @@ namespace smirc
 
 		auto ui_test_quad3 = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), app.m_assets.m_textures_2d.at("plus"));
 
-		auto const text = bump::render_text_to_gl_texture(app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test label");
-		auto ui_test_quad4 = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), text.m_texture);
-		ui_test_quad4->margin_pre = { 20, 20 };
+		auto ui_test_quad4 = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test label");
+		ui_test_quad4->margins = { 20, 20, 20, 20 };
 	
 		auto ui_test_grid = std::make_shared<ui::grid>();
 		ui_test_grid->children.resize({ 2, 2 });
@@ -131,6 +130,7 @@ namespace smirc
 				renderer.clear_color_buffers({ 0.f, 0.f, 0.f, 1.f });
 				renderer.clear_depth_buffers();
 				renderer.set_viewport({ 0, 0 }, window_size_u);
+				renderer.set_blending(bump::gl::renderer::blending::BLEND);
 
 				// setup camera
 				// note: y direction is flipped (so the origin is at the top left

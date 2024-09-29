@@ -1,13 +1,16 @@
 #pragma once
 
 #include "bump_camera.hpp"
+#include "bump_font.hpp"
 #include "bump_gl.hpp"
 #include "bump_grid.hpp"
+#include "bump_render_text.hpp"
 #include "bump_time.hpp"
 #include "bump_ui_box.hpp"
 #include "bump_ui_vec.hpp"
 
 #include <memory>
+#include <string>
 
 namespace bump::ui
 {
@@ -87,8 +90,44 @@ namespace bump::ui
 		gl::vertex_array m_vertex_array;
 	};
 
-	// text_quad
-	// text_button
+	class label : public widget_base
+	{
+	public:
+
+		label(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+
+		void set_text(std::string const& text);
+		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
+
+		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
+		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
+
+		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+
+		glm::vec4 color = glm::vec4(1.f);
+
+	private:
+		
+		gl::shader_program const* m_shader;
+		font::ft_context const* m_ft_context;
+		font::font_asset const* m_font;
+		std::string m_text;
+		text_texture m_texture;
+		
+		GLint m_in_VertexPosition;
+		GLint m_u_Position;
+		GLint m_u_Size;
+		GLint m_u_Offset;
+		GLint m_u_Color;
+		GLint m_u_Texture;
+		GLint m_u_MVP;
+
+		gl::buffer m_vertex_buffer;
+		gl::vertex_array m_vertex_array;
+	};
+
+	// todo: label
+	// todo: button (?) implement as area, instead of complete widget?
 
 	class vector_v : public widget_base
 	{

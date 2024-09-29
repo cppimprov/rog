@@ -27,6 +27,7 @@ int main(int , char*[] )
 			{
 				{ "ui_quad", { "ui_quad.vert", "ui_quad.frag" } },
 				{ "ui_textured_quad", { "ui_textured_quad.vert", "ui_textured_quad.frag" } },
+				{ "ui_label", { "ui_label.vert", "ui_label.frag" } },
 			},
 			// models
 			{
