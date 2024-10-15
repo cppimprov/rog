@@ -1,14 +1,17 @@
 #pragma once
 
+#include "bump_aabb.hpp"
 #include "bump_camera.hpp"
 #include "bump_font.hpp"
 #include "bump_gl.hpp"
 #include "bump_grid.hpp"
+#include "bump_input.hpp"
 #include "bump_render_text.hpp"
 #include "bump_time.hpp"
 #include "bump_ui_box.hpp"
 #include "bump_ui_vec.hpp"
 
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -29,7 +32,8 @@ namespace bump::ui
 		// `place` must also be called on the widget's children here.
 		virtual void place(vec cell_pos, vec cell_size) = 0;
 
-		//virtual void input(input::input_event const& event) = 0;
+		virtual void input(input::input_event const& event) = 0;
+
 		//virtual void update(duration_t dt, sdl::input_handler const& input) = 0;
 		virtual void render(gl::renderer& renderer, camera_matrices const& camera) = 0;
 	};
@@ -43,6 +47,7 @@ namespace bump::ui
 		void measure() override { /* nothing to do - size is set directly */ }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
+		void input(input::input_event const& ) override { }
 		void render(gl::renderer& renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
@@ -70,6 +75,7 @@ namespace bump::ui
 		void measure() override { size = m_texture->get_size(); }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
+		void input(input::input_event const& ) override { }
 		void render(gl::renderer& renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
@@ -102,6 +108,7 @@ namespace bump::ui
 		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
+		void input(input::input_event const& ) override { }
 		void render(gl::renderer& renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
@@ -126,9 +133,6 @@ namespace bump::ui
 		gl::vertex_array m_vertex_array;
 	};
 
-	// todo: label
-	// todo: button (?) implement as area, instead of complete widget?
-
 	class vector_v : public widget_base
 	{
 	public:
@@ -136,7 +140,8 @@ namespace bump::ui
 		void measure() override
 		{
 			for (auto& c : children)
-				c->measure();
+				if (c)
+					c->measure();
 
 			auto content_size = vec(0);
 
@@ -157,7 +162,7 @@ namespace bump::ui
 		{
 			box_place(cell_pos, cell_size);
 
-			auto offset = cell_pos;
+			auto offset = position;
 
 			for (auto const& c : children)
 			{
@@ -165,6 +170,13 @@ namespace bump::ui
 				c->place(offset, { size.x, s.y });
 				offset.y += s.y + spacing;
 			}
+		}
+
+		void input(input::input_event const& event) override
+		{
+			for (auto& c : children)
+				if (c)
+					c->input(event);
 		}
 
 		void render(gl::renderer& renderer, camera_matrices const& camera) override
@@ -206,7 +218,7 @@ namespace bump::ui
 		{
 			box_place(cell_pos, cell_size);
 
-			auto offset = cell_pos;
+			auto offset = position;
 
 			for (auto const& c : children)
 			{
@@ -214,6 +226,13 @@ namespace bump::ui
 				c->place(offset, { size.y, s.x });
 				offset.x += s.x + spacing;
 			}
+		}
+
+		void input(input::input_event const& event) override
+		{
+			for (auto& c : children)
+				if (c)
+					c->input(event);
 		}
 
 		void render(gl::renderer& renderer, camera_matrices const& camera) override
@@ -304,6 +323,13 @@ namespace bump::ui
 			}
 		}
 
+		void input(input::input_event const& event) override
+		{
+			for (auto& c : children)
+				if (c)
+					c->input(event);
+		}
+
 		void render(gl::renderer& renderer, camera_matrices const& camera) override
 		{
 			for (auto& c : children)
@@ -313,6 +339,130 @@ namespace bump::ui
 
 		vec spacing;
 		grid2<std::shared_ptr<widget_base>> children;
+	};
+
+	class canvas : public widget_base
+	{
+	public:
+
+		void measure() override
+		{
+			for (auto& c : children)
+				if (c)
+					c->measure();
+			
+			auto content_size = vec(0);
+
+			for (auto const& c : children)
+			{
+				auto const s = c ? c->get_total_size() : vec(0);
+				content_size = glm::max(content_size, s);
+			}
+
+			box_measure(content_size);
+		}
+
+		void place(vec cell_pos, vec cell_size) override
+		{
+			box_place(cell_pos, cell_size);
+
+			auto offset = position;
+
+			for (auto& c : children)
+				if (c)
+					c->place(offset, size);
+		}
+
+		void input(input::input_event const& event) override
+		{
+			for (auto& c : children)
+				if (c)
+					c->input(event);
+		}
+
+		void render(gl::renderer& renderer, camera_matrices const& camera) override
+		{
+			for (auto& c : children)
+				if (c)
+					c->render(renderer, camera);
+		}
+
+		std::vector<std::shared_ptr<widget_base>> children;
+	};
+	
+	class label_button : public widget_base
+	{
+	public:
+
+		label_button(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+
+		void set_text(std::string const& text);
+		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
+
+		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
+		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
+
+		void input(input::input_event const& event) override
+		{
+			namespace ie = input::input_events;
+
+			if (std::holds_alternative<ie::mouse_motion>(event))
+			{
+				auto const& mm = std::get<ie::mouse_motion>(event);
+				m_hovered = aabb{ position, size }.contains(mm.m_inv_y_position);
+				m_pressed = m_pressed && m_hovered;
+			}
+
+			if (std::holds_alternative<ie::mouse_button>(event))
+			{
+				auto const& mb = std::get<ie::mouse_button>(event);
+				
+				if (mb.m_button == input::mouse_button::LEFT)
+				{
+					if (mb.m_value)
+					{
+						if (m_hovered)
+						{
+							m_pressed = true;
+							if (action) action();
+						}
+					}
+					else
+					{
+						m_pressed = false;
+					}
+				}
+			}
+		}
+
+		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+
+		glm::vec4 inactive_color = glm::vec4(0.6f, 0.6f, 0.6f, 1.0f);
+		glm::vec4 hover_color =    glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+		glm::vec4 press_color =    glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		std::function<void()> action;
+
+	private:
+		
+		gl::shader_program const* m_shader;
+		font::ft_context const* m_ft_context;
+		font::font_asset const* m_font;
+		std::string m_text;
+		text_texture m_texture;
+		
+		GLint m_in_VertexPosition;
+		GLint m_u_Position;
+		GLint m_u_Size;
+		GLint m_u_Offset;
+		GLint m_u_Color;
+		GLint m_u_Texture;
+		GLint m_u_MVP;
+
+		gl::buffer m_vertex_buffer;
+		gl::vertex_array m_vertex_array;
+		
+		bool m_hovered;
+		bool m_pressed;
 	};
 
 } // bump::ui

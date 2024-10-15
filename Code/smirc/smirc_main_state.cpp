@@ -14,54 +14,64 @@ namespace smirc
 	bump::gamestate main_state(bump::app& app)
 	{
 		
-		// auto tab_bar = bump::ui::make_widget<bump::ui::h_vector>();
-		// tab_bar->spacing = { 10, 0 };
-
-		// 	auto add_button = bump::ui::make_widget<bump::ui::textured_button>();
-		// 	add_button->set_texture(app.m_assets.m_textures_2d.at("add_button"));
-		// 	tab_bar->children.push_back(add_button);
-
-		// 	auto server_tab_group = bump::ui::make_widget<bump::ui::v_vector>();
-		// 	server_tab_group->spacing = { 0, 10 };
-		// 	tab_bar->children.push_back(server_tab_group);
-
-		// 		auto server_label = bump::ui::make_widget<bump::ui::textured_button>();
-		// 		server_label->set_texture(/* render text */);
-		// 		server_tab_group->children.push_back(server_label);
-
-		// 		auto channel_tab_group = bump::ui::make_widget<bump::ui::h_vector>();
-		// 		channel_tab_group->spacing = { 10, 0 };
-		// 		server_tab_group->children.push_back(channel_tab_group);
-
-		// 			auto channel_tab_1 = bump::ui::make_widget<bump::ui::textured_button>();
-		// 			channel_tab_1->set_texture(/* render text */);
-		// 			channel_tab_group->children.push_back(channel_tab_1);
-
-		// 			auto channel_tab_2 = bump::ui::make_widget<bump::ui::textured_button>();
-		// 			channel_tab_2->set_texture(/* render text */);
-		// 			channel_tab_group->children.push_back(channel_tab_2);
-
 		namespace ui = bump::ui;
 
-		auto ui_test_quad1 = std::make_shared<ui::quad>(app.m_assets.m_shaders.at("ui_quad"));
-		ui_test_quad1->size = { 50, 50 };
-		ui_test_quad1->color = { 1.f, 0.8f, 0.2f, 1.f };
+		auto tab_bar = std::make_shared<ui::canvas>();
+		tab_bar->fill = { ui::fill::expand, ui::fill::shrink };
 
-		auto ui_test_quad2 = std::make_shared<ui::quad>(app.m_assets.m_shaders.at("ui_quad"));
-		ui_test_quad2->size = { 100, 50 };
-		ui_test_quad2->color = { 0.6f, 0.6f, 1.f, 1.f };
+		auto l_vec = std::make_shared<ui::vector_h>();
+		l_vec->spacing = 20;
+		l_vec->origin = { ui::origin::left, ui::origin::top };
+		tab_bar->children.push_back(l_vec);
+		
+		auto plus = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), app.m_assets.m_textures_2d.at("plus"));
+		l_vec->children.push_back(plus);
+		
+		auto search = std::make_shared<ui::quad>(app.m_assets.m_shaders.at("ui_quad"));
+		search->origin = { ui::origin::right, ui::origin::top };
+		search->size = { 100, 100 };
+		search->color = { 1.0f, 0.8f, 0.2f, 1.0f };
+		tab_bar->children.push_back(search);
 
-		auto ui_test_quad3 = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), app.m_assets.m_textures_2d.at("plus"));
+		auto server_tab_vec = std::make_shared<ui::vector_h>();
+		server_tab_vec->spacing = 20;
+		l_vec->children.push_back(server_tab_vec);
 
-		auto ui_test_quad4 = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test label");
-		ui_test_quad4->margins = { 20, 20, 20, 20 };
-	
-		auto ui_test_grid = std::make_shared<ui::grid>();
-		ui_test_grid->children.resize({ 2, 2 });
-		ui_test_grid->children.at({ 0, 0 }) = ui_test_quad1;
-		ui_test_grid->children.at({ 1, 0 }) = ui_test_quad2;
-		ui_test_grid->children.at({ 0, 1 }) = ui_test_quad3;
-		ui_test_grid->children.at({ 1, 1 }) = ui_test_quad4;
+		// todo: what to do about scrolling server tabs?
+
+		{
+			auto server_tab_1 = std::make_shared<ui::vector_v>();
+			server_tab_vec->children.push_back(server_tab_1);
+			
+			auto server_tab_1_label = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "server_name");
+			server_tab_1->children.push_back(server_tab_1_label);
+
+			auto server_tab_1_channels = std::make_shared<ui::vector_h>();
+			server_tab_1->children.push_back(server_tab_1_channels);
+			
+			auto channel_1_label = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_1");
+			server_tab_1_channels->children.push_back(channel_1_label);
+
+			auto channel_2_label = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_2");
+			server_tab_1_channels->children.push_back(channel_2_label);
+		}
+		
+		{
+			auto server_tab_1 = std::make_shared<ui::vector_v>();
+			server_tab_vec->children.push_back(server_tab_1);
+			
+			auto server_tab_1_label = std::make_shared<ui::label_button>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "server_name");
+			server_tab_1->children.push_back(server_tab_1_label);
+
+			auto server_tab_1_channels = std::make_shared<ui::vector_h>();
+			server_tab_1->children.push_back(server_tab_1_channels);
+			
+			auto channel_1_label = std::make_shared<ui::label_button>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_1");
+			server_tab_1_channels->children.push_back(channel_1_label);
+
+			auto channel_2_label = std::make_shared<ui::label_button>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_2");
+			server_tab_1_channels->children.push_back(channel_2_label);
+		}
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -106,6 +116,8 @@ namespace smirc
 							return { }; // todo: save!
 					}
 
+					tab_bar->input(event);
+
 					// todo: typing
 					// todo: mouse input
 				}
@@ -114,8 +126,11 @@ namespace smirc
 			// update
 			{
 				// layout ui
-				ui_test_grid->measure();
-				ui_test_grid->place({ 0, 0 }, app.m_window.get_size());
+				// ui_test_grid->measure();
+				// ui_test_grid->place({ 0, 0 }, app.m_window.get_size());
+
+				tab_bar->measure();
+				tab_bar->place({ 0, 0 }, app.m_window.get_size());
 			}
 
 			// drawing
@@ -143,7 +158,8 @@ namespace smirc
 				camera.m_viewport.m_size = window_size_f;
 
 				// render
-				ui_test_grid->render(renderer, camera);
+				//ui_test_grid->render(renderer, camera);
+				tab_bar->render(renderer, camera);
 
 				window.swap_buffers();
 			}
@@ -156,7 +172,5 @@ namespace smirc
 
 
 // ui:
-	// buttons
-	// text boxes / text fields
-	// labels
-	// ...
+	// top bar, with plus button at left, and search button at right?
+	// how to anchor stuff left and right? and expand to fill width?

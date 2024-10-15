@@ -361,22 +361,24 @@ namespace bump
 				if (e.type == SDL_MOUSEMOTION)
 				{
 					auto const position = glm::ivec2{ e.motion.x, (m_window.get_size().y - 1) - e.motion.y };
+					auto const inv_y_position = glm::ivec2{ e.motion.x, e.motion.y };
 					auto const motion = glm::ivec2{ e.motion.xrel, -e.motion.yrel };
 					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
 
 					if (motion.x != 0 || motion.y != 0)
-						input_events.emplace(input::input_events::mouse_motion{ position, motion, mods });
+						input_events.emplace(input::input_events::mouse_motion{ position, inv_y_position, motion, mods });
 
 					continue;
 				}
 				if (e.type == SDL_MOUSEBUTTONUP || e.type == SDL_MOUSEBUTTONDOWN)
 				{
 					auto const position = glm::ivec2{ e.button.x, (m_window.get_size().y - 1) - e.button.y };
+					auto const inv_y_position = glm::ivec2{ e.button.x, e.button.y };
 					auto const id = sdl_mousebutton_to_mouse_button(e.button.button);
 					auto const value = (e.button.state == SDL_PRESSED);
 					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
 
-					input_events.emplace(input::input_events::mouse_button{ position, id, value, mods });
+					input_events.emplace(input::input_events::mouse_button{ position, inv_y_position, id, value, mods });
 					
 					continue;
 				}
