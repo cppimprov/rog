@@ -64,7 +64,7 @@ namespace bump::ui
 			switch (origin.y)
 			{
 			case origin::left:   position.y = cell_pos.y + margins.y; break;
-			case origin::center: position.y = cell_pos.y + (cell_size.y + size.y) / vec::value_type{ 2 }; break;
+			case origin::center: position.y = cell_pos.y + (cell_size.y - size.y) / vec::value_type{ 2 }; break;
 			case origin::right:  position.y = cell_pos.y + cell_size.y - (size.y + margins.w); break;
 			}
 		}

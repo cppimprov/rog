@@ -73,6 +73,20 @@ namespace smirc
 			server_tab_1_channels->children.push_back(channel_2_label);
 		}
 
+		auto canvas = std::make_shared<ui::canvas>();
+		canvas->fill = { ui::fill::expand, ui::fill::expand };
+
+		auto dialog = std::make_shared<ui::vector_v>();
+		dialog->spacing = 20;
+		dialog->origin = { ui::origin::center, ui::origin::center };
+		canvas->children.push_back(dialog);
+
+		auto text_field_1 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 1");
+		dialog->children.push_back(text_field_1);
+
+		auto text_field_2 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 2");
+		dialog->children.push_back(text_field_2);
+
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
 
@@ -118,6 +132,8 @@ namespace smirc
 
 					tab_bar->input(event);
 
+					canvas->input(event);
+
 					// todo: typing
 					// todo: mouse input
 				}
@@ -126,11 +142,11 @@ namespace smirc
 			// update
 			{
 				// layout ui
-				// ui_test_grid->measure();
-				// ui_test_grid->place({ 0, 0 }, app.m_window.get_size());
-
 				tab_bar->measure();
 				tab_bar->place({ 0, 0 }, app.m_window.get_size());
+
+				canvas->measure();
+				canvas->place({ 0, 0 }, app.m_window.get_size());
 			}
 
 			// drawing
@@ -158,8 +174,8 @@ namespace smirc
 				camera.m_viewport.m_size = window_size_f;
 
 				// render
-				//ui_test_grid->render(renderer, camera);
 				tab_bar->render(renderer, camera);
+				canvas->render(renderer, camera);
 
 				window.swap_buffers();
 			}
@@ -172,5 +188,5 @@ namespace smirc
 
 
 // ui:
-	// top bar, with plus button at left, and search button at right?
-	// how to anchor stuff left and right? and expand to fill width?
+	// basic text field!
+	// new connection screen

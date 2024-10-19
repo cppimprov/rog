@@ -426,6 +426,10 @@ namespace bump::ui
 							m_pressed = true;
 							if (action) action();
 						}
+						else
+						{
+							m_pressed = false;
+						}
 					}
 					else
 					{
@@ -465,4 +469,149 @@ namespace bump::ui
 		bool m_pressed;
 	};
 
+	// class text_field : public widget_base
+	// {
+	// public:
+
+	// 	// todo: filter to restrict input chars
+
+	// 	text_field():
+	// 		m_caret(0), m_selection(0), m_max_length(255), m_text(),
+	// 		m_hovered(false), m_pressed(false), m_focused(false) { }
+
+	// 	void set_text(std::string_view text, bool select = false)
+	// 	{
+	// 		m_text = text;
+
+	// 		if (m_text.size() > m_max_length)
+	// 			m_text.resize(m_max_length);
+
+	// 		set_caret_pos(0, false);
+	// 		set_caret_pos(text.size(), select);
+
+	// 		// todo: update graphics / mark as dirty?
+	// 	}
+
+	// 	std::string const& get_text() const { return m_text; }
+		
+	// 	void set_caret_pos(std::size_t pos, bool select = false);
+	// 	std::size_t get_caret_pos() const { return m_caret; }
+
+	// 	void move_caret(std::ptrdiff_t offset, bool select = false);
+	// 	void move_caret_left(bool select, bool word);
+	// 	void move_caret_right(bool select, bool word);
+
+	// 	bool selecting() const { return m_caret != m_selection; }
+	// 	std::size_t selection_begin() const { return std::min(m_caret, m_selection); }
+	// 	std::size_t selection_end() const { return std::max(m_caret, m_selection); }
+	// 	std::size_t selection_size() const { return selection_end() - selection_begin(); }
+	// 	std::string_view get_selected_text() const { return std::string_view(m_text.begin() + selection_begin(), m_text.begin() + selection_end()); }
+
+	// 	void insert_text(std::string_view t);
+	// 	void backspace_text(bool word);
+	// 	void delete_text(bool word);
+
+	// 	void measure() override { /* todo: min / max size? */ }
+	// 	void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
+
+	// 	void input(input::input_event const& event) override
+	// 	{
+	// 		namespace ie = input::input_events;
+
+	// 		if (std::holds_alternative<ie::mouse_motion>(event))
+	// 		{
+	// 			auto const& mm = std::get<ie::mouse_motion>(event);
+	// 			m_hovered = aabb{ position, size }.contains(mm.m_inv_y_position);
+	// 			m_pressed = m_pressed && m_hovered;
+	// 		}
+
+	// 		if (std::holds_alternative<ie::mouse_button>(event))
+	// 		{
+	// 			auto const& mb = std::get<ie::mouse_button>(event);
+				
+	// 			if (mb.m_button == input::mouse_button::LEFT)
+	// 			{
+	// 				if (mb.m_value)
+	// 				{
+	// 					if (m_hovered)
+	// 					{
+	// 						m_pressed = true;
+	// 						m_focused = true;
+	// 					}
+	// 					else
+	// 					{
+	// 						m_focused = false;
+	// 					}
+	// 				}
+	// 				else
+	// 				{
+	// 					m_pressed = false;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+
+	// 	void render(gl::renderer& renderer, camera_matrices const& camera) override
+	// 	{
+	// 		// ...
+	// 	}
+
+	// private:
+
+	// 	std::size_t m_caret;
+	// 	std::size_t m_selection;
+	// 	std::size_t m_max_length;
+	// 	std::string m_text;
+
+	// 	bool m_hovered;
+	// 	bool m_pressed;
+	// 	bool m_focused;
+	// };
+
+	
+	class text_field : public widget_base
+	{
+	public:
+
+		text_field(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+
+		void set_text(std::string const& text);
+		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
+
+		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
+		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
+
+		void input(input::input_event const& ) override { }
+		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+
+		glm::vec4 color = glm::vec4(1.f);
+
+	private:
+		
+		gl::shader_program const* m_shader;
+		font::ft_context const* m_ft_context;
+		font::font_asset const* m_font;
+		std::string m_text;
+		text_texture m_texture;
+		
+		GLint m_in_VertexPosition;
+		GLint m_u_Position;
+		GLint m_u_Size;
+		GLint m_u_Offset;
+		GLint m_u_Color;
+		GLint m_u_Texture;
+		GLint m_u_MVP;
+
+		gl::buffer m_vertex_buffer;
+		gl::vertex_array m_vertex_array;
+	};
+
+	// todo: 
+	// hovered, pressed and focussed
+	// key presses / typing when focussed
+	// caret movement
+	// selection
+
 } // bump::ui
+
+// todo: centering doesn't look centered???
