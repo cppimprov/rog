@@ -1,5 +1,6 @@
 #include "bump_ui_widget.hpp"
 
+#include "bump_narrow_cast.hpp"
 #include "bump_render_text.hpp"
 
 #include <iostream>
@@ -164,7 +165,7 @@ namespace bump::ui
 		m_shader(&shader),
 		m_ft_context(&ft_context),
 		m_font(&font),
-		m_text(text),
+		m_text(),
 		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
 		m_u_Position(shader.get_uniform_location("u_Position")),
 		m_u_Size(shader.get_uniform_location("u_Size")),
@@ -212,6 +213,54 @@ namespace bump::ui
 
 		if (!select)
 			m_selection = m_caret;
+	}
+
+	void text_field::move_caret(std::ptrdiff_t diff, bool word, bool select)
+	{
+		// we have a selection, but we want to clear it and move the caret to the appropriate end
+		if (selection_size() != 0 && !select)
+		{
+			set_caret(diff < 0 ? selection_start() : selection_end(), false);
+			return;
+		}
+
+		auto constexpr find_word_boundary = [] (std::string const& text, std::size_t pos, std::ptrdiff_t diff)
+		{
+			if (text.empty())
+				return std::size_t{ 0 };
+
+			auto const begin = text.begin() + pos;
+			auto const end = text.end();
+			auto const rbegin = std::reverse_iterator(begin);
+			auto const rend = text.rend();
+
+			auto constexpr is_space = [] (char c) { return c == ' '; };
+
+			auto const last_adj_whitespace = diff < 0 ?
+				std::find_if_not(rbegin, rend, is_space).base() :
+				std::find_if_not(begin, end, is_space);
+
+			auto const first_space = diff < 0 ?
+				std::find_if(std::reverse_iterator(last_adj_whitespace), rend, is_space).base() :
+				std::find_if(last_adj_whitespace, end, is_space);
+			
+			return static_cast<std::size_t>(first_space - text.begin());
+		};
+
+		auto constexpr safeish_add = [] (std::size_t bound, std::size_t pos, std::ptrdiff_t diff)
+		{
+			return static_cast<std::size_t>(
+				std::clamp(
+					static_cast<std::ptrdiff_t>(pos) + diff, 
+					std::ptrdiff_t{ 0 },
+					static_cast<std::ptrdiff_t>(bound)));
+		};
+
+		auto caret_pos = word ?
+			find_word_boundary(m_text, m_caret, diff) : 
+			safeish_add(m_text.size(), m_caret, diff);
+		
+		set_caret(caret_pos, select);
 	}
 
 	void text_field::input(input::input_event const& event)
@@ -267,8 +316,12 @@ namespace bump::ui
 				using kt = bump::input::keyboard_key;
 
 				if (k.m_key == kt::ESCAPE) { m_focused = false; }
-				else if (k.m_key == kt::BACKSPACE) { if (!m_text.empty()) { m_text.pop_back(); set_text(m_text); } }
-				// ...
+				else if (k.m_key == kt::ARROWLEFT) { move_caret(-1, k.m_mods.ctrl(), k.m_mods.shift()); }
+				else if (k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl(), k.m_mods.shift()); }
+				else if (k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift()); }
+				else if (k.m_key == kt::END) { set_caret(m_text.size(), k.m_mods.shift()); }
+				else if (k.m_key == kt::BACKSPACE) { delete_text(-1, k.m_mods.ctrl()); }
+				else if (k.m_key == kt::DELETE) { delete_text(+1, k.m_mods.ctrl()); }
 			}
 		}
 	}
@@ -315,6 +368,28 @@ namespace bump::ui
 
 		// move the caret to the end of the inserted text
 		set_caret(m_caret + len, false);
+
+		// update texture
+		redraw_text();
+	}
+
+	void text_field::delete_text(std::ptrdiff_t diff, bool word)
+	{
+		// erase any selected text
+		if (selection_size() != 0)
+		{
+			m_text.erase(selection_start(), selection_size());
+			set_caret(selection_start(), false);
+		}
+		else
+		{
+			// move caret while selecting
+			move_caret(diff, word, true);
+
+			// erase selected text
+			m_text.erase(selection_start(), selection_size());
+			set_caret(selection_start(), false);
+		}
 
 		// update texture
 		redraw_text();

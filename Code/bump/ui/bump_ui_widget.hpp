@@ -485,13 +485,13 @@ namespace bump::ui
 
 		void set_caret(std::size_t pos, bool select);
 		std::size_t get_caret() const { return m_caret; }
+		
+		void move_caret(std::ptrdiff_t diff, bool word, bool select);
 
 		std::size_t selection_start() const { return std::min(m_caret, m_selection); }
 		std::size_t selection_end() const { return std::max(m_caret, m_selection); }
 		std::size_t selection_size() const { return selection_end() - selection_start(); }
 		std::string_view get_selection() const { return std::string_view(m_text.begin() + selection_start(), m_text.begin() + selection_end()); }
-
-		void move_caret(std::ptrdiff_t diff, bool select) { set_caret(m_caret + diff, select); }
 
 		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
@@ -505,8 +505,7 @@ namespace bump::ui
 
 		void redraw_text();
 		void insert_text(std::string const& text);
-		void backspace_text(bool word);
-		void delete_text(bool word);
+		void delete_text(std::ptrdiff_t diff, bool word);
 		
 		gl::shader_program const* m_shader;
 		font::ft_context const* m_ft_context;
@@ -535,9 +534,7 @@ namespace bump::ui
 	};
 
 	// text_field todo:
-		// move caret
+		// add ui_text_field shader
 		// render caret / selection
-		// select text
-		// expand / shrink selection
 
 } // bump::ui
