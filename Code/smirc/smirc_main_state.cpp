@@ -84,8 +84,11 @@ namespace smirc
 		auto text_field_1 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 1");
 		dialog->children.push_back(text_field_1);
 
-		auto text_field_2 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 2");
-		dialog->children.push_back(text_field_2);
+		text_field_1->set_text("sdlkjfslkdjfklsdflksjflkjklsjdf");
+		text_field_1->set_max_length(10);
+
+		//auto text_field_2 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 2");
+		//dialog->children.push_back(text_field_2);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();

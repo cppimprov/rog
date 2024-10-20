@@ -409,6 +409,14 @@ namespace bump
 					continue;
 				}
 
+				// text input
+				if (e.type == SDL_TEXTINPUT)
+				{
+					input_events.emplace(input::input_events::typing{ std::to_array(e.text.text) });
+
+					continue;
+				}
+
 				// controller
 				if (e.type == SDL_CONTROLLERAXISMOTION)
 				{

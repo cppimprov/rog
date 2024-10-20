@@ -2,6 +2,7 @@
 
 #include "bump_math.hpp"
 
+#include <array>
 #include <functional>
 #include <string>
 #include <variant>
@@ -128,6 +129,7 @@ namespace bump
 		namespace input_events
 		{
 			struct keyboard_key   { input::keyboard_key m_key; bool m_value; key_modifiers m_mods; };
+			struct typing         { std::array<char, 32> m_text; };
 			struct mouse_button   { glm::ivec2 m_position; glm::ivec2 m_inv_y_position; input::mouse_button m_button; bool m_value; key_modifiers m_mods; };
 			struct mouse_wheel    { glm::ivec2 m_motion; key_modifiers m_mods; };
 			struct mouse_motion   { glm::ivec2 m_position; glm::ivec2 m_inv_y_position; glm::ivec2 m_motion; key_modifiers m_mods; };
@@ -138,6 +140,7 @@ namespace bump
 		using input_event = std::variant
 		<
 			input_events::keyboard_key,
+			input_events::typing,
 			input_events::mouse_button,
 			input_events::mouse_wheel,
 			input_events::mouse_motion,
