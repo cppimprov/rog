@@ -25,9 +25,9 @@ int main(int , char*[] )
 			},
 			// shaders
 			{
-				{ "ui_quad", { "ui_quad.vert", "ui_quad.frag" } },
-				{ "ui_textured_quad", { "ui_textured_quad.vert", "ui_textured_quad.frag" } },
-				{ "ui_label", { "ui_label.vert", "ui_label.frag" } },
+				{ "ui_rect", { "ui_rect.vert", "ui_rect.frag" } },
+				{ "ui_textured_rect", { "ui_textured_rect.vert", "ui_textured_rect.frag" } },
+				{ "ui_text", { "ui_text.vert", "ui_text.frag" } },
 			},
 			// models
 			{

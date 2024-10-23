@@ -13,7 +13,15 @@ namespace smirc
 
 	bump::gamestate main_state(bump::app& app)
 	{
-		
+		auto const& shaders = app.m_assets.m_shaders;
+		auto const& textures_2d = app.m_assets.m_textures_2d;
+		auto const& fonts = app.m_assets.m_fonts;
+
+		auto ui_renderer = bump::ui::renderer(
+			shaders.at("ui_rect"),
+			shaders.at("ui_textured_rect"),
+			shaders.at("ui_text"));
+
 		namespace ui = bump::ui;
 
 		auto tab_bar = std::make_shared<ui::canvas>();
@@ -24,10 +32,10 @@ namespace smirc
 		l_vec->origin = { ui::origin::left, ui::origin::top };
 		tab_bar->children.push_back(l_vec);
 		
-		auto plus = std::make_shared<ui::textured_quad>(app.m_assets.m_shaders.at("ui_textured_quad"), app.m_assets.m_textures_2d.at("plus"));
+		auto plus = std::make_shared<ui::textured_quad>(textures_2d.at("plus"));
 		l_vec->children.push_back(plus);
 		
-		auto search = std::make_shared<ui::quad>(app.m_assets.m_shaders.at("ui_quad"));
+		auto search = std::make_shared<ui::quad>();
 		search->origin = { ui::origin::right, ui::origin::top };
 		search->size = { 100, 100 };
 		search->color = { 1.0f, 0.8f, 0.2f, 1.0f };
@@ -43,16 +51,16 @@ namespace smirc
 			auto server_tab_1 = std::make_shared<ui::vector_v>();
 			server_tab_vec->children.push_back(server_tab_1);
 			
-			auto server_tab_1_label = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "server_name");
+			auto server_tab_1_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("menu"), "server_name");
 			server_tab_1->children.push_back(server_tab_1_label);
 
 			auto server_tab_1_channels = std::make_shared<ui::vector_h>();
 			server_tab_1->children.push_back(server_tab_1_channels);
 			
-			auto channel_1_label = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_1");
+			auto channel_1_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("menu"), "channel_1");
 			server_tab_1_channels->children.push_back(channel_1_label);
 
-			auto channel_2_label = std::make_shared<ui::label>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_2");
+			auto channel_2_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("menu"), "channel_2");
 			server_tab_1_channels->children.push_back(channel_2_label);
 		}
 		
@@ -60,16 +68,16 @@ namespace smirc
 			auto server_tab_1 = std::make_shared<ui::vector_v>();
 			server_tab_vec->children.push_back(server_tab_1);
 			
-			auto server_tab_1_label = std::make_shared<ui::label_button>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "server_name");
+			auto server_tab_1_label = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("menu"), "server_name");
 			server_tab_1->children.push_back(server_tab_1_label);
 
 			auto server_tab_1_channels = std::make_shared<ui::vector_h>();
 			server_tab_1->children.push_back(server_tab_1_channels);
 			
-			auto channel_1_label = std::make_shared<ui::label_button>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_1");
+			auto channel_1_label = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("menu"), "channel_1");
 			server_tab_1_channels->children.push_back(channel_1_label);
 
-			auto channel_2_label = std::make_shared<ui::label_button>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "channel_2");
+			auto channel_2_label = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("menu"), "channel_2");
 			server_tab_1_channels->children.push_back(channel_2_label);
 		}
 
@@ -81,10 +89,10 @@ namespace smirc
 		dialog->origin = { ui::origin::center, ui::origin::center };
 		canvas->children.push_back(dialog);
 
-		auto text_field_1 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 1");
+		auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 1");
 		dialog->children.push_back(text_field_1);
 
-		text_field_1->set_text("sdlkjfslkdjfklsdflksjflkjklsjdf");
+		text_field_1->set_text("sdlkjfslkdjfklsdflksjflkjklsjdf", true);
 		text_field_1->set_max_length(10);
 
 		//auto text_field_2 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 2");
@@ -177,8 +185,8 @@ namespace smirc
 				camera.m_viewport.m_size = window_size_f;
 
 				// render
-				tab_bar->render(renderer, camera);
-				canvas->render(renderer, camera);
+				tab_bar->render(ui_renderer, renderer, camera);
+				canvas->render(ui_renderer, renderer, camera);
 
 				window.swap_buffers();
 			}

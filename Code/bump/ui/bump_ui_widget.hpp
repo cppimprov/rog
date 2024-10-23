@@ -10,6 +10,7 @@
 #include "bump_render_text.hpp"
 #include "bump_time.hpp"
 #include "bump_ui_box.hpp"
+#include "bump_ui_renderer.hpp"
 #include "bump_ui_vec.hpp"
 
 #include <iostream>
@@ -36,72 +37,50 @@ namespace bump::ui
 		virtual void input(input::input_event const& event) = 0;
 
 		//virtual void update(duration_t dt, sdl::input_handler const& input) = 0;
-		virtual void render(gl::renderer& renderer, camera_matrices const& camera) = 0;
+		virtual void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) = 0;
 	};
 
 	class quad : public widget_base
 	{
 	public:
 
-		explicit quad(gl::shader_program const& shader);
-
 		void measure() override { /* nothing to do - size is set directly */ }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
 		void input(input::input_event const& ) override { }
-		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
-
-	private:
-		
-		gl::shader_program const* m_shader;
-		
-		GLint m_in_VertexPosition;
-		GLint m_u_Position;
-		GLint m_u_Size;
-		GLint m_u_Color;
-		GLint m_u_MVP;
-
-		gl::buffer m_vertex_buffer;
-		gl::vertex_array m_vertex_array;
 	};
 
 	class textured_quad : public widget_base
 	{
 	public:
 
-		textured_quad(gl::shader_program const& shader, gl::texture_2d const& texture);
+		textured_quad(gl::texture_2d const& texture): 
+			m_texture(&texture) { }
+
+		void set_texture(gl::texture_2d const& texture) { m_texture = &texture; }
+		gl::texture_2d const* get_texture() const { return m_texture; }
 
 		void measure() override { size = m_texture->get_size(); }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
 		void input(input::input_event const& ) override { }
-		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
 
 	private:
-		
-		gl::shader_program const* m_shader;
-		gl::texture_2d const* m_texture;
-		
-		GLint m_in_VertexPosition;
-		GLint m_u_Position;
-		GLint m_u_Size;
-		GLint m_u_Color;
-		GLint m_u_Texture;
-		GLint m_u_MVP;
 
-		gl::buffer m_vertex_buffer;
-		gl::vertex_array m_vertex_array;
+		gl::texture_2d const* m_texture;
 	};
 
 	class label : public widget_base
 	{
 	public:
 
-		label(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+		label(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
 
 		void set_text(std::string const& text);
 		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
@@ -110,28 +89,17 @@ namespace bump::ui
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
 		void input(input::input_event const& ) override { }
-		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.2f), 1.f);
 
 	private:
 		
-		gl::shader_program const* m_shader;
 		font::ft_context const* m_ft_context;
 		font::font_asset const* m_font;
 		std::string m_text;
 		text_texture m_texture;
-		
-		GLint m_in_VertexPosition;
-		GLint m_u_Position;
-		GLint m_u_Size;
-		GLint m_u_Offset;
-		GLint m_u_Color;
-		GLint m_u_Texture;
-		GLint m_u_MVP;
-
-		gl::buffer m_vertex_buffer;
-		gl::vertex_array m_vertex_array;
 	};
 
 	class vector_v : public widget_base
@@ -180,11 +148,11 @@ namespace bump::ui
 					c->input(event);
 		}
 
-		void render(gl::renderer& renderer, camera_matrices const& camera) override
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->render(renderer, camera);
+					c->render(ui_renderer, gl_renderer, camera);
 		}
 
 		vec::value_type spacing;
@@ -236,11 +204,11 @@ namespace bump::ui
 					c->input(event);
 		}
 
-		void render(gl::renderer& renderer, camera_matrices const& camera) override
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->render(renderer, camera);
+					c->render(ui_renderer, gl_renderer, camera);
 		}
 
 		vec::value_type spacing;
@@ -331,11 +299,11 @@ namespace bump::ui
 					c->input(event);
 		}
 
-		void render(gl::renderer& renderer, camera_matrices const& camera) override
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->render(renderer, camera);
+					c->render(ui_renderer, gl_renderer, camera);
 		}
 
 		vec spacing;
@@ -381,11 +349,11 @@ namespace bump::ui
 					c->input(event);
 		}
 
-		void render(gl::renderer& renderer, camera_matrices const& camera) override
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->render(renderer, camera);
+					c->render(ui_renderer, gl_renderer, camera);
 		}
 
 		std::vector<std::shared_ptr<widget_base>> children;
@@ -395,7 +363,7 @@ namespace bump::ui
 	{
 	public:
 
-		label_button(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+		label_button(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
 
 		void set_text(std::string const& text);
 		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
@@ -403,44 +371,8 @@ namespace bump::ui
 		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
-		void input(input::input_event const& event) override
-		{
-			namespace ie = input::input_events;
-
-			if (std::holds_alternative<ie::mouse_motion>(event))
-			{
-				auto const& mm = std::get<ie::mouse_motion>(event);
-				m_hovered = aabb{ position, size }.contains(mm.m_inv_y_position);
-				m_pressed = m_pressed && m_hovered;
-			}
-
-			if (std::holds_alternative<ie::mouse_button>(event))
-			{
-				auto const& mb = std::get<ie::mouse_button>(event);
-				
-				if (mb.m_button == input::mouse_button::LEFT)
-				{
-					if (mb.m_value)
-					{
-						if (m_hovered)
-						{
-							m_pressed = true;
-							if (action) action();
-						}
-						else
-						{
-							m_pressed = false;
-						}
-					}
-					else
-					{
-						m_pressed = false;
-					}
-				}
-			}
-		}
-
-		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+		void input(input::input_event const& event) override;
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 inactive_color = glm::vec4(0.6f, 0.6f, 0.6f, 1.0f);
 		glm::vec4 hover_color =    glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
@@ -449,23 +381,11 @@ namespace bump::ui
 
 	private:
 		
-		gl::shader_program const* m_shader;
 		font::ft_context const* m_ft_context;
 		font::font_asset const* m_font;
 		std::string m_text;
 		text_texture m_texture;
-		
-		GLint m_in_VertexPosition;
-		GLint m_u_Position;
-		GLint m_u_Size;
-		GLint m_u_Offset;
-		GLint m_u_Color;
-		GLint m_u_Texture;
-		GLint m_u_MVP;
 
-		gl::buffer m_vertex_buffer;
-		gl::vertex_array m_vertex_array;
-		
 		bool m_hovered;
 		bool m_pressed;
 	};
@@ -474,11 +394,14 @@ namespace bump::ui
 	{
 	public:
 
-		text_field(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+		text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
 
-		void set_text(std::string const& text);
+		void set_text(std::string const& text, bool select);
 		std::string const& get_text() const { return m_text; }
-		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
+		void set_font(font::font_asset const& font) { m_font = &font; redraw_text(); }
+
+		void set_min_width(vec::value_type min_width_px) { m_min_width_px = min_width_px; }
+		vec::value_type get_min_width() const { return m_min_width_px; }
 
 		void set_max_length(std::size_t length);
 		std::size_t get_max_length() const { return m_max_length; }
@@ -493,13 +416,14 @@ namespace bump::ui
 		std::size_t selection_size() const { return selection_end() - selection_start(); }
 		std::string_view get_selection() const { return std::string_view(m_text.begin() + selection_start(), m_text.begin() + selection_end()); }
 
-		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
+		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
 		void input(input::input_event const& event) override;
-		void render(gl::renderer& renderer, camera_matrices const& camera) override;
+		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
+		glm::vec4 bg_color = { 0.2f, 0.2f, 0.2f, 1.f };
 
 	private:
 
@@ -507,34 +431,29 @@ namespace bump::ui
 		void insert_text(std::string const& text);
 		void delete_text(std::ptrdiff_t diff, bool word);
 		
-		gl::shader_program const* m_shader;
 		font::ft_context const* m_ft_context;
 		font::font_asset const* m_font;
 		std::string m_text;
 		text_texture m_texture;
-		
-		GLint m_in_VertexPosition;
-		GLint m_u_Position;
-		GLint m_u_Size;
-		GLint m_u_Offset;
-		GLint m_u_Color;
-		GLint m_u_Texture;
-		GLint m_u_MVP;
 
-		gl::buffer m_vertex_buffer;
-		gl::vertex_array m_vertex_array;
-		
 		bool m_hovered;
 		bool m_pressed;
 		bool m_focused;
 
+		vec::value_type m_min_width_px;
 		std::size_t m_max_length;
 		std::size_t m_caret;
 		std::size_t m_selection;
 	};
 
 	// text_field todo:
-		// add ui_text_field shader
+
+		// add background color for label, text_field classes.
+		// fix text offset for text_field and label rendering.
+		
 		// render caret / selection
+		// test deleting / caret position some more (not convinced it's 100% correct yet)
+
+		// label height should always be line_height
 
 } // bump::ui

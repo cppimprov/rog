@@ -8,84 +8,21 @@
 namespace bump::ui
 {
 
-	quad::quad(gl::shader_program const& shader):
-		m_shader(&shader),
-		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
-		m_u_Position(shader.get_uniform_location("u_Position")),
-		m_u_Size(shader.get_uniform_location("u_Size")),
-		m_u_Color(shader.get_uniform_location("u_Color")),
-		m_u_MVP(shader.get_uniform_location("u_MVP"))
+	void quad::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
-		auto const vertices = { 0.f, 0.f,  0.f, 1.f,  1.f, 1.f,  0.f, 0.f,  1.f, 1.f, 1.f, 0.f  };
-		m_vertex_buffer.set_data(GL_ARRAY_BUFFER, vertices.begin(), 2, 6, GL_STATIC_DRAW);
-		m_vertex_array.set_array_buffer(m_in_VertexPosition, m_vertex_buffer);
-	}
-
-	void quad::render(bump::gl::renderer& renderer, bump::camera_matrices const& matrices)
-	{
-		renderer.set_program(*m_shader);
-		renderer.set_uniform_2f(m_u_Position, glm::vec2(position));
-		renderer.set_uniform_2f(m_u_Size, glm::vec2(size));
-		renderer.set_uniform_4f(m_u_Color, color);
-		renderer.set_uniform_4x4f(m_u_MVP, matrices.model_view_projection_matrix(glm::identity<glm::mat4>()));
-		renderer.set_vertex_array(m_vertex_array);
-
-		renderer.draw_arrays(GL_TRIANGLES, m_vertex_buffer.get_element_count());
-
-		renderer.clear_vertex_array();
-		renderer.clear_program();
+		ui_renderer.draw_rect(gl_renderer, camera, position, size, color);
 	}
 	
-	textured_quad::textured_quad(gl::shader_program const& shader, gl::texture_2d const& texture):
-		m_shader(&shader),
-		m_texture(&texture),
-		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
-		m_u_Position(shader.get_uniform_location("u_Position")),
-		m_u_Size(shader.get_uniform_location("u_Size")),
-		m_u_Color(shader.get_uniform_location("u_Color")),
-		m_u_Texture(shader.get_uniform_location("u_Texture")),
-		m_u_MVP(shader.get_uniform_location("u_MVP"))
+	void textured_quad::render(ui::renderer const& ui_renderer, bump::gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
-		auto const vertices = { 0.f, 0.f,  0.f, 1.f,  1.f, 1.f,  0.f, 0.f,  1.f, 1.f, 1.f, 0.f  };
-		m_vertex_buffer.set_data(GL_ARRAY_BUFFER, vertices.begin(), 2, 6, GL_STATIC_DRAW);
-		m_vertex_array.set_array_buffer(m_in_VertexPosition, m_vertex_buffer);
-	}
-
-	void textured_quad::render(bump::gl::renderer& renderer, bump::camera_matrices const& matrices)
-	{
-		renderer.set_program(*m_shader);
-		renderer.set_texture_2d(0u, *m_texture);
-		renderer.set_uniform_2f(m_u_Position, glm::vec2(position));
-		renderer.set_uniform_2f(m_u_Size, glm::vec2(size));
-		renderer.set_uniform_4f(m_u_Color, color);
-		renderer.set_uniform_1i(m_u_Texture, 0);
-		renderer.set_uniform_4x4f(m_u_MVP, matrices.model_view_projection_matrix(glm::identity<glm::mat4>()));
-		renderer.set_vertex_array(m_vertex_array);
-
-		renderer.draw_arrays(GL_TRIANGLES, m_vertex_buffer.get_element_count());
-
-		renderer.clear_vertex_array();
-		renderer.clear_texture_2d(0u);
-		renderer.clear_program();
+		ui_renderer.draw_textured_rect(gl_renderer, camera, position, size, *m_texture);
 	}
 	
-	label::label(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
-		m_shader(&shader),
+	label::label(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
 		m_ft_context(&ft_context),
 		m_font(&font),
-		m_text(text),
-		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
-		m_u_Position(shader.get_uniform_location("u_Position")),
-		m_u_Size(shader.get_uniform_location("u_Size")),
-		m_u_Offset(shader.get_uniform_location("u_Offset")),
-		m_u_Color(shader.get_uniform_location("u_Color")),
-		m_u_Texture(shader.get_uniform_location("u_Texture")),
-		m_u_MVP(shader.get_uniform_location("u_MVP"))
+		m_text(text)
 	{
-		auto const vertices = { 0.f, 0.f,  0.f, 1.f,  1.f, 1.f,  0.f, 0.f,  1.f, 1.f, 1.f, 0.f  };
-		m_vertex_buffer.set_data(GL_ARRAY_BUFFER, vertices.begin(), 2, 6, GL_STATIC_DRAW);
-		m_vertex_array.set_array_buffer(m_in_VertexPosition, m_vertex_buffer);
-
 		set_text(text);
 	}
 
@@ -95,44 +32,19 @@ namespace bump::ui
 		m_texture = render_text_to_gl_texture(*m_ft_context, *m_font, m_text);
 	}
 
-	void label::render(bump::gl::renderer& renderer, bump::camera_matrices const& matrices)
+	void label::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
-		renderer.set_program(*m_shader);
-		renderer.set_uniform_2f(m_u_Position, glm::vec2(position));
-		renderer.set_uniform_2f(m_u_Size, glm::vec2(m_texture.m_texture.get_size()));
-		renderer.set_uniform_2f(m_u_Offset, glm::vec2(m_texture.m_pos));
-		renderer.set_uniform_4f(m_u_Color, color);
-		renderer.set_uniform_1i(m_u_Texture, 0);
-		renderer.set_uniform_4x4f(m_u_MVP, matrices.model_view_projection_matrix(glm::identity<glm::mat4>()));
-		renderer.set_texture_2d(0u, m_texture.m_texture);
-		renderer.set_vertex_array(m_vertex_array);
-
-		renderer.draw_arrays(GL_TRIANGLES, m_vertex_buffer.get_element_count());
-
-		renderer.clear_vertex_array();
-		renderer.clear_texture_2d(0u);
-		renderer.clear_program();
+		ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
+		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, color);
 	}
 
-	label_button::label_button(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
-		m_shader(&shader),
+	label_button::label_button(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
 		m_ft_context(&ft_context),
 		m_font(&font),
 		m_text(text),
-		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
-		m_u_Position(shader.get_uniform_location("u_Position")),
-		m_u_Size(shader.get_uniform_location("u_Size")),
-		m_u_Offset(shader.get_uniform_location("u_Offset")),
-		m_u_Color(shader.get_uniform_location("u_Color")),
-		m_u_Texture(shader.get_uniform_location("u_Texture")),
-		m_u_MVP(shader.get_uniform_location("u_MVP")),
 		m_hovered(false),
 		m_pressed(false)
 	{
-		auto const vertices = { 0.f, 0.f,  0.f, 1.f,  1.f, 1.f,  0.f, 0.f,  1.f, 1.f, 1.f, 0.f  };
-		m_vertex_buffer.set_data(GL_ARRAY_BUFFER, vertices.begin(), 2, 6, GL_STATIC_DRAW);
-		m_vertex_array.set_array_buffer(m_in_VertexPosition, m_vertex_buffer);
-
 		set_text(text);
 	}
 
@@ -141,61 +53,74 @@ namespace bump::ui
 		m_text = text;
 		m_texture = render_text_to_gl_texture(*m_ft_context, *m_font, m_text);
 	}
-
-	void label_button::render(bump::gl::renderer& renderer, bump::camera_matrices const& matrices)
+	
+	void label_button::input(input::input_event const& event)
 	{
-		renderer.set_program(*m_shader);
-		renderer.set_uniform_2f(m_u_Position, glm::vec2(position));
-		renderer.set_uniform_2f(m_u_Size, glm::vec2(m_texture.m_texture.get_size()));
-		renderer.set_uniform_2f(m_u_Offset, glm::vec2(m_texture.m_pos));
-		renderer.set_uniform_4f(m_u_Color, m_pressed ? press_color : m_hovered ? hover_color : inactive_color);
-		renderer.set_uniform_1i(m_u_Texture, 0);
-		renderer.set_uniform_4x4f(m_u_MVP, matrices.model_view_projection_matrix(glm::identity<glm::mat4>()));
-		renderer.set_texture_2d(0u, m_texture.m_texture);
-		renderer.set_vertex_array(m_vertex_array);
+		namespace ie = input::input_events;
 
-		renderer.draw_arrays(GL_TRIANGLES, m_vertex_buffer.get_element_count());
+		if (std::holds_alternative<ie::mouse_motion>(event))
+		{
+			auto const& mm = std::get<ie::mouse_motion>(event);
+			m_hovered = aabb{ position, size }.contains(mm.m_inv_y_position);
+			m_pressed = m_pressed && m_hovered;
+		}
 
-		renderer.clear_vertex_array();
-		renderer.clear_texture_2d(0u);
-		renderer.clear_program();
+		if (std::holds_alternative<ie::mouse_button>(event))
+		{
+			auto const& mb = std::get<ie::mouse_button>(event);
+			
+			if (mb.m_button == input::mouse_button::LEFT)
+			{
+				if (mb.m_value)
+				{
+					if (m_hovered)
+					{
+						m_pressed = true;
+						if (action) action();
+					}
+					else
+					{
+						m_pressed = false;
+					}
+				}
+				else
+				{
+					m_pressed = false;
+				}
+			}
+		}
+	}
+
+	void label_button::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
+	{
+		auto const color = m_pressed ? press_color : m_hovered ? hover_color : inactive_color;
+		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, color);
 	}
 	
-	text_field::text_field(gl::shader_program const& shader, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
-		m_shader(&shader),
+	text_field::text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
 		m_ft_context(&ft_context),
 		m_font(&font),
 		m_text(),
-		m_in_VertexPosition(shader.get_attribute_location("in_VertexPosition")),
-		m_u_Position(shader.get_uniform_location("u_Position")),
-		m_u_Size(shader.get_uniform_location("u_Size")),
-		m_u_Offset(shader.get_uniform_location("u_Offset")),
-		m_u_Color(shader.get_uniform_location("u_Color")),
-		m_u_Texture(shader.get_uniform_location("u_Texture")),
-		m_u_MVP(shader.get_uniform_location("u_MVP")),
 		m_hovered(false),
 		m_pressed(false),
 		m_focused(false),
+		m_min_width_px(100),
 		m_max_length(255),
 		m_caret(0),
 		m_selection(0)
 	{
-		auto const vertices = { 0.f, 0.f,  0.f, 1.f,  1.f, 1.f,  0.f, 0.f,  1.f, 1.f, 1.f, 0.f  };
-		m_vertex_buffer.set_data(GL_ARRAY_BUFFER, vertices.begin(), 2, 6, GL_STATIC_DRAW);
-		m_vertex_array.set_array_buffer(m_in_VertexPosition, m_vertex_buffer);
-
 		insert_text(text);
 	}
 
-	void text_field::set_text(std::string const& text)
+	void text_field::set_text(std::string const& text, bool select)
 	{
 		m_text = text;
 
 		if (m_text.size() > m_max_length)
 			m_text.resize(m_max_length);
 
-		m_caret = std::min(m_caret, m_text.size());
-		m_selection = std::min(m_selection, m_text.size());
+		set_caret(0, false);
+		set_caret(m_text.size(), select);
 
 		redraw_text();
 	}
@@ -204,7 +129,13 @@ namespace bump::ui
 	{
 		m_max_length = length;
 
-		set_text(m_text);
+		if (m_text.size() > m_max_length)
+			m_text.resize(m_max_length);
+
+		m_caret = std::min(m_caret, m_text.size());
+		m_selection = std::min(m_selection, m_text.size());
+		
+		redraw_text();
 	}
 
 	void text_field::set_caret(std::size_t pos, bool select)
@@ -263,6 +194,13 @@ namespace bump::ui
 		set_caret(caret_pos, select);
 	}
 
+	void text_field::measure()
+	{
+		auto const width = std::max(m_min_width_px, m_texture.m_pos.x + m_texture.m_texture.get_size().x);
+		auto const height = m_font->m_ft_font.get_line_height();
+		size = { width, height };
+	}
+
 	void text_field::input(input::input_event const& event)
 	{
 		namespace ie = input::input_events;
@@ -315,34 +253,21 @@ namespace bump::ui
 
 				using kt = bump::input::keyboard_key;
 
-				if (k.m_key == kt::ESCAPE) { m_focused = false; }
-				else if (k.m_key == kt::ARROWLEFT) { move_caret(-1, k.m_mods.ctrl(), k.m_mods.shift()); }
-				else if (k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl(), k.m_mods.shift()); }
-				else if (k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift()); }
-				else if (k.m_key == kt::END) { set_caret(m_text.size(), k.m_mods.shift()); }
-				else if (k.m_key == kt::BACKSPACE) { delete_text(-1, k.m_mods.ctrl()); }
-				else if (k.m_key == kt::DELETE) { delete_text(+1, k.m_mods.ctrl()); }
+				if      (k.m_value && k.m_key == kt::ESCAPE) { m_focused = false; }
+				else if (k.m_value && k.m_key == kt::ARROWLEFT) { move_caret(-1, k.m_mods.ctrl(), k.m_mods.shift()); }
+				else if (k.m_value && k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl(), k.m_mods.shift()); }
+				else if (k.m_value && k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift()); }
+				else if (k.m_value && k.m_key == kt::END) { set_caret(m_text.size(), k.m_mods.shift()); }
+				else if (k.m_value && k.m_key == kt::BACKSPACE) { delete_text(-1, k.m_mods.ctrl()); }
+				else if (k.m_value && k.m_key == kt::DELETE) { delete_text(+1, k.m_mods.ctrl()); }
 			}
 		}
 	}
 
-	void text_field::render(bump::gl::renderer& renderer, bump::camera_matrices const& matrices)
+	void text_field::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
-		renderer.set_program(*m_shader);
-		renderer.set_uniform_2f(m_u_Position, glm::vec2(position));
-		renderer.set_uniform_2f(m_u_Size, glm::vec2(m_texture.m_texture.get_size()));
-		renderer.set_uniform_2f(m_u_Offset, glm::vec2(m_texture.m_pos));
-		renderer.set_uniform_4f(m_u_Color, color);
-		renderer.set_uniform_1i(m_u_Texture, 0);
-		renderer.set_uniform_4x4f(m_u_MVP, matrices.model_view_projection_matrix(glm::identity<glm::mat4>()));
-		renderer.set_texture_2d(0u, m_texture.m_texture);
-		renderer.set_vertex_array(m_vertex_array);
-
-		renderer.draw_arrays(GL_TRIANGLES, m_vertex_buffer.get_element_count());
-
-		renderer.clear_vertex_array();
-		renderer.clear_texture_2d(0u);
-		renderer.clear_program();
+		ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
+		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, color);
 	}
 	
 	void text_field::redraw_text()
