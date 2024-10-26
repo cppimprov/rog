@@ -208,7 +208,29 @@ namespace bump
 
 			return out;
 		}
-		
+
+		std::int32_t measure_glyphs(ft_context const &, ft_font const &, hb_font const &, hb_shaper const &hb_shaper)
+		{
+			auto const glyph_positions = hb_shaper.get_glyph_positions();
+
+			if (glyph_positions.empty()) // nothing to do!
+				return 0;
+			
+			auto out = double{ 0.0 };
+			
+			auto const is_horizontal = HB_DIRECTION_IS_HORIZONTAL(hb_shaper.get_direction());
+
+			for (auto i = std::size_t{ 0 }; i != glyph_positions.size(); ++i)
+			{
+				auto const& glyph_position = glyph_positions[i];
+				auto const advance = glm::f64vec2{ glyph_position.x_advance, glyph_position.y_advance } / 64.0;
+
+				out += is_horizontal ? advance.x : advance.y;
+			}
+
+			return std::int32_t(std::ceil(out));
+		}
+
 	} // font
 	
 } // bump

@@ -1,6 +1,7 @@
 #include "bump_font_ft_font.hpp"
 
 #include "bump_die.hpp"
+#include "bump_font_conversions.hpp"
 #include "bump_log.hpp"
 #include "bump_narrow_cast.hpp"
 
@@ -42,14 +43,67 @@ namespace bump
 				die();
 			}
 		}
-		
-		std::int32_t ft_font::get_line_height() const
+
+		std::int32_t ft_font::get_ascent_266() const
 		{
 			die_if(!is_valid());
+			return get_handle()->ascender;
+		}
 
-			return (get_handle()->ascender - get_handle()->descender) / 64;
+		std::int32_t ft_font::get_descent_266() const
+		{
+			die_if(!is_valid());
+			return get_handle()->descender;
+		}
+
+		std::int32_t ft_font::get_line_height_266() const
+		{
+			die_if(!is_valid());
+			return (get_handle()->ascender - get_handle()->descender);
+		}
+
+		std::int32_t ft_font::get_underline_pos_266() const
+		{
+			die_if(!is_valid());
+			return get_handle()->underline_position;
+		}
+
+		std::int32_t ft_font::get_underline_thickness_266() const
+		{
+			die_if(!is_valid());
+			return get_handle()->underline_thickness;
 		}
 		
+		std::int32_t ft_font::get_ascent_px() const
+		{
+			die_if(!is_valid());
+			return get_handle()->ascender / 64;
+		}
+
+		std::int32_t ft_font::get_descent_px() const
+		{
+			die_if(!is_valid());
+			return get_handle()->descender / 64;
+		}
+
+		std::int32_t ft_font::get_line_height_px() const
+		{
+			die_if(!is_valid());
+			return (get_handle()->ascender - get_handle()->descender) / 64;
+		}
+
+		std::int32_t ft_font::get_underline_pos_px() const
+		{
+			die_if(!is_valid());
+			return get_handle()->underline_position / 64;
+		}
+
+		std::int32_t ft_font::get_underline_thickness_px() const
+		{
+			die_if(!is_valid());
+			return get_handle()->underline_thickness / 64;
+		}
+
 	} // font
 	
 } // bump

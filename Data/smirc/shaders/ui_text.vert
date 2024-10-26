@@ -11,7 +11,7 @@ out vec2 vert_UV;
 
 void main()
 {
-	vec2 pos = u_Position + in_VertexPosition * u_Size;
+	vec2 pos = u_Position + u_Offset + in_VertexPosition * u_Size;
 	vert_UV = vec2(in_VertexPosition.x, 1.0 - in_VertexPosition.y);
 	gl_Position = u_MVP * vec4(pos.x, pos.y, 0.0, 1.0);
 }

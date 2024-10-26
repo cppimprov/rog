@@ -85,7 +85,7 @@ namespace bump::ui
 		void set_text(std::string const& text);
 		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
 
-		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
+		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
 		void input(input::input_event const& ) override { }
@@ -368,7 +368,7 @@ namespace bump::ui
 		void set_text(std::string const& text);
 		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
 
-		void measure() override { size = m_texture.m_pos + m_texture.m_texture.get_size(); }
+		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
 		void input(input::input_event const& event) override;
@@ -444,16 +444,16 @@ namespace bump::ui
 		std::size_t m_max_length;
 		std::size_t m_caret;
 		std::size_t m_selection;
+		std::int32_t m_caret_pos_px;
 	};
 
 	// text_field todo:
 
-		// add background color for label, text_field classes.
-		// fix text offset for text_field and label rendering.
-		
-		// render caret / selection
+		// render selection
+		// fix spaces not contributing to texture size...
 		// test deleting / caret position some more (not convinced it's 100% correct yet)
+		// support utf-8 properly (deleting utf-8 characters causes problems!) :(
 
-		// label height should always be line_height
+		// add padding for label / text fields
 
 } // bump::ui

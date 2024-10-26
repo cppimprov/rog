@@ -20,6 +20,8 @@ namespace bump
 	text_texture render_text_to_gl_texture(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text);
 	text_texture render_text_outline_to_gl_texture(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text, double outline_width);
 
+	std::int32_t measure_text(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text);
+	// todo: outline version?
 
 	struct charmap_texture
 	{

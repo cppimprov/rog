@@ -23,8 +23,20 @@ namespace bump
 
 			void set_pixel_size(std::uint32_t pixels_per_em);
 
-			// todo: other font metrics?
-			std::int32_t get_line_height() const;
+			// values in FT's scaled 26.6 format (64ths of a pixel)
+			std::int32_t get_ascent_266() const;
+			std::int32_t get_descent_266() const; /* note: this value is negative! */
+			std::int32_t get_line_height_266() const;
+			std::int32_t get_underline_pos_266() const;
+			std::int32_t get_underline_thickness_266() const;
+			
+			// values in pixels
+			std::int32_t get_ascent_px() const;
+			std::int32_t get_descent_px() const; /* note: this value is negative! */
+			std::int32_t get_line_height_px() const;
+			std::int32_t get_underline_pos_px() const;
+			std::int32_t get_underline_thickness_px() const;
+			
 		};
 
 	} // font

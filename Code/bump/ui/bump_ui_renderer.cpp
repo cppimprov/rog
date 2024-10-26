@@ -81,12 +81,14 @@ namespace bump::ui
 		renderer.clear_program();
 	}
 
-	void renderer::draw_text(gl::renderer &renderer, camera_matrices const &camera, vec position, text_texture const &text, glm::vec4 color) const
+	void renderer::draw_text(gl::renderer &renderer, camera_matrices const &camera, vec position, text_texture const &text, vec::value_type line_height, glm::vec4 color) const
 	{
+		auto const offset = vec{ text.m_pos.x, (line_height - 1) - (text.m_pos.y + text.m_texture.get_size().y) };
+
 		renderer.set_program(*m_text.m_shader);
 		renderer.set_uniform_2f(m_text.m_u_Position, glm::vec2(position));
 		renderer.set_uniform_2f(m_text.m_u_Size, glm::vec2(text.m_texture.get_size()));
-		renderer.set_uniform_2f(m_text.m_u_Offset, glm::vec2(text.m_pos));
+		renderer.set_uniform_2f(m_text.m_u_Offset, glm::vec2(offset));
 		renderer.set_uniform_4f(m_text.m_u_Color, color);
 		renderer.set_uniform_1i(m_text.m_u_Texture, 0);
 		renderer.set_uniform_4x4f(m_text.m_u_MVP, camera.model_view_projection_matrix(glm::identity<glm::mat4>()));

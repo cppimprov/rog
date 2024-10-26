@@ -32,10 +32,17 @@ namespace bump::ui
 		m_texture = render_text_to_gl_texture(*m_ft_context, *m_font, m_text);
 	}
 
+	void label::measure()
+	{
+		auto const width = m_texture.m_pos.x + m_texture.m_texture.get_size().x;
+		auto const height = m_font->m_ft_font.get_line_height_px();
+		size = { width, height };
+	}
+
 	void label::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
 		ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
-		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, color);
+		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, m_font->m_ft_font.get_line_height_px(), color);
 	}
 
 	label_button::label_button(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
@@ -53,7 +60,14 @@ namespace bump::ui
 		m_text = text;
 		m_texture = render_text_to_gl_texture(*m_ft_context, *m_font, m_text);
 	}
-	
+
+	void label_button::measure()
+	{
+		auto const width = m_texture.m_pos.x + m_texture.m_texture.get_size().x;
+		auto const height = m_font->m_ft_font.get_line_height_px();
+		size = { width, height };
+	}
+
 	void label_button::input(input::input_event const& event)
 	{
 		namespace ie = input::input_events;
@@ -94,7 +108,7 @@ namespace bump::ui
 	void label_button::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
 		auto const color = m_pressed ? press_color : m_hovered ? hover_color : inactive_color;
-		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, color);
+		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, m_font->m_ft_font.get_line_height_px(), color);
 	}
 	
 	text_field::text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
@@ -107,7 +121,8 @@ namespace bump::ui
 		m_min_width_px(100),
 		m_max_length(255),
 		m_caret(0),
-		m_selection(0)
+		m_selection(0),
+		m_caret_pos_px(0)
 	{
 		insert_text(text);
 	}
@@ -135,6 +150,8 @@ namespace bump::ui
 		m_caret = std::min(m_caret, m_text.size());
 		m_selection = std::min(m_selection, m_text.size());
 		
+		m_caret_pos_px = measure_text(*m_ft_context, *m_font, m_text.substr(0, m_caret)); // todo: use string_view?
+		
 		redraw_text();
 	}
 
@@ -144,6 +161,8 @@ namespace bump::ui
 
 		if (!select)
 			m_selection = m_caret;
+			
+		m_caret_pos_px = measure_text(*m_ft_context, *m_font, m_text.substr(0, m_caret)); // todo: use string_view?
 	}
 
 	void text_field::move_caret(std::ptrdiff_t diff, bool word, bool select)
@@ -197,7 +216,7 @@ namespace bump::ui
 	void text_field::measure()
 	{
 		auto const width = std::max(m_min_width_px, m_texture.m_pos.x + m_texture.m_texture.get_size().x);
-		auto const height = m_font->m_ft_font.get_line_height();
+		auto const height = m_font->m_ft_font.get_line_height_px();
 		size = { width, height };
 	}
 
@@ -266,8 +285,17 @@ namespace bump::ui
 
 	void text_field::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
+		auto const line_height_px = m_font->m_ft_font.get_line_height_px();
+		auto const ascent_px = m_font->m_ft_font.get_ascent_px();
+		auto const descent_px = m_font->m_ft_font.get_descent_px();
+
 		ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
-		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, color);
+		ui_renderer.draw_text(gl_renderer, camera, position, m_texture, line_height_px, color);
+
+		// note: caret size and y pos are kinda arbitrary
+		auto const caret_pos = vec{ m_caret_pos_px, -descent_px, };
+		auto const caret_size = vec{ 2, ascent_px + descent_px };
+		ui_renderer.draw_rect(gl_renderer, camera, position + caret_pos, caret_size, color);
 	}
 	
 	void text_field::redraw_text()

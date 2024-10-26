@@ -63,6 +63,14 @@ namespace bump
 		return { image.m_pos, text_image_to_gl_texture(image.m_image) };
 	}
 
+	std::int32_t measure_text(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text)
+	{
+		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
+		hb_shaper.shape(font.m_hb_font.get_handle(), utf8_text);
+
+		return measure_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
+	}
+
 	charmap_texture render_charmap(font::ft_context const& ft_context, font::font_asset const& font, std::string const& chars)
 	{
 		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));

@@ -24,7 +24,7 @@ namespace bump::ui
 			vec position, vec size, gl::texture_2d const& texture) const;
 
 		void draw_text(gl::renderer& renderer, camera_matrices const& camera,
-			vec position, text_texture const& text, glm::vec4 color) const;
+			vec position, text_texture const& text, vec::value_type line_height, glm::vec4 color) const;
 
 	private:
 
