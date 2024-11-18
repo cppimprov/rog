@@ -20,6 +20,7 @@ namespace bump
 		struct glyph_image
 		{
 			glm::i32vec2 m_pos = { 0, 0 }; // bottom left
+			glm::i32vec2 m_advance = { 0, 0 }; // advance for this glyph
 			image<std::uint8_t> m_image; // note: the first pixel in the vector is the bottom left
 		};
 		

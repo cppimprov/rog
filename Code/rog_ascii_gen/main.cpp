@@ -13,11 +13,11 @@ namespace rog_ascii
 	bump::font::glyph_image blit_glyphs_as_tiles(std::vector<bump::font::glyph_image> const& glyphs, bump::font::blit_mode mode, glm::i32vec2 tile_size_px, std::int32_t y_offset)
 	{
 		if (glyphs.empty())
-			return { { 0, 0 }, bump::image<std::uint8_t>() };
+			return { { 0, 0 }, { 0, 0 }, bump::image<std::uint8_t>() };
 
 		auto const tile_size_sz = bump::narrow_cast<glm::size2>(tile_size_px);
 		auto const image_size = tile_size_sz * glm::size2{ 1, glyphs.size() };
-		auto out = bump::font::glyph_image{ { 0, 0 }, bump::image<std::uint8_t>(1, image_size) };
+		auto out = bump::font::glyph_image{ { 0, 0 }, glm::i32vec2(image_size), bump::image<std::uint8_t>(1, image_size) };
 
 		for (auto i = std::size_t{ 0 }; i != glyphs.size(); ++i)
 		{
@@ -49,7 +49,8 @@ namespace rog_ascii
 		auto const chars_utf8 = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\0€\0‚ƒ„…†‡ˆ‰Š‹Œ\0Ž\0\0‘’“”•–—˜™š›œ\0žŸ ¡¢£¤¥¦§¨©ª«¬\0®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"s;
 
 		auto hb_shaper = bump::font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
-		hb_shaper.shape(font.m_hb_font.get_handle(), chars_utf8);
+		hb_shaper.add_utf8(chars_utf8);
+		hb_shaper.shape(font.m_hb_font.get_handle());
 
 		auto glyphs = bump::font::render_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
 

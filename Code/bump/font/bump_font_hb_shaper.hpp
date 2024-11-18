@@ -28,10 +28,14 @@ namespace bump
 			void set_language(hb_language_t language);
 			hb_language_t get_language() const;
 
-			void shape(hb_font_t *harfbuzz_font, std::string const &utf8_str, std::span<hb_feature_t> features = {});
+			void add_utf8(std::string_view utf8_str);
+			
+			void shape(hb_font_t *harfbuzz_font, std::span<hb_feature_t> features = {});
 
 			std::span<hb_glyph_info_t> get_glyph_info() const;
 			std::span<hb_glyph_position_t> get_glyph_positions() const;
+
+			std::string serialize(hb_font_t *hb_font = nullptr) const;
 		};
 
 	} // font

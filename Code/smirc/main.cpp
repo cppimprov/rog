@@ -14,6 +14,8 @@ int main(int , char*[] )
 			// fonts
 			{
 				{ "menu", "RobotoMono-SemiBold.ttf", 30 },
+				{ "utf", "Arimo-Regular.ttf", 16 },
+				{ "kr", "NotoSansKR-Regular.ttf", 16 },
 			},
 			// sounds
 			{

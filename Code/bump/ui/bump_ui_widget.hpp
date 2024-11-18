@@ -76,6 +76,22 @@ namespace bump::ui
 		gl::texture_2d const* m_texture;
 	};
 
+	struct text_shape
+	{
+		void add_utf8(std::string_view utf8);
+		void clear();
+		void reset();
+
+		std::uint32_t next(std::uint32_t cluster_id);
+		std::uint32_t last();
+
+		font::ft_context const* m_ft_context;
+		font::ft_font const* m_ft_font;
+		font::hb_font const* m_hb_font;
+		font::hb_shaper m_shaper;
+		std::string m_text;
+	};
+
 	class label : public widget_base
 	{
 	public:
@@ -93,6 +109,7 @@ namespace bump::ui
 
 		glm::vec4 color = glm::vec4(1.f);
 		glm::vec4 bg_color = glm::vec4(glm::vec3(0.2f), 1.f);
+		margin_vec padding = margin_vec(2);
 
 	private:
 		
@@ -377,6 +394,8 @@ namespace bump::ui
 		glm::vec4 inactive_color = glm::vec4(0.6f, 0.6f, 0.6f, 1.0f);
 		glm::vec4 hover_color =    glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
 		glm::vec4 press_color =    glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.2f), 1.f);
+		margin_vec padding = margin_vec(2);
 		std::function<void()> action;
 
 	private:
@@ -424,6 +443,9 @@ namespace bump::ui
 
 		glm::vec4 color = glm::vec4(1.f);
 		glm::vec4 bg_color = { 0.2f, 0.2f, 0.2f, 1.f };
+		glm::vec4 caret_color = { 1.f, 0.4f, 0.f, 1.f };
+		glm::vec4 selection_color = { 1.f, 0.7f, 0.1f, 1.f };
+		margin_vec padding = margin_vec(10);
 
 	private:
 
@@ -444,16 +466,22 @@ namespace bump::ui
 		std::size_t m_max_length;
 		std::size_t m_caret;
 		std::size_t m_selection;
+
 		std::int32_t m_caret_pos_px;
+		std::int32_t m_selection_pos_px;
 	};
 
-	// text_field todo:
+	// todo:
 
-		// render selection
-		// fix spaces not contributing to texture size...
-		// test deleting / caret position some more (not convinced it's 100% correct yet)
-		// support utf-8 properly (deleting utf-8 characters causes problems!) :(
+		// soo...
+		// when pressing arrow keys, use shaper and move between grapheme clusters...
+		// when pressing backspace, do utf8 iteration to find start of codepoint, then delete it
+		// when pressing delete, use shaper to delete grapheme cluster.
 
-		// add padding for label / text fields
+		// moving cursor should move between grapheme clusters
+		// pressing backspace deletes the last codepoint
+		// pressing delete deletes the next grapheme cluster
 
 } // bump::ui
+
+// 

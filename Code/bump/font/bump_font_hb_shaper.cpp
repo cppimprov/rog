@@ -63,10 +63,16 @@ namespace bump
 			return hb_buffer_get_language(get_handle());
 		}
 
-		void hb_shaper::shape(hb_font_t* harfbuzz_font, std::string const& utf8_str, std::span<hb_feature_t> features)
+		void hb_shaper::add_utf8(std::string_view utf8_str)
 		{
-			hb_buffer_add_utf8(get_handle(), utf8_str.c_str(), narrow_cast<int>(utf8_str.size()), 0, narrow_cast<int>(utf8_str.size()));
+			die_if(!is_valid());
+			// todo: pass the actual utf8 length of the string?
+			hb_buffer_add_utf8(get_handle(), utf8_str.data(), narrow_cast<int>(utf8_str.size()), 0, -1);
+		}
 
+		void hb_shaper::shape(hb_font_t* harfbuzz_font, std::span<hb_feature_t> features)
+		{
+			die_if(!is_valid());
 			hb_shape(harfbuzz_font, get_handle(), features.data(), narrow_cast<unsigned int>(features.size()));
 		}
 
@@ -88,6 +94,33 @@ namespace bump
 			auto data = hb_buffer_get_glyph_positions(get_handle(), &length);
 
 			return { data, length };
+		}
+
+		std::string hb_shaper::serialize(hb_font_t *hb_font) const
+		{
+			auto const items = hb_buffer_get_length(get_handle());
+
+			auto out = std::string();
+
+			for (auto i = unsigned int{ 0 }; i != items; )
+			{
+				auto const str_size = 4096;
+				auto str = std::string(str_size, '\0');
+				auto bytes = unsigned int{ 0 };
+
+				auto const n = hb_buffer_serialize_glyphs(get_handle(),
+					i, items,
+					str.data(), str_size, &bytes,
+					hb_font,
+					HB_BUFFER_SERIALIZE_FORMAT_JSON,
+					HB_BUFFER_SERIALIZE_FLAG_DEFAULT);
+
+				str.resize(bytes);
+				out += str;
+				i += n;
+			}
+
+			return out;
 		}
 		
 	} // font

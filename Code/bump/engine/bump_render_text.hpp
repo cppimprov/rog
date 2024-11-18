@@ -14,6 +14,7 @@ namespace bump
 	struct text_texture
 	{
 		glm::i32vec2 m_pos;
+		glm::i32vec2 m_advance;
 		gl::texture_2d m_texture;
 	};
 

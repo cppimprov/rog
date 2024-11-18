@@ -81,7 +81,7 @@ namespace bump
 		glyph_image blit_glyphs(std::vector<glyph_image> const& glyphs, blit_mode mode)
 		{
 			if (glyphs.empty())
-				return { { 0, 0 }, image<std::uint8_t>() };
+				return { { 0, 0 }, { 0, 0 }, image<std::uint8_t>() };
 
 			auto min = glm::i32vec2(std::numeric_limits<std::int32_t>::max());
 			auto max = glm::i32vec2(std::numeric_limits<std::int32_t>::lowest());
@@ -92,8 +92,9 @@ namespace bump
 				max = glm::max(max, g.m_pos + narrow_cast<glm::i32vec2>(g.m_image.size()));
 			}
 
-			auto image_size = narrow_cast<glm::size2>(max - min);
-			auto out = glyph_image{ min, image<std::uint8_t>(1, image_size) };
+			auto const image_size = narrow_cast<glm::size2>(max - min);
+			auto const advance = glyphs.back().m_pos + glyphs.back().m_advance;
+			auto out = glyph_image{ min, advance, image<std::uint8_t>(1, image_size) };
 
 			for (auto const& g : glyphs)
 				blit_image(out.m_image, narrow_cast<glm::size2>(g.m_pos - out.m_pos), g.m_image, mode);
@@ -116,7 +117,7 @@ namespace bump
 			out.reserve(glyph_info.size());
 			
 			auto const is_horizontal = HB_DIRECTION_IS_HORIZONTAL(hb_shaper.get_direction());
-			auto const font_max_descender = font_units_to_pixels(ft_face->bbox.yMin, ft_face->units_per_EM, ft_face->size->metrics.y_ppem);
+			auto const font_max_descender = ft_font.get_descent_px();
 			auto const font_max_width =  font_units_to_pixels(ft_face->bbox.xMax - ft_face->bbox.xMin, ft_face->units_per_EM, ft_face->size->metrics.x_ppem);
 
 			auto const baseline = glm::f64vec2
@@ -188,14 +189,11 @@ namespace bump
 					auto const bottom = (bitmap->top - 1) - (narrow_cast<std::int32_t>(bitmap->bitmap.rows) - 1);
 					auto image = ft_bitmap_to_image(bitmap->bitmap);
 					
-					out.push_back({ { left, bottom }, std::move(image) });
+					out.push_back({ { left, bottom }, glm::i32vec2(advance), std::move(image) });
 				}
 				else
 				{
-					// empty glyph (probably a non-printable character)
-					// since the number of output glyphs must match the number of
-					// input glyphs, we push_back an empty entry.
-					out.push_back({ { 0, 0 }, { } });
+					out.push_back({ glm::i32vec2(baseline + pen + offset), glm::i32vec2(advance), { } });
 				}
 				
 				FT_Done_Glyph(glyph);
