@@ -121,6 +121,7 @@ namespace bump::ui
 	text_field::text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
 		m_ft_context(&ft_context),
 		m_font(&font),
+		m_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1)),
 		m_text(),
 		m_hovered(false),
 		m_pressed(false),
@@ -142,6 +143,10 @@ namespace bump::ui
 		if (m_text.size() > m_max_length)
 			m_text.resize(m_max_length);
 
+		m_shaper.clear_contents();
+		m_shaper.add_utf8(m_text);
+		m_shaper.shape(m_font->m_hb_font.get_handle());
+
 		set_caret(0, false);
 		set_caret(m_text.size(), select);
 
@@ -154,6 +159,10 @@ namespace bump::ui
 
 		if (m_text.size() > m_max_length)
 			m_text.resize(m_max_length);
+
+		m_shaper.clear_contents();
+		m_shaper.add_utf8(m_text);
+		m_shaper.shape(m_font->m_hb_font.get_handle());
 
 		m_caret = std::min(m_caret, m_text.size());
 		m_selection = std::min(m_selection, m_text.size());
@@ -170,7 +179,12 @@ namespace bump::ui
 
 		if (!select)
 			m_selection = m_caret;
-			
+
+		// todo: measure a subset, not the whole thing...
+		// do a binary search on the glyph info to find the glyph at the caret position
+		// then measure the substr from the start to this index?
+		//m_caret_pos_px = font::measure_glyphs(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, hb_shaper);
+
 		m_caret_pos_px = measure_text(*m_ft_context, *m_font, m_text.substr(0, m_caret)); // todo: use string_view?
 		m_selection_pos_px = measure_text(*m_ft_context, *m_font, m_text.substr(0, m_selection)); // todo: use string_view?
 	}
@@ -216,9 +230,23 @@ namespace bump::ui
 					static_cast<std::ptrdiff_t>(bound)));
 		};
 
-		auto caret_pos = word ?
+		auto const find_next_cluster = [&] (std::size_t pos, std::ptrdiff_t diff)
+		{
+			auto start = narrow_cast<std::uint32_t>(pos);
+			auto const n = narrow_cast<std::size_t>(std::abs(diff));
+
+			for (auto i = std::size_t{ 0 }; i != n; ++i)
+				start = (diff > 0) ? m_shaper.next_cluster(start) : m_shaper.prev_cluster(start);
+			
+			if (start == std::uint32_t(-1)) // ugh
+				start = narrow_cast<std::uint32_t>(m_text.size());
+
+			return std::size_t{ start };
+		};
+
+		auto const caret_pos = word ?
 			find_word_boundary(m_text, m_caret, diff) : 
-			safeish_add(m_text.size(), m_caret, diff);
+			find_next_cluster(m_caret, diff);
 		
 		set_caret(caret_pos, select);
 	}
@@ -253,8 +281,6 @@ namespace bump::ui
 					{
 						m_pressed = true;
 						m_focused = true;
-
-						
 					}
 					else
 					{
@@ -289,8 +315,8 @@ namespace bump::ui
 				else if (k.m_value && k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl(), k.m_mods.shift()); }
 				else if (k.m_value && k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift()); }
 				else if (k.m_value && k.m_key == kt::END) { set_caret(m_text.size(), k.m_mods.shift()); }
-				else if (k.m_value && k.m_key == kt::BACKSPACE) { delete_text(-1, k.m_mods.ctrl()); }
-				else if (k.m_value && k.m_key == kt::DELETE) { delete_text(+1, k.m_mods.ctrl()); }
+				else if (k.m_value && k.m_key == kt::BACKSPACE) { delete_codepoint(-1, k.m_mods.ctrl()); }
+				else if (k.m_value && k.m_key == kt::DELETE) { delete_grapheme_cluster(+1, k.m_mods.ctrl()); }
 			}
 		}
 	}
@@ -337,6 +363,10 @@ namespace bump::ui
 
 		// insert as much text as we can in the available space
 		m_text.insert(m_caret, std::string_view(text.begin(), text.begin() + len));
+		
+		m_shaper.clear_contents();
+		m_shaper.add_utf8(m_text);
+		m_shaper.shape(m_font->m_hb_font.get_handle());
 
 		// move the caret to the end of the inserted text
 		set_caret(m_caret + len, false);
@@ -345,12 +375,17 @@ namespace bump::ui
 		redraw_text();
 	}
 
-	void text_field::delete_text(std::ptrdiff_t diff, bool word)
+	void text_field::delete_grapheme_cluster(std::ptrdiff_t diff, bool word)
 	{
 		// erase any selected text
 		if (selection_size() != 0)
 		{
 			m_text.erase(selection_start(), selection_size());
+			
+			m_shaper.clear_contents();
+			m_shaper.add_utf8(m_text);
+			m_shaper.shape(m_font->m_hb_font.get_handle());
+
 			set_caret(selection_start(), false);
 		}
 		else
@@ -360,11 +395,53 @@ namespace bump::ui
 
 			// erase selected text
 			m_text.erase(selection_start(), selection_size());
+			
+			m_shaper.clear_contents();
+			m_shaper.add_utf8(m_text);
+			m_shaper.shape(m_font->m_hb_font.get_handle());
+
 			set_caret(selection_start(), false);
 		}
 
 		// update texture
 		redraw_text();
 	}
+	
+	void text_field::delete_codepoint(std::ptrdiff_t diff, bool word)
+	{
+		// erase any selected text
+		if (selection_size() != 0)
+		{
+			m_text.erase(selection_start(), selection_size());
+			
+			m_shaper.clear_contents();
+			m_shaper.add_utf8(m_text);
+			m_shaper.shape(m_font->m_hb_font.get_handle());
+
+			set_caret(selection_start(), false);
+		}
+		else
+		{
+			// todo: not this!
+			// todo: move caret by codepoint instead of grapheme cluster?
+			// pass a `mode` to move_caret word, grapheme_cluster, codepoint?
+
+			// move caret while selecting
+			move_caret(diff, word, true);
+
+			// erase selected text
+			m_text.erase(selection_start(), selection_size());
+			
+			m_shaper.clear_contents();
+			m_shaper.add_utf8(m_text);
+			m_shaper.shape(m_font->m_hb_font.get_handle());
+
+			set_caret(selection_start(), false);
+		}
+
+		// update texture
+		redraw_text();
+	}
+
 
 } // bump::ui

@@ -4,6 +4,8 @@
 #include "bump_log.hpp"
 #include "bump_narrow_cast.hpp"
 
+#include <algorithm>
+
 namespace bump
 {
 	
@@ -70,15 +72,58 @@ namespace bump
 			hb_buffer_add_utf8(get_handle(), utf8_str.data(), narrow_cast<int>(utf8_str.size()), 0, -1);
 		}
 
+		void hb_shaper::clear_contents()
+		{
+			die_if(!is_valid());
+			hb_buffer_clear_contents(get_handle());
+		}
+
+		void hb_shaper::clear()
+		{
+			die_if(!is_valid());
+			hb_buffer_reset(get_handle());
+		}
+
 		void hb_shaper::shape(hb_font_t* harfbuzz_font, std::span<hb_feature_t> features)
 		{
 			die_if(!is_valid());
 			hb_shape(harfbuzz_font, get_handle(), features.data(), narrow_cast<unsigned int>(features.size()));
 		}
 
+		std::uint32_t hb_shaper::next_cluster(std::uint32_t start) const
+		{
+			die_if(!is_valid());
+
+			auto const info = get_glyph_info();
+			auto const next = std::upper_bound(info.begin(), info.end(),
+				start, [] (std::uint32_t value, hb_glyph_info_t const& info) { return value < info.cluster; });
+
+			if (next == info.end())
+				return std::uint32_t(-1); // ugh
+			
+			return next->cluster;
+		}
+
+		std::uint32_t hb_shaper::prev_cluster(std::uint32_t start) const
+		{
+			die_if(!is_valid());
+
+			auto const info = get_glyph_info();
+			auto const next = std::upper_bound(info.rbegin(), info.rend(),
+				start, [] (std::uint32_t value, hb_glyph_info_t const& info) { return value > info.cluster; });
+
+			if (next == info.rend())
+				return 0;
+			
+			return next->cluster;
+		}
+
 		std::span<hb_glyph_info_t> hb_shaper::get_glyph_info() const
 		{
 			die_if(!is_valid());
+
+			auto const l = hb_buffer_get_length(get_handle());
+			(void)l;
 
 			auto length = 0u;
 			auto data = hb_buffer_get_glyph_infos(get_handle(), &length);

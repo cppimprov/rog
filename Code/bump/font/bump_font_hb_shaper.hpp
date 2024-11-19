@@ -29,8 +29,13 @@ namespace bump
 			hb_language_t get_language() const;
 
 			void add_utf8(std::string_view utf8_str);
+			void clear_contents();
+			void clear();
 			
 			void shape(hb_font_t *harfbuzz_font, std::span<hb_feature_t> features = {});
+
+			std::uint32_t next_cluster(std::uint32_t start) const;
+			std::uint32_t prev_cluster(std::uint32_t start) const;
 
 			std::span<hb_glyph_info_t> get_glyph_info() const;
 			std::span<hb_glyph_position_t> get_glyph_positions() const;

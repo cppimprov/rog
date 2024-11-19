@@ -126,7 +126,7 @@ hb_shape_list_shapers ()
  * Since: 0.9.2
  **/
 hb_bool_t
-hb_shape_full (hb_font_t          *font,
+hb_shape_full (hb_font_t    *font,
 	       hb_buffer_t        *buffer,
 	       const hb_feature_t *features,
 	       unsigned int        num_features,
@@ -161,7 +161,7 @@ hb_shape_full (hb_font_t          *font,
  * Since: 0.9.2
  **/
 void
-hb_shape (hb_font_t           *font,
+hb_shape (hb_font_t     *font,
 	  hb_buffer_t         *buffer,
 	  const hb_feature_t  *features,
 	  unsigned int         num_features)

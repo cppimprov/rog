@@ -451,10 +451,12 @@ namespace bump::ui
 
 		void redraw_text();
 		void insert_text(std::string const& text);
-		void delete_text(std::ptrdiff_t diff, bool word);
+		void delete_grapheme_cluster(std::ptrdiff_t diff, bool word);
+		void delete_codepoint(std::ptrdiff_t diff, bool word);
 		
 		font::ft_context const* m_ft_context;
 		font::font_asset const* m_font;
+		font::hb_shaper m_shaper;
 		std::string m_text;
 		text_texture m_texture;
 
@@ -474,14 +476,17 @@ namespace bump::ui
 	// todo:
 
 		// soo...
-		// when pressing arrow keys, use shaper and move between grapheme clusters...
 		// when pressing backspace, do utf8 iteration to find start of codepoint, then delete it
 		// when pressing delete, use shaper to delete grapheme cluster.
 
-		// moving cursor should move between grapheme clusters
 		// pressing backspace deletes the last codepoint
 		// pressing delete deletes the next grapheme cluster
 
-} // bump::ui
+		// make unicode text input work properly! (respond to sdl editing events???)
 
-// 
+	// todo: (tidying)
+		// grapheme cluster iterator (with one past the end...)
+		// keep text stuff in text_shape class?
+		// ...?
+
+} // bump::ui
