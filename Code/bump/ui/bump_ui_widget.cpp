@@ -237,9 +237,9 @@ namespace bump::ui
 
 		auto const find_next_codepoint = [&] (std::string const& text, std::size_t pos, std::ptrdiff_t diff)
 		{
-			auto beg = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data());
-			auto end = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data() + text.size());
-
+			// eww...
+			auto const beg = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data());
+			auto const end = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data() + text.size());
 			auto start = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data() + pos);
 			auto const n = narrow_cast<std::size_t>(std::abs(diff));
 
@@ -399,27 +399,14 @@ namespace bump::ui
 
 	void text_field::delete_grapheme_cluster(std::ptrdiff_t diff, bool word)
 	{
-		// erase any selected text
-		if (selection_size() != 0)
-		{
-			m_text.erase(selection_start(), selection_size());
-			
-			reshape_text();
-
-			set_caret(selection_start(), false);
-		}
-		else
-		{
-			// move caret while selecting
+		// no selection - select next word or cluster
+		if (selection_size() == 0)
 			move_caret(diff, word ? cursor_mode::WORD : cursor_mode::CLUSTER, true);
 
-			// erase selected text
-			m_text.erase(selection_start(), selection_size());
-			
-			reshape_text();
-
-			set_caret(selection_start(), false);
-		}
+		// erase selected text
+		m_text.erase(selection_start(), selection_size());
+		reshape_text();
+		set_caret(selection_start(), false);
 
 		// update texture
 		redraw_text();
@@ -427,27 +414,14 @@ namespace bump::ui
 	
 	void text_field::delete_codepoint(std::ptrdiff_t diff, bool word)
 	{
-		// erase any selected text
-		if (selection_size() != 0)
-		{
-			m_text.erase(selection_start(), selection_size());
-			
-			reshape_text();
-
-			set_caret(selection_start(), false);
-		}
-		else
-		{
-			// move caret while selecting
+		// no selection - select next word or cluster
+		if (selection_size() == 0)
 			move_caret(diff, word ? cursor_mode::WORD : cursor_mode::CODEPOINT, true);
 
-			// erase selected text
-			m_text.erase(selection_start(), selection_size());
-			
-			reshape_text();
-
-			set_caret(selection_start(), false);
-		}
+		// erase selected text
+		m_text.erase(selection_start(), selection_size());
+		reshape_text();
+		set_caret(selection_start(), false);
 
 		// update texture
 		redraw_text();

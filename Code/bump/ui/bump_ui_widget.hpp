@@ -478,6 +478,8 @@ namespace bump::ui
 	};
 
 	// todo:
+		// more types of space character as boundaries? (tabs, newlines, etc.)
+		// tab rendering?
 		// make unicode text input work properly! (respond to sdl editing events???)
 
 	// todo: (tidying)
