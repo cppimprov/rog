@@ -41,47 +41,57 @@ namespace bump
 		}
 
 	} // unnamed
-	
-	text_texture render_text_to_gl_texture(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text)
+
+	font::hb_shaper make_shaper(font::hb_font const& hb_font, std::string_view utf8_text)
 	{
 		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
 		hb_shaper.add_utf8(utf8_text);
-		hb_shaper.shape(font.m_hb_font.get_handle());
+		hb_shaper.shape(hb_font.get_handle());
 
-		auto const glyphs = render_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
+		return hb_shaper;
+	}
+
+	text_texture render_text_to_gl_texture(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, font::hb_shaper const& hb_shaper)
+	{
+		auto const glyphs = render_glyphs(ft_context, ft_font, hb_font, hb_shaper);
 		auto const image = blit_glyphs(glyphs, font::blit_mode::MAX);
 
 		return { image.m_pos, image.m_advance, text_image_to_gl_texture(image.m_image) };
 	}
 	
-	text_texture render_text_outline_to_gl_texture(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text, double outline_width)
+	text_texture render_text_to_gl_texture(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, std::string_view utf8_text)
 	{
-		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
-		hb_shaper.add_utf8(utf8_text);
-		hb_shaper.shape(font.m_hb_font.get_handle());
-
-		auto const glyphs = render_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper, { outline_width });
+		return render_text_to_gl_texture(ft_context, ft_font, hb_font, make_shaper(hb_font, utf8_text));
+	}
+	
+	text_texture render_text_outline_to_gl_texture(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, std::string_view utf8_text, double outline_width)
+	{
+		auto hb_shaper = make_shaper(hb_font, utf8_text);
+		auto const glyphs = render_glyphs(ft_context, ft_font, hb_font, hb_shaper, { outline_width });
 		auto const image = blit_glyphs(glyphs, font::blit_mode::MAX);
 		
 		return { image.m_pos, image.m_advance, text_image_to_gl_texture(image.m_image) };
 	}
 
-	std::int32_t measure_text(font::ft_context const& ft_context, font::font_asset const& font, std::string const& utf8_text)
+	std::int32_t measure_text(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, font::hb_shaper const& hb_shaper, std::size_t start, std::size_t end)
 	{
-		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
-		hb_shaper.add_utf8(utf8_text);
-		hb_shaper.shape(font.m_hb_font.get_handle());
-
-		return measure_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
+		return measure_glyphs(ft_context, ft_font, hb_font, hb_shaper, start, end);
 	}
 
-	charmap_texture render_charmap(font::ft_context const& ft_context, font::font_asset const& font, std::string const& chars)
+	std::int32_t measure_text(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, font::hb_shaper const& hb_shaper)
 	{
-		auto hb_shaper = font::hb_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1));
-		hb_shaper.add_utf8(chars);
-		hb_shaper.shape(font.m_hb_font.get_handle());
+		return measure_glyphs(ft_context, ft_font, hb_font, hb_shaper);
+	}
 
-		auto const glyphs = render_glyphs(ft_context, font.m_ft_font, font.m_hb_font, hb_shaper);
+	std::int32_t measure_text(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, std::string_view utf8_text)
+	{
+		return measure_text(ft_context, ft_font, hb_font, make_shaper(hb_font, utf8_text));
+	}
+
+	charmap_texture render_charmap(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, std::string const& chars)
+	{
+		auto const hb_shaper = make_shaper(hb_font, chars);
+		auto const glyphs = render_glyphs(ft_context, ft_font, hb_font, hb_shaper);
 		auto const image = blit_glyphs(glyphs, font::blit_mode::MAX);
 		auto texture = text_image_to_gl_texture(image.m_image);
 

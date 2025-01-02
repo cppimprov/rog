@@ -68,7 +68,6 @@ namespace bump
 		void hb_shaper::add_utf8(std::string_view utf8_str)
 		{
 			die_if(!is_valid());
-			// todo: pass the actual utf8 length of the string?
 			hb_buffer_add_utf8(get_handle(), utf8_str.data(), narrow_cast<int>(utf8_str.size()), 0, -1);
 		}
 

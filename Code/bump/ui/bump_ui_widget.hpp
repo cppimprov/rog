@@ -85,6 +85,8 @@ namespace bump::ui
 		std::uint32_t next(std::uint32_t cluster_id);
 		std::uint32_t last();
 
+		text_texture render_text() const;
+
 		font::ft_context const* m_ft_context;
 		font::ft_font const* m_ft_font;
 		font::hb_font const* m_hb_font;
@@ -428,7 +430,8 @@ namespace bump::ui
 		void set_caret(std::size_t pos, bool select);
 		std::size_t get_caret() const { return m_caret; }
 		
-		void move_caret(std::ptrdiff_t diff, bool word, bool select);
+		enum class cursor_mode { WORD, CLUSTER, CODEPOINT };
+		void move_caret(std::ptrdiff_t diff, cursor_mode mode, bool select);
 
 		std::size_t selection_start() const { return std::min(m_caret, m_selection); }
 		std::size_t selection_end() const { return std::max(m_caret, m_selection); }
@@ -449,11 +452,12 @@ namespace bump::ui
 
 	private:
 
+		void reshape_text();
 		void redraw_text();
 		void insert_text(std::string const& text);
 		void delete_grapheme_cluster(std::ptrdiff_t diff, bool word);
 		void delete_codepoint(std::ptrdiff_t diff, bool word);
-		
+
 		font::ft_context const* m_ft_context;
 		font::font_asset const* m_font;
 		font::hb_shaper m_shaper;
@@ -474,19 +478,9 @@ namespace bump::ui
 	};
 
 	// todo:
-
-		// soo...
-		// when pressing backspace, do utf8 iteration to find start of codepoint, then delete it
-		// when pressing delete, use shaper to delete grapheme cluster.
-
-		// pressing backspace deletes the last codepoint
-		// pressing delete deletes the next grapheme cluster
-
 		// make unicode text input work properly! (respond to sdl editing events???)
 
 	// todo: (tidying)
-		// grapheme cluster iterator (with one past the end...)
-		// keep text stuff in text_shape class?
-		// ...?
+		// move text and text shaping stuff into text_shape class?
 
 } // bump::ui
