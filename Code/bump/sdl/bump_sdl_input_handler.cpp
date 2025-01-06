@@ -412,7 +412,15 @@ namespace bump
 				// text input
 				if (e.type == SDL_TEXTINPUT)
 				{
-					input_events.emplace(input::input_events::typing{ std::to_array(e.text.text) });
+					input_events.emplace(input::input_events::text_input{ std::to_array(e.text.text) });
+
+					continue;
+				}
+
+				// text editing (ime)
+				if (e.type == SDL_TEXTEDITING)
+				{
+					input_events.emplace(input::input_events::text_editing{ std::to_array(e.edit.text), static_cast<std::uint32_t>(e.edit.start), static_cast<std::uint32_t>(e.edit.length) });
 
 					continue;
 				}

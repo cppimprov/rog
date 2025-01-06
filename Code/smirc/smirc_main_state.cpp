@@ -89,8 +89,8 @@ namespace smirc
 		dialog->origin = { ui::origin::center, ui::origin::center };
 		canvas->children.push_back(dialog);
 
-		auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("utf"), "H̵̛͕̞̦̰̜͍̰̥̟͆̏͂̌͑ͅä̷͔̟͓̬̯̟͍̭͉͈̮͙̣̯̬͚̞̭̍̀̾͠m̴̡̧̛̝̯̹̗̹̤̲̺̟̥̈̏͊̔̑̍͆̌̀̚͝͝b̴̢̢̫̝̠̗̼̬̻̮̺̭͔̘͑̆̎̚te{|}1Å¿Š");
-		//auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("kr"), "------");
+		//auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("utf"), "H̵̛͕̞̦̰̜͍̰̥̟͆̏͂̌͑ͅä̷͔̟͓̬̯̟͍̭͉͈̮͙̣̯̬͚̞̭̍̀̾͠m̴̡̧̛̝̯̹̗̹̤̲̺̟̥̈̏͊̔̑̍͆̌̀̚͝͝b̴̢̢̫̝̠̗̼̬̻̮̺̭͔̘͑̆̎̚te{|}1Å¿Š");
+		auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("kr"), "------");
 		dialog->children.push_back(text_field_1);
 
 		//auto text_field_2 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 2");

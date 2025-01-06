@@ -129,7 +129,8 @@ namespace bump
 		namespace input_events
 		{
 			struct keyboard_key   { input::keyboard_key m_key; bool m_value; key_modifiers m_mods; };
-			struct typing         { std::array<char, 32> m_text; };
+			struct text_input     { std::array<char, 32> m_text; };
+			struct text_editing   { std::array<char, 32> m_text; std::uint32_t m_start; std::uint32_t m_length; };
 			struct mouse_button   { glm::ivec2 m_position; glm::ivec2 m_inv_y_position; input::mouse_button m_button; bool m_value; key_modifiers m_mods; };
 			struct mouse_wheel    { glm::ivec2 m_motion; key_modifiers m_mods; };
 			struct mouse_motion   { glm::ivec2 m_position; glm::ivec2 m_inv_y_position; glm::ivec2 m_motion; key_modifiers m_mods; };
@@ -140,7 +141,8 @@ namespace bump
 		using input_event = std::variant
 		<
 			input_events::keyboard_key,
-			input_events::typing,
+			input_events::text_input,
+			input_events::text_editing,
 			input_events::mouse_button,
 			input_events::mouse_wheel,
 			input_events::mouse_motion,

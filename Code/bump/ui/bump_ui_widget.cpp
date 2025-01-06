@@ -12,6 +12,8 @@
 #undef DELETE
 #pragma warning(pop)
 
+#include <SDL.h>
+
 #include <iostream>
 
 namespace bump::ui
@@ -294,11 +296,13 @@ namespace bump::ui
 					{
 						m_pressed = true;
 						m_focused = true;
+						SDL_StartTextInput();
 					}
 					else
 					{
 						m_pressed = false;
 						m_focused = false;
+						SDL_StopTextInput();
 					}
 				}
 				else
@@ -310,11 +314,18 @@ namespace bump::ui
 
 		if (m_focused)
 		{
-			if (std::holds_alternative<ie::typing>(event))
+			if (std::holds_alternative<ie::text_input>(event))
 			{
-				auto const& t = std::get<ie::typing>(event);
+				auto const& t = std::get<ie::text_input>(event);
 
 				insert_text(t.m_text.data());
+			}
+
+			if (std::holds_alternative<ie::text_editing>(event))
+			{
+				auto const& c = std::get<ie::text_editing>(event);
+
+				std::cout << c.m_text.data() << " " << c.m_start << " " << c.m_length << std::endl;
 			}
 
 			if (std::holds_alternative<ie::keyboard_key>(event))
@@ -323,7 +334,7 @@ namespace bump::ui
 
 				using kt = bump::input::keyboard_key;
 
-				if      (k.m_value && k.m_key == kt::ESCAPE) { m_focused = false; }
+				if      (k.m_value && k.m_key == kt::ESCAPE) { m_focused = false; SDL_StopTextInput(); }
 				else if (k.m_value && k.m_key == kt::ARROWLEFT) { move_caret(-1, k.m_mods.ctrl() ? cursor_mode::WORD : cursor_mode::CLUSTER, k.m_mods.shift()); }
 				else if (k.m_value && k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl() ? cursor_mode::WORD : cursor_mode::CLUSTER, k.m_mods.shift()); }
 				else if (k.m_value && k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift()); }

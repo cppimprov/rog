@@ -478,6 +478,15 @@ namespace bump::ui
 	};
 
 	// todo:
+
+		// ime input
+			// show IME compositions!
+			// add composition text to normal text
+			// set caret to end of composition and add new marker at start of composition
+			// highlight composition text in a different color
+			// ignore backspace when composing
+			// moving cursor (arrow keys etc.) should commit text *first*
+
 		// more types of space character as boundaries? (tabs, newlines, etc.)
 		// tab rendering?
 		// make unicode text input work properly! (respond to sdl editing events???)
