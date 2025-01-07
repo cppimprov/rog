@@ -11,8 +11,8 @@ namespace bump
 	
 	namespace font
 	{
-		
-		hb_shaper::hb_shaper(hb_direction_t direction, hb_script_t script, hb_language_t language)
+
+		hb_shaper::hb_shaper()
 		{
 			auto handle = hb_buffer_create();
 
@@ -23,7 +23,11 @@ namespace bump
 			}
 
 			reset(handle, [] (hb_buffer_t* b) { hb_buffer_destroy(b); });
-			
+		}
+		
+		hb_shaper::hb_shaper(hb_direction_t direction, hb_script_t script, hb_language_t language):
+			hb_shaper()
+		{
 			set_direction(direction);
 			set_script(script);
 			set_language(language);

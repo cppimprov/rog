@@ -17,6 +17,7 @@ namespace bump
 		{
 		public:
 			
+			hb_shaper();
 			explicit hb_shaper(hb_direction_t direction, hb_script_t script, hb_language_t language);
 
 			void set_direction(hb_direction_t direction);

@@ -76,24 +76,6 @@ namespace bump::ui
 		gl::texture_2d const* m_texture;
 	};
 
-	struct text_shape
-	{
-		void add_utf8(std::string_view utf8);
-		void clear();
-		void reset();
-
-		std::uint32_t next(std::uint32_t cluster_id);
-		std::uint32_t last();
-
-		text_texture render_text() const;
-
-		font::ft_context const* m_ft_context;
-		font::ft_font const* m_ft_font;
-		font::hb_font const* m_hb_font;
-		font::hb_shaper m_shaper;
-		std::string m_text;
-	};
-
 	class label : public widget_base
 	{
 	public:
@@ -427,7 +409,7 @@ namespace bump::ui
 		void set_max_length(std::size_t length);
 		std::size_t get_max_length() const { return m_max_length; }
 
-		void set_caret(std::size_t pos, bool select);
+		void set_caret(std::size_t pos, bool select, bool compose);
 		std::size_t get_caret() const { return m_caret; }
 		
 		enum class cursor_mode { WORD, CLUSTER, CODEPOINT };
@@ -437,6 +419,11 @@ namespace bump::ui
 		std::size_t selection_end() const { return std::max(m_caret, m_selection); }
 		std::size_t selection_size() const { return selection_end() - selection_start(); }
 		std::string_view get_selection() const { return std::string_view(m_text.begin() + selection_start(), m_text.begin() + selection_end()); }
+
+		std::size_t composition_start() const { return std::min(m_caret, m_composition); }
+		std::size_t composition_end() const { return std::max(m_caret, m_composition); }
+		std::size_t composition_size() const { return composition_end() - composition_start(); }
+		std::string_view get_composition() const { return std::string_view(m_text.begin() + composition_start(), m_text.begin() + composition_end()); }
 
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
@@ -448,13 +435,14 @@ namespace bump::ui
 		glm::vec4 bg_color = { 0.2f, 0.2f, 0.2f, 1.f };
 		glm::vec4 caret_color = { 1.f, 0.4f, 0.f, 1.f };
 		glm::vec4 selection_color = { 1.f, 0.7f, 0.1f, 1.f };
+		glm::vec4 composition_color = { 0.7f, 0.0f, 0.f, 1.f };
 		margin_vec padding = margin_vec(10);
 
 	private:
 
 		void reshape_text();
 		void redraw_text();
-		void insert_text(std::string const& text);
+		void insert_text(std::string_view text, bool compose);
 		void delete_grapheme_cluster(std::ptrdiff_t diff, bool word);
 		void delete_codepoint(std::ptrdiff_t diff, bool word);
 
@@ -472,26 +460,60 @@ namespace bump::ui
 		std::size_t m_max_length;
 		std::size_t m_caret;
 		std::size_t m_selection;
+		std::size_t m_composition;
 
 		std::int32_t m_caret_pos_px;
 		std::int32_t m_selection_pos_px;
+		std::int32_t m_composition_pos_px;
+	};
+	
+	struct text_shape
+	{
+	public:
+
+		explicit text_shape(
+			font::ft_context const& ft_context,
+			font::ft_font const& ft_font,
+			font::hb_font const& hb_font,
+			font::hb_shaper const& hb_shaper,
+			std::string text);
+
+		void set(std::string_view text);
+		void insert(std::size_t pos, std::string_view text);
+		void erase(std::size_t pos, std::size_t length);
+
+		std::size_t size() const;
+
+		void set_max_length(std::size_t length);
+
+		std::size_t next_word(std::size_t pos, std::ptrdiff_t diff);
+		std::size_t next_cluster(std::size_t pos, std::ptrdiff_t diff);
+		std::size_t next_codepoint(std::size_t pos, std::ptrdiff_t diff);
+
+		void reshape();
+
+		text_texture render();
+		std::int32_t measure(std::size_t start, std::size_t end);
+
+	private:
+
+		font::ft_context const* m_ft_context;
+		font::ft_font const* m_ft_font;
+		font::hb_font const* m_hb_font;
+		font::hb_shaper m_shaper;
+
+		std::string m_text;
+		std::size_t m_max_length;
 	};
 
 	// todo:
 
-		// ime input
-			// show IME compositions!
-			// add composition text to normal text
-			// set caret to end of composition and add new marker at start of composition
-			// highlight composition text in a different color
-			// ignore backspace when composing
-			// moving cursor (arrow keys etc.) should commit text *first*
+		// text_shape
+			// implement
+			// replace code in text_field
+			// use it in label and label_button
 
-		// more types of space character as boundaries? (tabs, newlines, etc.)
+		// more types of space character as word boundaries? (tabs, newlines, etc.)
 		// tab rendering?
-		// make unicode text input work properly! (respond to sdl editing events???)
-
-	// todo: (tidying)
-		// move text and text shaping stuff into text_shape class?
 
 } // bump::ui
