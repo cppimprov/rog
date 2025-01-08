@@ -3,15 +3,6 @@
 #include "bump_narrow_cast.hpp"
 #include "bump_render_text.hpp"
 
-// eww...
-#pragma warning(push)
-#pragma warning(disable: 4244 4267 4100 4458)
-#include <hb-utf.hh>
-#undef min
-#undef max
-#undef DELETE
-#pragma warning(pop)
-
 #include <SDL.h>
 
 #include <iostream>
@@ -30,52 +21,53 @@ namespace bump::ui
 	}
 	
 	label::label(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
-		m_ft_context(&ft_context),
-		m_font(&font),
-		m_text(text)
+		m_text(ft_context, font.m_ft_font, font.m_hb_font, text)
 	{
-		set_text(text);
+		redraw_text();
 	}
 
 	void label::set_text(std::string const& text)
 	{
-		m_text = text;
-		m_texture = render_text_to_gl_texture(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_text);
+		m_text.set(text);
+		redraw_text();
 	}
 
 	void label::measure()
 	{
 		auto const width = m_texture.m_pos.x + m_texture.m_advance.x + padding.x + padding.z;
-		auto const height = m_font->m_ft_font.get_line_height_px() + padding.y + padding.w;
+		auto const height = m_text.get_ft_font().get_line_height_px() + padding.y + padding.w;
 		size = { width, height };
 	}
 
 	void label::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
 		ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
-		ui_renderer.draw_text(gl_renderer, camera, position + vec{ padding.x, padding.y }, m_texture, m_font->m_ft_font.get_line_height_px(), color);
+		ui_renderer.draw_text(gl_renderer, camera, position + vec{ padding.x, padding.y }, m_texture, m_text.get_ft_font().get_line_height_px(), color);
+	}
+
+	void label::redraw_text()
+	{
+		m_texture = m_text.render();
 	}
 
 	label_button::label_button(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
-		m_ft_context(&ft_context),
-		m_font(&font),
-		m_text(text),
+		m_text(ft_context, font.m_ft_font, font.m_hb_font, text),
 		m_hovered(false),
 		m_pressed(false)
 	{
-		set_text(text);
+		redraw_text();
 	}
 
 	void label_button::set_text(std::string const& text)
 	{
-		m_text = text;
-		m_texture = render_text_to_gl_texture(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_text);
+		m_text.set(text);
+		redraw_text();
 	}
 
 	void label_button::measure()
 	{
 		auto const width = m_texture.m_pos.x + m_texture.m_advance.x + padding.x + padding.z;
-		auto const height = m_font->m_ft_font.get_line_height_px() + padding.y + padding.w;
+		auto const height = m_text.get_ft_font().get_line_height_px() + padding.y + padding.w;
 		size = { width, height };
 	}
 
@@ -121,19 +113,20 @@ namespace bump::ui
 		auto const color = m_pressed ? press_color : m_hovered ? hover_color : inactive_color;
 
 		ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
-		ui_renderer.draw_text(gl_renderer, camera, position + vec{ padding.x, padding.y }, m_texture, m_font->m_ft_font.get_line_height_px(), color);
+		ui_renderer.draw_text(gl_renderer, camera, position + vec{ padding.x, padding.y }, m_texture, m_text.get_ft_font().get_line_height_px(), color);
+	}
+
+	void label_button::redraw_text()
+	{
+		m_texture = m_text.render();
 	}
 	
 	text_field::text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
-		m_ft_context(&ft_context),
-		m_font(&font),
-		m_shaper(HB_DIRECTION_LTR, HB_SCRIPT_LATIN, hb_language_from_string("en", -1)),
-		m_text(),
+		m_text(ft_context, font.m_ft_font, font.m_hb_font, text),
 		m_hovered(false),
 		m_pressed(false),
 		m_focused(false),
 		m_min_width_px(100),
-		m_max_length(255),
 		m_caret(0),
 		m_selection(0),
 		m_composition(0),
@@ -141,17 +134,13 @@ namespace bump::ui
 		m_selection_pos_px(0),
 		m_composition_pos_px(0)
 	{
-		insert_text(text, false);
+		set_caret(m_text.size(), false, false);
+		redraw_text();
 	}
 
 	void text_field::set_text(std::string const& text, bool select)
 	{
-		m_text = text;
-
-		if (m_text.size() > m_max_length)
-			m_text.resize(m_max_length);
-
-		reshape_text();
+		m_text.set(text);
 
 		set_caret(0, false, false);
 		set_caret(m_text.size(), select, false);
@@ -161,18 +150,14 @@ namespace bump::ui
 
 	void text_field::set_max_length(std::size_t length)
 	{
-		m_max_length = length;
-
-		if (m_text.size() > m_max_length)
-			m_text.resize(m_max_length);
-
-		reshape_text();
+		m_text.set_max_length(length);
 
 		m_caret = std::min(m_caret, m_text.size());
 		m_selection = std::min(m_selection, m_text.size());
 
-		m_caret_pos_px = measure_text(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_shaper, 0, m_caret);
-		m_selection_pos_px = measure_text(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_shaper, 0, m_selection);
+		m_caret_pos_px = m_text.measure(0, m_caret);
+		m_selection_pos_px = m_text.measure(0, m_selection);
+		m_composition_pos_px = m_text.measure(0, m_composition);
 		
 		redraw_text();
 	}
@@ -187,9 +172,9 @@ namespace bump::ui
 		if (!compose)
 			m_composition = m_caret;
 
-		m_caret_pos_px = measure_text(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_shaper, 0, m_caret);
-		m_selection_pos_px = measure_text(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_shaper, 0, m_selection);
-		m_composition_pos_px = measure_text(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_shaper, 0, m_composition);
+		m_caret_pos_px = m_text.measure(0, m_caret);
+		m_selection_pos_px = m_text.measure(0, m_selection);
+		m_composition_pos_px = m_text.measure(0, m_composition);
 	}
 
 	void text_field::move_caret(std::ptrdiff_t diff, cursor_mode mode, bool select)
@@ -201,67 +186,12 @@ namespace bump::ui
 			return;
 		}
 
-		auto constexpr find_word_boundary = [] (std::string const& text, std::size_t pos, std::ptrdiff_t diff)
-		{
-			if (text.empty())
-				return std::size_t{ 0 };
-
-			auto const begin = text.begin() + pos;
-			auto const end = text.end();
-			auto const rbegin = std::reverse_iterator(begin);
-			auto const rend = text.rend();
-
-			auto constexpr is_space = [] (char c) { return c == ' '; };
-
-			auto const last_adj_whitespace = diff < 0 ?
-				std::find_if_not(rbegin, rend, is_space).base() :
-				std::find_if_not(begin, end, is_space);
-
-			auto const first_space = diff < 0 ?
-				std::find_if(std::reverse_iterator(last_adj_whitespace), rend, is_space).base() :
-				std::find_if(last_adj_whitespace, end, is_space);
-			
-			return static_cast<std::size_t>(first_space - text.begin());
-		};
-
-		auto const find_next_cluster = [&] (std::size_t pos, std::ptrdiff_t diff)
-		{
-			auto start = narrow_cast<std::uint32_t>(pos);
-			auto const n = narrow_cast<std::size_t>(std::abs(diff));
-
-			for (auto i = std::size_t{ 0 }; i != n; ++i)
-				start = (diff > 0) ? m_shaper.next_cluster(start) : m_shaper.prev_cluster(start);
-			
-			if (start == std::uint32_t(-1)) // ugh
-				start = narrow_cast<std::uint32_t>(m_text.size());
-
-			return std::size_t{ start };
-		};
-
-		auto const find_next_codepoint = [&] (std::string const& text, std::size_t pos, std::ptrdiff_t diff)
-		{
-			// eww...
-			auto const beg = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data());
-			auto const end = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data() + text.size());
-			auto start = reinterpret_cast<hb_utf8_t::codepoint_t const*>(text.data() + pos);
-			auto const n = narrow_cast<std::size_t>(std::abs(diff));
-
-			for (auto i = std::size_t{ 0 }; i != n; ++i)
-			{
-				auto u = hb_codepoint_t{ 0 };
-				start = (diff > 0) ? hb_utf8_t::next(start, end, &u, 0) : hb_utf8_t::prev(start, beg, &u, 0);
-				(void)u;
-			}
-
-			return static_cast<std::size_t>(reinterpret_cast<char const*>(start) - text.data());
-		};
-
 		auto const caret_pos = 
 			mode == cursor_mode::WORD ?
-				find_word_boundary(m_text, m_caret, diff) : 
+				m_text.next_word(m_caret, diff) : 
 				mode == cursor_mode::CLUSTER ?
-					find_next_cluster(m_caret, diff) :
-					find_next_codepoint(m_text, m_caret, diff);
+					m_text.next_cluster(m_caret, diff) :
+					m_text.next_codepoint(m_caret, diff);
 		
 		set_caret(caret_pos, select, false);
 	}
@@ -269,7 +199,7 @@ namespace bump::ui
 	void text_field::measure()
 	{
 		auto const width = std::max(m_min_width_px, m_texture.m_pos.x + m_texture.m_advance.x + padding.x + padding.z);
-		auto const height = m_font->m_ft_font.get_line_height_px() + padding.y + padding.w;
+		auto const height = m_text.get_ft_font().get_line_height_px() + padding.y + padding.w;
 		size = { width, height };
 	}
 
@@ -345,7 +275,7 @@ namespace bump::ui
 
 	void text_field::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
-		auto const line_height_px = m_font->m_ft_font.get_line_height_px();
+		auto const line_height_px = m_text.get_ft_font().get_line_height_px();
 		auto const pad_px = vec{ padding.x, padding.y };
 
 		// draw background
@@ -364,26 +294,19 @@ namespace bump::ui
 		// draw text
 		ui_renderer.draw_text(gl_renderer, camera, position + pad_px, m_texture, line_height_px, color);
 
-		// draw caret - note: caret size and y pos are kinda arbitrary
-		auto const caret_pos = vec{ m_caret_pos_px, 0 };
-		auto const caret_size = vec{ 2, line_height_px };
-		ui_renderer.draw_rect(gl_renderer, camera, position + pad_px + caret_pos, caret_size, caret_color);
+		// draw caret
+		if (m_focused)
+		{
+			// note: caret size and y pos are kinda arbitrary
+			auto const caret_pos = vec{ m_caret_pos_px, 0 };
+			auto const caret_size = vec{ 2, line_height_px };
+			ui_renderer.draw_rect(gl_renderer, camera, position + pad_px + caret_pos, caret_size, caret_color);
+		}
 	}
 
-	void text_field::reshape_text()
-	{
-		m_shaper.clear_contents();
-		m_shaper.set_direction(HB_DIRECTION_LTR);
-		m_shaper.set_script(HB_SCRIPT_LATIN);
-		m_shaper.set_language(hb_language_from_string("en", -1));
-		m_shaper.add_utf8(m_text);
-		m_shaper.shape(m_font->m_hb_font.get_handle());
-	}
-	
 	void text_field::redraw_text()
 	{
-		reshape_text();
-		m_texture = render_text_to_gl_texture(*m_ft_context, m_font->m_ft_font, m_font->m_hb_font, m_shaper);
+		m_texture = m_text.render();
 	}
 	
 	void text_field::insert_text(std::string_view text, bool compose)
@@ -402,17 +325,11 @@ namespace bump::ui
 			set_caret(composition_start(), false, false);
 		}
 
-		// calculate available space
-		auto const space = m_max_length - m_text.size();
-		auto const len = std::min(space, text.size());
-
-		// insert as much text as we can in the available space
-		m_text.insert(m_caret, std::string_view(text.begin(), text.begin() + len));
-		
-		reshape_text();
+		// insert text
+		auto insertion_end = m_text.insert(m_caret, text);
 
 		// move the caret to the end of the inserted text
-		set_caret(m_caret + len, false, compose);
+		set_caret(insertion_end, false, compose);
 
 		// update texture
 		redraw_text();
@@ -426,7 +343,6 @@ namespace bump::ui
 
 		// erase selected text
 		m_text.erase(selection_start(), selection_size());
-		reshape_text();
 		set_caret(selection_start(), false, false);
 
 		// update texture
@@ -441,92 +357,10 @@ namespace bump::ui
 
 		// erase selected text
 		m_text.erase(selection_start(), selection_size());
-		reshape_text();
 		set_caret(selection_start(), false, false);
 
 		// update texture
 		redraw_text();
-	}
-
-	text_shape::text_shape(font::ft_context const& ft_context, font::ft_font const& ft_font, font::hb_font const& hb_font, font::hb_shaper const& hb_shaper, std::string text = ""):
-		m_ft_context(&ft_context),
-		m_ft_font(&ft_font),
-		m_hb_font(&hb_font),
-		m_shaper(),
-		m_text(text),
-		m_max_length(255)
-	{
-		reshape();
-	}
-
-	void text_shape::set(std::string_view text)
-	{
-		m_text = text;
-
-		if (m_text.size() > m_max_length)
-			m_text.resize(m_max_length);
-		
-		reshape();
-	}
-
-	void text_shape::insert(std::size_t pos, std::string_view text)
-	{
-		// calculate available space
-		auto const space = m_max_length - m_text.size();
-		auto const len = std::min(space, text.size());
-
-		// insert as much text as possible
-		m_text.insert(pos, std::string_view(text.data(), len));
-		
-		reshape();
-	}
-
-	void text_shape::erase(std::size_t pos, std::size_t length)
-	{
-		m_text.erase(pos, length);
-
-		reshape();
-	}
-
-	std::size_t text_shape::size() const
-	{
-		return m_text.size();
-	}
-
-	void text_shape::set_max_length(std::size_t length)
-	{
-		m_max_length = length;
-
-		if (m_text.size() > m_max_length)
-			m_text.resize(m_max_length);
-
-		reshape();
-	}
-
-	// ... next_* functions!!!
-
-	void text_shape::reshape()
-	{
-		m_shaper.clear_contents();
-		m_shaper.set_direction(HB_DIRECTION_LTR);
-		m_shaper.set_script(HB_SCRIPT_LATIN); // todo: don't hard-code this...
-		m_shaper.set_language(hb_language_from_string("en", -1));
-		m_shaper.add_utf8(m_text);
-		m_shaper.shape(m_hb_font->get_handle());
-	}
-
-	text_texture text_shape::render()
-	{
-		// todo: dirty flag and reshape here
-		return render_text_to_gl_texture(*m_ft_context, *m_ft_font, *m_hb_font, m_shaper);
-	}
-
-	std::int32_t text_shape::measure(std::size_t start, std::size_t end)
-	{
-		die_if(start > end);
-
-		// todo: dirty flag and reshape here
-		return measure_text(*m_ft_context, *m_ft_font, *m_hb_font, m_shaper, start, end);
 	}
 
 } // bump::ui

@@ -11,6 +11,7 @@
 #include "bump_time.hpp"
 #include "bump_ui_box.hpp"
 #include "bump_ui_renderer.hpp"
+#include "bump_ui_text_shape.hpp"
 #include "bump_ui_vec.hpp"
 
 #include <iostream>
@@ -75,7 +76,7 @@ namespace bump::ui
 
 		gl::texture_2d const* m_texture;
 	};
-
+	
 	class label : public widget_base
 	{
 	public:
@@ -83,7 +84,7 @@ namespace bump::ui
 		label(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
 
 		void set_text(std::string const& text);
-		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
+		void set_font(font::font_asset const& font) { m_text.set_font(font.m_ft_font, font.m_hb_font); }
 
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
@@ -97,9 +98,9 @@ namespace bump::ui
 
 	private:
 		
-		font::ft_context const* m_ft_context;
-		font::font_asset const* m_font;
-		std::string m_text;
+		void redraw_text();
+
+		text_shape m_text;
 		text_texture m_texture;
 	};
 
@@ -367,7 +368,7 @@ namespace bump::ui
 		label_button(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
 
 		void set_text(std::string const& text);
-		void set_font(font::font_asset const& font) { m_font = &font; set_text(m_text); }
+		void set_font(font::font_asset const& font) { m_text.set_font(font.m_ft_font, font.m_hb_font); }
 
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
@@ -384,9 +385,9 @@ namespace bump::ui
 
 	private:
 		
-		font::ft_context const* m_ft_context;
-		font::font_asset const* m_font;
-		std::string m_text;
+		void redraw_text();
+
+		text_shape m_text;
 		text_texture m_texture;
 
 		bool m_hovered;
@@ -400,14 +401,14 @@ namespace bump::ui
 		text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
 
 		void set_text(std::string const& text, bool select);
-		std::string const& get_text() const { return m_text; }
-		void set_font(font::font_asset const& font) { m_font = &font; redraw_text(); }
+		std::string const& get_text() const { return m_text.get(); }
+		void set_font(font::font_asset const& font) { m_text.set_font(font.m_ft_font, font.m_hb_font); redraw_text(); }
 
 		void set_min_width(vec::value_type min_width_px) { m_min_width_px = min_width_px; }
 		vec::value_type get_min_width() const { return m_min_width_px; }
 
 		void set_max_length(std::size_t length);
-		std::size_t get_max_length() const { return m_max_length; }
+		std::size_t get_max_length() const { return m_text.get_max_length(); }
 
 		void set_caret(std::size_t pos, bool select, bool compose);
 		std::size_t get_caret() const { return m_caret; }
@@ -418,12 +419,12 @@ namespace bump::ui
 		std::size_t selection_start() const { return std::min(m_caret, m_selection); }
 		std::size_t selection_end() const { return std::max(m_caret, m_selection); }
 		std::size_t selection_size() const { return selection_end() - selection_start(); }
-		std::string_view get_selection() const { return std::string_view(m_text.begin() + selection_start(), m_text.begin() + selection_end()); }
+		std::string_view get_selection() const { return std::string_view(m_text.get().begin() + selection_start(), m_text.get().begin() + selection_end()); }
 
 		std::size_t composition_start() const { return std::min(m_caret, m_composition); }
 		std::size_t composition_end() const { return std::max(m_caret, m_composition); }
 		std::size_t composition_size() const { return composition_end() - composition_start(); }
-		std::string_view get_composition() const { return std::string_view(m_text.begin() + composition_start(), m_text.begin() + composition_end()); }
+		std::string_view get_composition() const { return std::string_view(m_text.get().begin() + composition_start(), m_text.get().begin() + composition_end()); }
 
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
@@ -440,16 +441,12 @@ namespace bump::ui
 
 	private:
 
-		void reshape_text();
 		void redraw_text();
 		void insert_text(std::string_view text, bool compose);
 		void delete_grapheme_cluster(std::ptrdiff_t diff, bool word);
 		void delete_codepoint(std::ptrdiff_t diff, bool word);
 
-		font::ft_context const* m_ft_context;
-		font::font_asset const* m_font;
-		font::hb_shaper m_shaper;
-		std::string m_text;
+		text_shape m_text;
 		text_texture m_texture;
 
 		bool m_hovered;
@@ -457,7 +454,6 @@ namespace bump::ui
 		bool m_focused;
 
 		vec::value_type m_min_width_px;
-		std::size_t m_max_length;
 		std::size_t m_caret;
 		std::size_t m_selection;
 		std::size_t m_composition;
@@ -466,54 +462,5 @@ namespace bump::ui
 		std::int32_t m_selection_pos_px;
 		std::int32_t m_composition_pos_px;
 	};
-	
-	struct text_shape
-	{
-	public:
-
-		explicit text_shape(
-			font::ft_context const& ft_context,
-			font::ft_font const& ft_font,
-			font::hb_font const& hb_font,
-			font::hb_shaper const& hb_shaper,
-			std::string text);
-
-		void set(std::string_view text);
-		void insert(std::size_t pos, std::string_view text);
-		void erase(std::size_t pos, std::size_t length);
-
-		std::size_t size() const;
-
-		void set_max_length(std::size_t length);
-
-		std::size_t next_word(std::size_t pos, std::ptrdiff_t diff);
-		std::size_t next_cluster(std::size_t pos, std::ptrdiff_t diff);
-		std::size_t next_codepoint(std::size_t pos, std::ptrdiff_t diff);
-
-		void reshape();
-
-		text_texture render();
-		std::int32_t measure(std::size_t start, std::size_t end);
-
-	private:
-
-		font::ft_context const* m_ft_context;
-		font::ft_font const* m_ft_font;
-		font::hb_font const* m_hb_font;
-		font::hb_shaper m_shaper;
-
-		std::string m_text;
-		std::size_t m_max_length;
-	};
-
-	// todo:
-
-		// text_shape
-			// implement
-			// replace code in text_field
-			// use it in label and label_button
-
-		// more types of space character as word boundaries? (tabs, newlines, etc.)
-		// tab rendering?
 
 } // bump::ui
