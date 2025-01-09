@@ -42,6 +42,7 @@ namespace smirc
 		tab_bar->children.push_back(search);
 
 		auto server_tab_vec = std::make_shared<ui::vector_h>();
+		server_tab_vec->origin = { ui::origin::left, ui::origin::bottom };
 		server_tab_vec->spacing = 20;
 		l_vec->children.push_back(server_tab_vec);
 
@@ -196,6 +197,7 @@ namespace smirc
 } // smirc
 
 
-// ui:
-	// basic text field!
-	// new connection screen
+// todo:
+	// server tabs should have origin at the bottom of the top panel
+	// new connection screen!
+	// ...

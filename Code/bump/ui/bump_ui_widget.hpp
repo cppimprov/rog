@@ -194,7 +194,7 @@ namespace bump::ui
 			for (auto const& c : children)
 			{
 				auto const s = c ? c->get_total_size() : vec(0);
-				c->place(offset, { size.y, s.x });
+				c->place(offset, { s.x, size.y });
 				offset.x += s.x + spacing;
 			}
 		}

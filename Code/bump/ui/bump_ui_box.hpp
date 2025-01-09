@@ -57,15 +57,15 @@ namespace bump::ui
 			// set the position from the origin and size
 			switch (origin.x)
 			{
-			case origin::left:   position.x = cell_pos.x + margins.x; break;
-			case origin::center: position.x = cell_pos.x + (cell_size.x - size.x) / vec::value_type{ 2 }; break;
-			case origin::right:  position.x = cell_pos.x + cell_size.x - (size.x + margins.z); break;
+			case origin::left:    position.x = cell_pos.x + margins.x; break;
+			case origin::center:  position.x = cell_pos.x + (cell_size.x - size.x) / vec::value_type{ 2 }; break;
+			case origin::right:   position.x = cell_pos.x + cell_size.x - (size.x + margins.z); break;
 			}
 			switch (origin.y)
 			{
-			case origin::left:   position.y = cell_pos.y + margins.y; break;
-			case origin::center: position.y = cell_pos.y + (cell_size.y - size.y) / vec::value_type{ 2 }; break;
-			case origin::right:  position.y = cell_pos.y + cell_size.y - (size.y + margins.w); break;
+			case origin::top:     position.y = cell_pos.y + margins.y; break;
+			case origin::center:  position.y = cell_pos.y + (cell_size.y - size.y) / vec::value_type{ 2 }; break;
+			case origin::bottom:  position.y = cell_pos.y + cell_size.y - (size.y + margins.w); break;
 			}
 		}
 	};
