@@ -10,6 +10,21 @@
 namespace bump::ui
 {
 
+	bool check_mouse_click(input::input_event const& event, vec position, vec size)
+	{
+		namespace ie = input::input_events;
+
+		if (std::holds_alternative<ie::mouse_button>(event))
+		{
+			auto const& mb = std::get<ie::mouse_button>(event);
+			return aabb{ position, size }.contains(mb.m_inv_y_position);
+		}
+
+		// todo: mouse wheel?
+
+		return false;
+	}
+
 	void quad::render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera)
 	{
 		ui_renderer.draw_rect(gl_renderer, camera, position, size, color);
@@ -71,7 +86,7 @@ namespace bump::ui
 		size = { width, height };
 	}
 
-	void label_button::input(input::input_event const& event)
+	void label_button::input(input::input_event const& event, bool& consumed)
 	{
 		namespace ie = input::input_events;
 
@@ -80,6 +95,7 @@ namespace bump::ui
 			auto const& mm = std::get<ie::mouse_motion>(event);
 			m_hovered = aabb{ position, size }.contains(mm.m_inv_y_position);
 			m_pressed = m_pressed && m_hovered;
+			return;
 		}
 
 		if (std::holds_alternative<ie::mouse_button>(event))
@@ -88,23 +104,23 @@ namespace bump::ui
 			
 			if (mb.m_button == input::mouse_button::LEFT)
 			{
-				if (mb.m_value)
+				if (mb.m_value && m_hovered)
 				{
-					if (m_hovered)
-					{
-						m_pressed = true;
-						if (action) action();
-					}
-					else
-					{
-						m_pressed = false;
-					}
+					if (consumed) return;
+					consumed = true;
+
+					m_pressed = true;
+					if (action) action();
 				}
 				else
 				{
-					m_pressed = false;
+					m_pressed = false; // mouse up event
+					return;
 				}
+
 			}
+
+			return;
 		}
 	}
 
@@ -121,7 +137,8 @@ namespace bump::ui
 		m_texture = m_text.render();
 	}
 	
-	text_field::text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
+	text_field::text_field(sdl::input_handler& input_handler, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text):
+		m_input_handler(input_handler),
 		m_text(ft_context, font.m_ft_font, font.m_hb_font, text),
 		m_hovered(false),
 		m_pressed(false),
@@ -136,6 +153,11 @@ namespace bump::ui
 	{
 		set_caret(m_text.size(), false, false);
 		redraw_text();
+	}
+
+	text_field::~text_field()
+	{
+		unfocus();
 	}
 
 	void text_field::set_text(std::string const& text, bool select)
@@ -203,7 +225,7 @@ namespace bump::ui
 		size = { width, height };
 	}
 
-	void text_field::input(input::input_event const& event)
+	void text_field::input(input::input_event const& event, bool& consumed)
 	{
 		namespace ie = input::input_events;
 
@@ -212,6 +234,7 @@ namespace bump::ui
 			auto const& mm = std::get<ie::mouse_motion>(event);
 			m_hovered = aabb{ position, size }.contains(mm.m_inv_y_position);
 			m_pressed = m_pressed && m_hovered;
+			return;
 		}
 
 		if (std::holds_alternative<ie::mouse_button>(event))
@@ -224,15 +247,16 @@ namespace bump::ui
 				{
 					if (m_hovered)
 					{
+						if (consumed) return;
+						consumed = true;
+
 						m_pressed = true;
-						m_focused = true;
-						SDL_StartTextInput();
+						focus();
 					}
 					else
 					{
 						m_pressed = false;
-						m_focused = false;
-						SDL_StopTextInput();
+						unfocus();
 					}
 				}
 				else
@@ -240,35 +264,45 @@ namespace bump::ui
 					m_pressed = false;
 				}
 			}
+
+			return;
 		}
 
 		if (m_focused)
 		{
 			if (std::holds_alternative<ie::text_input>(event))
 			{
+				if (consumed) return;
+
 				auto const& t = std::get<ie::text_input>(event);
 				insert_text(t.m_text.data(), false);
+				consumed = true;
 			}
 
 			if (std::holds_alternative<ie::text_editing>(event))
 			{
+				if (consumed) return;
+
 				auto const& c = std::get<ie::text_editing>(event);
 				insert_text(c.m_text.data(), true);
+				consumed = true;
 			}
 
 			if (std::holds_alternative<ie::keyboard_key>(event))
 			{
+				if (consumed) return;
+
 				auto const& k = std::get<ie::keyboard_key>(event);
 
 				using kt = bump::input::keyboard_key;
 
-				if      (k.m_value && k.m_key == kt::ESCAPE) { m_focused = false; SDL_StopTextInput(); }
-				else if (k.m_value && k.m_key == kt::ARROWLEFT) { move_caret(-1, k.m_mods.ctrl() ? cursor_mode::WORD : cursor_mode::CLUSTER, k.m_mods.shift()); }
-				else if (k.m_value && k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl() ? cursor_mode::WORD : cursor_mode::CLUSTER, k.m_mods.shift()); }
-				else if (k.m_value && k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift(), false); }
-				else if (k.m_value && k.m_key == kt::END) { set_caret(m_text.size(), k.m_mods.shift(), false); }
-				else if (k.m_value && k.m_key == kt::BACKSPACE) { delete_codepoint(-1, k.m_mods.ctrl()); }
-				else if (k.m_value && k.m_key == kt::DELETE) { delete_grapheme_cluster(+1, k.m_mods.ctrl()); }
+				if      (k.m_value && k.m_key == kt::ESCAPE) { unfocus(); consumed = true; }
+				else if (k.m_value && k.m_key == kt::ARROWLEFT) { move_caret(-1, k.m_mods.ctrl() ? cursor_mode::WORD : cursor_mode::CLUSTER, k.m_mods.shift()); consumed = true; }
+				else if (k.m_value && k.m_key == kt::ARROWRIGHT) { move_caret(+1, k.m_mods.ctrl() ? cursor_mode::WORD : cursor_mode::CLUSTER, k.m_mods.shift()); consumed = true; }
+				else if (k.m_value && k.m_key == kt::HOME) { set_caret(0, k.m_mods.shift(), false); consumed = true; }
+				else if (k.m_value && k.m_key == kt::END) { set_caret(m_text.size(), k.m_mods.shift(), false); consumed = true; }
+				else if (k.m_value && k.m_key == kt::BACKSPACE) { delete_codepoint(-1, k.m_mods.ctrl()); consumed = true; }
+				else if (k.m_value && k.m_key == kt::DELETE) { delete_grapheme_cluster(+1, k.m_mods.ctrl()); consumed = true; }
 			}
 		}
 	}
@@ -361,6 +395,24 @@ namespace bump::ui
 
 		// update texture
 		redraw_text();
+	}
+
+	void text_field::focus()
+	{
+		if (!m_focused)
+		{
+			m_input_handler.start_text_input();
+			m_focused = true;
+		}
+	}
+
+	void text_field::unfocus()
+	{
+		if (m_focused)
+		{
+			m_input_handler.stop_text_input();
+			m_focused = false;
+		}
 	}
 
 } // bump::ui

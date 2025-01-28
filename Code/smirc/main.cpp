@@ -16,6 +16,10 @@ int main(int , char*[] )
 				{ "menu", "RobotoMono-SemiBold.ttf", 30 },
 				{ "utf", "Arimo-Regular.ttf", 16 },
 				{ "kr", "NotoSansKR-Regular.ttf", 16 },
+				{ "title", "RobotoMono-SemiBold.ttf", 20 },
+				{ "label", "RobotoMono-SemiBold.ttf", 8 },
+				{ "field", "RobotoMono-SemiBold.ttf", 10 },
+				{ "button", "RobotoMono-SemiBold.ttf", 10 },
 			},
 			// sounds
 			{
@@ -57,3 +61,31 @@ int main(int , char*[] )
 
 	return EXIT_SUCCESS;
 }
+
+// todo:
+
+	// add profiles button in top-right, which opens the profiles dialog
+	// add close / save button to profiles
+	// change profile name to nick
+	// make user / real default to nick, with checkbox to show the text boxes.
+
+	// text alignment in label / label_button widgets
+
+// features:
+
+	// new connection dialog!
+		// label title
+		// label / text field pairs for input
+		// tab to move forwards between input fields, shift-tab to move backwards
+		// ...
+
+	// ...
+
+	// profile button + dialog!
+		// profile button in top left
+		// panel with title bar at the top
+		// list of profiles on the left (with + button to add a new one)
+		// clicking on a profile shows the profile
+		// clicking on the new button shows a blank profile
+		// fields for nickname, username, real name, email, button to delete?
+		// ...

@@ -1,5 +1,6 @@
 #include "bump_sdl_input_handler.hpp"
 
+#include "bump_log.hpp"
 #include "bump_pair_map.hpp"
 #include "bump_sdl_window.hpp"
 
@@ -267,8 +268,9 @@ namespace bump
 
 
 		input_handler::input_handler(window& window):
-			m_window(window) { }
-			
+			m_window(window),
+			m_text_input_count(0) { }
+
 		bool input_handler::is_keyboard_key_pressed(input::keyboard_key key) const
 		{
 			auto const scancode = keyboard_key_to_sdl_scancode(key);
@@ -288,6 +290,33 @@ namespace bump
 			auto pos = glm::ivec2();
 			(void)SDL_GetMouseState(&pos.x, &pos.y);
 			return pos;
+		}
+
+		void input_handler::start_text_input()
+		{
+			if (!m_text_input_count)
+				SDL_StartTextInput();
+
+			++m_text_input_count;
+		}
+
+		void input_handler::stop_text_input()
+		{
+			if (!m_text_input_count)
+			{
+				bump::log_error("Unbalanced start_text_input() / stop_text_input() calls.");
+				return;
+			}
+
+			--m_text_input_count;
+
+			if (!m_text_input_count)
+				SDL_StopTextInput();
+		}
+
+		bool input_handler::is_text_input_enabled()
+		{
+			return SDL_IsTextInputActive();
 		}
 		
 		void input_handler::poll(std::queue<input::app_event>& app_events, std::queue<input::input_event>& input_events)
@@ -388,7 +417,7 @@ namespace bump
 						(e.wheel.direction == SDL_MOUSEWHEEL_NORMAL) ? 
 							glm::ivec2{  e.wheel.x,  e.wheel.y } :
 							glm::ivec2{ -e.wheel.x, -e.wheel.y };
-					
+
 					auto const mods = sdl_keymod_to_key_modifiers(SDL_GetModState());
 
 					if (motion.x != 0 || motion.y != 0)

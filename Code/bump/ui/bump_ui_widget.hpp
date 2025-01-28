@@ -8,6 +8,7 @@
 #include "bump_input.hpp"
 #include "bump_log.hpp"
 #include "bump_render_text.hpp"
+#include "bump_sdl_input_handler.hpp"
 #include "bump_time.hpp"
 #include "bump_ui_box.hpp"
 #include "bump_ui_renderer.hpp"
@@ -20,7 +21,7 @@
 
 namespace bump::ui
 {
-	
+
 	class widget_base : public box
 	{
 	public:
@@ -35,11 +36,14 @@ namespace bump::ui
 		// `place` must also be called on the widget's children here.
 		virtual void place(vec cell_pos, vec cell_size) = 0;
 
-		virtual void input(input::input_event const& event) = 0;
+		// `input` must return true to consume the event, otherwise `false`
+		virtual void input(input::input_event const& event, bool& consumed) = 0;
 
 		//virtual void update(duration_t dt, sdl::input_handler const& input) = 0;
 		virtual void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) = 0;
 	};
+
+	bool check_mouse_click(input::input_event const& event, vec pos, vec size);
 
 	class quad : public widget_base
 	{
@@ -48,7 +52,7 @@ namespace bump::ui
 		void measure() override { /* nothing to do - size is set directly */ }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
-		void input(input::input_event const& ) override { }
+		void input(input::input_event const& event, bool& consumed) override {  if (check_mouse_click(event, position, size)) consumed = true; }
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
@@ -67,7 +71,7 @@ namespace bump::ui
 		void measure() override { size = m_texture->get_size(); }
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
-		void input(input::input_event const& ) override { }
+		void input(input::input_event const& event, bool& consumed) override { if (check_mouse_click(event, position, size)) consumed = true; }
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
@@ -76,7 +80,7 @@ namespace bump::ui
 
 		gl::texture_2d const* m_texture;
 	};
-	
+
 	class label : public widget_base
 	{
 	public:
@@ -89,11 +93,11 @@ namespace bump::ui
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
-		void input(input::input_event const& ) override { }
+		void input(input::input_event const& event, bool& consumed) override { if (check_mouse_click(event, position, size)) consumed = true; }
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
-		glm::vec4 bg_color = glm::vec4(glm::vec3(0.2f), 1.f);
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.1f), 1.f);
 		margin_vec padding = margin_vec(2);
 
 	private:
@@ -143,19 +147,23 @@ namespace bump::ui
 			}
 		}
 
-		void input(input::input_event const& event) override
+		void input(input::input_event const& event, bool& consumed) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->input(event);
+					c->input(event, consumed);
 		}
 
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
+			ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
+
 			for (auto& c : children)
 				if (c)
 					c->render(ui_renderer, gl_renderer, camera);
 		}
+
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.1f), 1.f);
 
 		vec::value_type spacing;
 		std::vector<std::shared_ptr<widget_base>> children;
@@ -199,19 +207,23 @@ namespace bump::ui
 			}
 		}
 
-		void input(input::input_event const& event) override
+		void input(input::input_event const& event, bool& consumed) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->input(event);
+					c->input(event, consumed);
 		}
 
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
+			ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
+
 			for (auto& c : children)
 				if (c)
 					c->render(ui_renderer, gl_renderer, camera);
 		}
+
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.1f), 1.f);
 
 		vec::value_type spacing;
 		std::vector<std::shared_ptr<widget_base>> children;
@@ -294,19 +306,23 @@ namespace bump::ui
 			}
 		}
 
-		void input(input::input_event const& event) override
+		void input(input::input_event const& event, bool& consumed) override
 		{
 			for (auto& c : children)
 				if (c)
-					c->input(event);
+					c->input(event, consumed);
 		}
 
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
+			ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
+
 			for (auto& c : children)
 				if (c)
 					c->render(ui_renderer, gl_renderer, camera);
 		}
+
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.1f), 1.f);
 
 		vec spacing;
 		grid2<std::shared_ptr<widget_base>> children;
@@ -344,19 +360,23 @@ namespace bump::ui
 					c->place(offset, size);
 		}
 
-		void input(input::input_event const& event) override
+		void input(input::input_event const& event, bool& consumed) override
 		{
-			for (auto& c : children)
+			for (auto& c : std::ranges::reverse_view(children))
 				if (c)
-					c->input(event);
+					c->input(event, consumed);
 		}
 
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override
 		{
+			ui_renderer.draw_rect(gl_renderer, camera, position, size, bg_color);
+
 			for (auto& c : children)
 				if (c)
 					c->render(ui_renderer, gl_renderer, camera);
 		}
+
+		glm::vec4 bg_color = glm::vec4(glm::vec3(0.0f), 0.1f);
 
 		std::vector<std::shared_ptr<widget_base>> children;
 	};
@@ -373,7 +393,7 @@ namespace bump::ui
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
-		void input(input::input_event const& event) override;
+		void input(input::input_event const& event, bool& consumed) override;
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 inactive_color = glm::vec4(0.6f, 0.6f, 0.6f, 1.0f);
@@ -398,7 +418,8 @@ namespace bump::ui
 	{
 	public:
 
-		text_field(font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+		text_field(sdl::input_handler& input_handler, font::ft_context const& ft_context, font::font_asset const& font, std::string const& text);
+		~text_field();
 
 		void set_text(std::string const& text, bool select);
 		std::string const& get_text() const { return m_text.get(); }
@@ -429,7 +450,7 @@ namespace bump::ui
 		void measure() override;
 		void place(vec cell_pos, vec cell_size) override { box_place(cell_pos, cell_size); }
 
-		void input(input::input_event const& event) override;
+		void input(input::input_event const& event, bool& consumed) override;
 		void render(ui::renderer const& ui_renderer, gl::renderer& gl_renderer, camera_matrices const& camera) override;
 
 		glm::vec4 color = glm::vec4(1.f);
@@ -445,6 +466,11 @@ namespace bump::ui
 		void insert_text(std::string_view text, bool compose);
 		void delete_grapheme_cluster(std::ptrdiff_t diff, bool word);
 		void delete_codepoint(std::ptrdiff_t diff, bool word);
+
+		void focus();
+		void unfocus();
+
+		sdl::input_handler& m_input_handler;
 
 		text_shape m_text;
 		text_texture m_texture;

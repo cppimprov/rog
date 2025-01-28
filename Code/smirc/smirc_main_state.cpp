@@ -11,11 +11,100 @@
 namespace smirc
 {
 
+	struct ui_profile_dialog
+	{
+		std::shared_ptr<bump::ui::canvas> m_dialog;
+
+		std::shared_ptr<bump::ui::vector_v> m_profiles_list;
+		std::shared_ptr<bump::ui::label_button> m_new_profile_button; // todo: image and text?
+
+		std::shared_ptr<bump::ui::canvas> m_form_panel;
+		std::shared_ptr<bump::ui::text_field> m_field_nick;
+		std::shared_ptr<bump::ui::text_field> m_field_user;
+		std::shared_ptr<bump::ui::text_field> m_field_real;
+	};
+
+	ui_profile_dialog make_profile_dialog(bump::app& app)
+	{
+		namespace ui = bump::ui;
+
+		auto const& fonts = app.m_assets.m_fonts;
+
+		auto result = ui_profile_dialog();
+		result.m_dialog = std::make_shared<ui::canvas>();
+		result.m_dialog->origin = { ui::origin::center, ui::origin::center };
+
+		auto dialog_vec = std::make_shared<ui::vector_v>();
+		result.m_dialog->children.push_back(dialog_vec);
+
+		// title bar
+		{
+			auto title_bar = std::make_shared<ui::label>(app.m_ft_context, fonts.at("title"), "Profiles");
+			title_bar->margins = { 10, 0, 10, 0 };
+			dialog_vec->children.push_back(title_bar);
+
+			// todo: x button
+		}
+
+		// content
+		{
+			auto content_vec = std::make_shared<ui::vector_h>();
+			content_vec->margins = { 10, 0, 10, 0 };
+			content_vec->spacing = 20;
+			dialog_vec->children.push_back(content_vec);
+
+			// profiles list
+			{
+				result.m_profiles_list = std::make_shared<ui::vector_v>();
+				result.m_profiles_list->fill = { ui::fill::fixed, ui::fill::shrink };
+				result.m_profiles_list->size = { 100, 0 };
+				content_vec->children.push_back(result.m_profiles_list);
+
+				// todo: populate profiles list with stored profiles
+
+				result.m_new_profile_button = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("title"), "new");
+				result.m_new_profile_button->fill = { ui::fill::expand, ui::fill::shrink };
+				result.m_profiles_list->children.push_back(result.m_new_profile_button);
+			}
+
+			// profile form
+			{
+				result.m_form_panel = std::make_shared<ui::canvas>();
+				content_vec->children.push_back(result.m_form_panel);
+
+				auto form_grid = std::make_shared<ui::grid>();
+				form_grid->children.resize({ 2, 3 });
+				result.m_form_panel->children.push_back(form_grid);
+
+				auto nick_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("field"), "nick:");
+				form_grid->children.at({ 0, 0 }) = nick_label;
+
+				result.m_field_nick = std::make_shared<ui::text_field>(app.m_input_handler, app.m_ft_context, fonts.at("field"), "nick");
+				result.m_field_nick->padding = { 10, 0, 10, 0 };
+				form_grid->children.at({ 1, 0 }) = result.m_field_nick;
+
+				auto user_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("field"), "user:");
+				form_grid->children.at({ 0, 1 }) = user_label;
+
+				result.m_field_user = std::make_shared<ui::text_field>(app.m_input_handler, app.m_ft_context, fonts.at("field"), "user");
+				result.m_field_user->padding = { 10, 0, 10, 0 };
+				form_grid->children.at({ 1, 1 }) = result.m_field_user;
+
+				auto real_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("field"), "real:");
+				form_grid->children.at({ 0, 2 }) = real_label;
+
+				result.m_field_real = std::make_shared<ui::text_field>(app.m_input_handler, app.m_ft_context, fonts.at("field"), "real");
+				result.m_field_real->padding = { 10, 0, 10, 0 };
+				form_grid->children.at({ 1, 2 }) = result.m_field_real;
+			}
+		}
+
+		return result;
+	}
+
 	bump::gamestate main_state(bump::app& app)
 	{
 		auto const& shaders = app.m_assets.m_shaders;
-		auto const& textures_2d = app.m_assets.m_textures_2d;
-		auto const& fonts = app.m_assets.m_fonts;
 
 		auto ui_renderer = bump::ui::renderer(
 			shaders.at("ui_rect"),
@@ -24,78 +113,7 @@ namespace smirc
 
 		namespace ui = bump::ui;
 
-		auto tab_bar = std::make_shared<ui::canvas>();
-		tab_bar->fill = { ui::fill::expand, ui::fill::shrink };
-
-		auto l_vec = std::make_shared<ui::vector_h>();
-		l_vec->spacing = 20;
-		l_vec->origin = { ui::origin::left, ui::origin::top };
-		tab_bar->children.push_back(l_vec);
-		
-		auto plus = std::make_shared<ui::textured_quad>(textures_2d.at("plus"));
-		l_vec->children.push_back(plus);
-		
-		auto search = std::make_shared<ui::quad>();
-		search->origin = { ui::origin::right, ui::origin::top };
-		search->size = { 100, 100 };
-		search->color = { 1.0f, 0.8f, 0.2f, 1.0f };
-		tab_bar->children.push_back(search);
-
-		auto server_tab_vec = std::make_shared<ui::vector_h>();
-		server_tab_vec->origin = { ui::origin::left, ui::origin::bottom };
-		server_tab_vec->spacing = 20;
-		l_vec->children.push_back(server_tab_vec);
-
-		// todo: what to do about scrolling server tabs?
-
-		{
-			auto server_tab_1 = std::make_shared<ui::vector_v>();
-			server_tab_vec->children.push_back(server_tab_1);
-			
-			auto server_tab_1_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("menu"), "server_name");
-			server_tab_1->children.push_back(server_tab_1_label);
-
-			auto server_tab_1_channels = std::make_shared<ui::vector_h>();
-			server_tab_1->children.push_back(server_tab_1_channels);
-			
-			auto channel_1_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("menu"), "channel_1");
-			server_tab_1_channels->children.push_back(channel_1_label);
-
-			auto channel_2_label = std::make_shared<ui::label>(app.m_ft_context, fonts.at("menu"), "channel_2");
-			server_tab_1_channels->children.push_back(channel_2_label);
-		}
-		
-		{
-			auto server_tab_1 = std::make_shared<ui::vector_v>();
-			server_tab_vec->children.push_back(server_tab_1);
-			
-			auto server_tab_1_label = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("menu"), "server_name");
-			server_tab_1->children.push_back(server_tab_1_label);
-
-			auto server_tab_1_channels = std::make_shared<ui::vector_h>();
-			server_tab_1->children.push_back(server_tab_1_channels);
-			
-			auto channel_1_label = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("menu"), "channel_1");
-			server_tab_1_channels->children.push_back(channel_1_label);
-
-			auto channel_2_label = std::make_shared<ui::label_button>(app.m_ft_context, fonts.at("menu"), "channel_2");
-			server_tab_1_channels->children.push_back(channel_2_label);
-		}
-
-		auto canvas = std::make_shared<ui::canvas>();
-		canvas->fill = { ui::fill::expand, ui::fill::expand };
-
-		auto dialog = std::make_shared<ui::vector_v>();
-		dialog->spacing = 20;
-		dialog->origin = { ui::origin::center, ui::origin::center };
-		canvas->children.push_back(dialog);
-
-		//auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("utf"), "H̵̛͕̞̦̰̜͍̰̥̟͆̏͂̌͑ͅä̷͔̟͓̬̯̟͍̭͉͈̮͙̣̯̬͚̞̭̍̀̾͠m̴̡̧̛̝̯̹̗̹̤̲̺̟̥̈̏͊̔̑̍͆̌̀̚͝͝b̴̢̢̫̝̠̗̼̬̻̮̺̭͔̘͑̆̎̚te{|}1Å¿Š");
-		auto text_field_1 = std::make_shared<ui::text_field>(app.m_ft_context, app.m_assets.m_fonts.at("kr"), "------");
-		dialog->children.push_back(text_field_1);
-
-		//auto text_field_2 = std::make_shared<ui::text_field>(app.m_assets.m_shaders.at("ui_label"), app.m_ft_context, app.m_assets.m_fonts.at("menu"), "test 2");
-		//dialog->children.push_back(text_field_2);
+		auto ui_profile_dialog = make_profile_dialog(app);
 
 		auto app_events = std::queue<bump::input::app_event>();
 		auto input_events = std::queue<bump::input::input_event>();
@@ -140,23 +158,16 @@ namespace smirc
 							return { }; // todo: save!
 					}
 
-					tab_bar->input(event);
-
-					canvas->input(event);
-
-					// todo: typing
-					// todo: mouse input
+					auto consumed = false;
+					ui_profile_dialog.m_dialog->input(event, consumed);
 				}
 			}
 
 			// update
 			{
 				// layout ui
-				tab_bar->measure();
-				tab_bar->place({ 0, 0 }, app.m_window.get_size());
-
-				canvas->measure();
-				canvas->place({ 0, 0 }, app.m_window.get_size());
+				ui_profile_dialog.m_dialog->measure();
+				ui_profile_dialog.m_dialog->place({ 0, 0 }, app.m_window.get_size());
 			}
 
 			// drawing
@@ -184,8 +195,7 @@ namespace smirc
 				camera.m_viewport.m_size = window_size_f;
 
 				// render
-				tab_bar->render(ui_renderer, renderer, camera);
-				canvas->render(ui_renderer, renderer, camera);
+				ui_profile_dialog.m_dialog->render(ui_renderer, renderer, camera);
 
 				window.swap_buffers();
 			}
@@ -195,9 +205,3 @@ namespace smirc
 	}
 
 } // smirc
-
-
-// todo:
-	// server tabs should have origin at the bottom of the top panel
-	// new connection screen!
-	// ...

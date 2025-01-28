@@ -27,11 +27,16 @@ namespace bump
 			bool is_mouse_button_pressed(input::mouse_button button) const;
 			glm::ivec2 get_mouse_position() const;
 
+			void start_text_input();
+			void stop_text_input();
+			bool is_text_input_enabled();
+
 			void poll(std::queue<input::app_event>& app_events, std::queue<input::input_event>& input_events);
 
 		private:
 
 			window& m_window;
+			std::uint32_t m_text_input_count;
 			std::vector<sdl::gamepad> m_gamepads;
 		};
 		
